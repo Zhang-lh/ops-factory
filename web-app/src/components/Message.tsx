@@ -129,6 +129,65 @@ export default function Message({
         })
     }
 
+    // Parse todo markdown content into structured task items
+    const parseTodoContent = (content: string) => {
+        const lines = content.split('\n').map(line => line.trim()).filter(Boolean)
+        const tasks: Array<{ done: boolean; text: string }> = []
+        for (const line of lines) {
+            if (line.startsWith('#')) continue
+            const checked = line.match(/^- \[(x|X)\]\s+(.+)$/)
+            if (checked) { tasks.push({ done: true, text: checked[2].trim() }); continue }
+            const unchecked = line.match(/^- \[\s\]\s+(.+)$/)
+            if (unchecked) { tasks.push({ done: false, text: unchecked[1].trim() }) }
+        }
+        return tasks
+    }
+
+    // Todo card: uses the standard tool-call outer shell, structured checkbox body
+    const TodoToolCard = ({ toolCall }: { toolCall: ToolCallPair }) => {
+        const raw = typeof toolCall.args?.content === 'string' ? toolCall.args.content : ''
+        const tasks = parseTodoContent(raw)
+        const doneCount = tasks.filter(t => t.done).length
+        const totalCount = tasks.length
+        const indicatorTone = (() => {
+            if (toolCall.isError) return 'error'
+            if (toolCall.isPending) return 'pending'
+            if (totalCount > 0 && doneCount === totalCount) return 'success'
+            return 'active'
+        })()
+        const displayName = toolCall.name.split('__').pop()?.replace(/_/g, ' ') || toolCall.name
+        const capitalized = displayName.charAt(0).toUpperCase() + displayName.slice(1)
+
+        return (
+            <div className="tool-call">
+                <div className="tool-call-header">
+                    <span className={`tool-call-indicator ${indicatorTone}`} aria-hidden="true" />
+                    <span className="tool-call-name">Todo {capitalized}</span>
+                </div>
+                <div className="tool-call-body">
+                    {tasks.length > 0 ? (
+                        <div className="todo-tasks">
+                            {tasks.map((task, idx) => (
+                                <div key={idx} className={`todo-task-item ${task.done ? 'done' : ''}`}>
+                                    <span className="todo-task-check" aria-hidden="true">{task.done ? '✓' : '○'}</span>
+                                    <span className="todo-task-text">{task.text}</span>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <pre className="tool-call-output">{raw}</pre>
+                    )}
+                    {toolCall.isPending && (
+                        <div className="tool-call-running">
+                            <span className="loading-dots"><span></span><span></span><span></span></span>
+                            <span>Running...</span>
+                        </div>
+                    )}
+                </div>
+            </div>
+        )
+    }
+
 
     const fullText = textContent.join('\n')
 
@@ -385,14 +444,20 @@ export default function Message({
 
                 {/* Tool calls */}
                 {toolCalls.map(toolCall => (
-                    <ToolCallDisplay
-                        key={toolCall.id}
-                        name={toolCall.name}
-                        args={toolCall.args}
-                        result={toolCall.result}
-                        isPending={toolCall.isPending}
-                        isError={toolCall.isError}
-                    />
+                    toolCall.name.startsWith('todo__')
+                        ? (
+                            <TodoToolCard key={toolCall.id} toolCall={toolCall} />
+                        )
+                        : (
+                            <ToolCallDisplay
+                                key={toolCall.id}
+                                name={toolCall.name}
+                                args={toolCall.args}
+                                result={toolCall.result}
+                                isPending={toolCall.isPending}
+                                isError={toolCall.isError}
+                            />
+                        )
                 ))}
 
                 {/* Streaming indicator on last assistant message */}

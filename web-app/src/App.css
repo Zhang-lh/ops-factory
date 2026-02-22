@@ -1778,6 +1778,38 @@ textarea {
     font-size: var(--font-size-sm);
 }
 
+/* Todo structured task items */
+.todo-tasks {
+    display: grid;
+    gap: 6px;
+}
+
+.todo-task-item {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    font-size: var(--font-size-sm);
+    color: #334155;
+    line-height: 1.5;
+}
+
+.todo-task-check {
+    flex-shrink: 0;
+    width: 16px;
+    text-align: center;
+    color: #94a3b8;
+    font-size: 0.85rem;
+}
+
+.todo-task-item.done .todo-task-check {
+    color: #16a34a;
+}
+
+.todo-task-item.done .todo-task-text {
+    color: #94a3b8;
+    text-decoration: line-through;
+}
+
 /* ========================================
    Session List
    ======================================== */
