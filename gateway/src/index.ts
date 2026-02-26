@@ -13,6 +13,7 @@ import { readBodyAsBuffer, extractBoundary, parseMultipart } from './multipart.j
 import { createBodyLimitHook } from './hooks/body-limit.js'
 import { createFileAttachmentHook } from './hooks/file-attachment.js'
 import { createVisionPreprocessHook } from './hooks/vision-preprocess.js'
+import { LangfuseClient } from './langfuse.js'
 
 type JsonRecord = Record<string, unknown>
 
@@ -40,6 +41,14 @@ async function main() {
   const config = loadGatewayConfig()
   const manager = new InstanceManager(config)
   const ownerCache = new SessionOwnerCache()
+
+  // Langfuse client (optional — monitoring disabled when null)
+  const langfuse = config.langfuse ? new LangfuseClient(config.langfuse) : null
+  if (langfuse) {
+    console.log(`Langfuse monitoring enabled → ${config.langfuse!.host}`)
+  } else {
+    console.log('Langfuse monitoring disabled (no config found)')
+  }
 
   console.log(`Gateway starting — ${config.agents.length} agent(s) configured (per-user instances, lazy start)`)
 
@@ -186,6 +195,90 @@ async function main() {
     if (pathname === '/agents' && req.method === 'GET') {
       res.writeHead(200, { 'Content-Type': 'application/json' })
       res.end(JSON.stringify({ agents: manager.listAgents() }))
+      return
+    }
+
+    // ===== Monitoring Routes (Langfuse proxy) =====
+
+    // GET /monitoring/status — is monitoring available?
+    if (pathname === '/monitoring/status' && req.method === 'GET') {
+      if (!langfuse) {
+        res.writeHead(200, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ enabled: false }))
+        return
+      }
+      const reachable = await langfuse.healthy()
+      res.writeHead(200, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify({
+        enabled: true,
+        reachable,
+        host: config.langfuse!.host,
+      }))
+      return
+    }
+
+    // GET /monitoring/overview?from=ISO&to=ISO
+    if (pathname === '/monitoring/overview' && req.method === 'GET') {
+      if (!langfuse) {
+        res.writeHead(501, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ error: 'Monitoring not configured' }))
+        return
+      }
+      try {
+        const from = urlObj.searchParams.get('from') || new Date(Date.now() - 86400000).toISOString()
+        const to = urlObj.searchParams.get('to') || new Date().toISOString()
+        const data = await langfuse.overview(from, to)
+        res.writeHead(200, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify(data))
+      } catch (err) {
+        console.error('[monitoring] overview error:', err)
+        res.writeHead(502, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ error: 'Failed to fetch monitoring data' }))
+      }
+      return
+    }
+
+    // GET /monitoring/traces?from=ISO&to=ISO&limit=20&errorsOnly=false
+    if (pathname === '/monitoring/traces' && req.method === 'GET') {
+      if (!langfuse) {
+        res.writeHead(501, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ error: 'Monitoring not configured' }))
+        return
+      }
+      try {
+        const from = urlObj.searchParams.get('from') || new Date(Date.now() - 86400000).toISOString()
+        const to = urlObj.searchParams.get('to') || new Date().toISOString()
+        const limit = parseInt(urlObj.searchParams.get('limit') || '20', 10)
+        const errorsOnly = urlObj.searchParams.get('errorsOnly') === 'true'
+        const data = await langfuse.recentTraces({ from, to, limit, errorsOnly })
+        res.writeHead(200, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify(data))
+      } catch (err) {
+        console.error('[monitoring] traces error:', err)
+        res.writeHead(502, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ error: 'Failed to fetch traces' }))
+      }
+      return
+    }
+
+    // GET /monitoring/observations?from=ISO&to=ISO
+    if (pathname === '/monitoring/observations' && req.method === 'GET') {
+      if (!langfuse) {
+        res.writeHead(501, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ error: 'Monitoring not configured' }))
+        return
+      }
+      try {
+        const from = urlObj.searchParams.get('from') || new Date(Date.now() - 86400000).toISOString()
+        const to = urlObj.searchParams.get('to') || new Date().toISOString()
+        const data = await langfuse.latencyDistribution(from, to)
+        res.writeHead(200, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify(data))
+      } catch (err) {
+        console.error('[monitoring] observations error:', err)
+        res.writeHead(502, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ error: 'Failed to fetch observations' }))
+      }
       return
     }
 

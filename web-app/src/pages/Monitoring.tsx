@@ -1,333 +1,402 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-
-// --- Mock data -----------------------------------------------------------
-
-interface AgentMetrics {
-    id: string
-    name: string
-    status: 'healthy' | 'degraded' | 'down'
-    requests24h: number
-    avgResponseMs: number
-    p95ResponseMs: number
-    tokensInput: number
-    tokensOutput: number
-    successRate: number
-    errorRate: number
-    availability: number
-    dailyRequests: number[]      // last 7 days
-    dailyLatency: number[]       // last 7 days avg ms
-}
-
-interface RecentError {
-    agent: string
-    timestamp: string
-    message: string
-    code: number
-}
-
-const AGENTS_METRICS: AgentMetrics[] = [
-    {
-        id: 'universal-agent',
-        name: 'Universal Agent',
-        status: 'healthy',
-        requests24h: 1_247,
-        avgResponseMs: 820,
-        p95ResponseMs: 2_340,
-        tokensInput: 584_210,
-        tokensOutput: 312_890,
-        successRate: 99.2,
-        errorRate: 0.8,
-        availability: 99.97,
-        dailyRequests: [142, 198, 167, 243, 189, 156, 239],
-        dailyLatency: [680, 920, 760, 1140, 870, 740, 820],
-    },
-    {
-        id: 'kb-agent',
-        name: 'KB Agent',
-        status: 'healthy',
-        requests24h: 634,
-        avgResponseMs: 1_150,
-        p95ResponseMs: 3_120,
-        tokensInput: 412_300,
-        tokensOutput: 198_740,
-        successRate: 98.7,
-        errorRate: 1.3,
-        availability: 99.85,
-        dailyRequests: [72, 118, 85, 64, 132, 97, 90],
-        dailyLatency: [980, 1380, 1050, 1520, 1100, 960, 1150],
-    },
-    {
-        id: 'report-agent',
-        name: 'Report Agent',
-        status: 'degraded',
-        requests24h: 312,
-        avgResponseMs: 2_480,
-        p95ResponseMs: 6_800,
-        tokensInput: 1_245_600,
-        tokensOutput: 876_320,
-        successRate: 95.4,
-        errorRate: 4.6,
-        availability: 98.20,
-        dailyRequests: [38, 62, 45, 28, 71, 34, 37],
-        dailyLatency: [1850, 2720, 2100, 3400, 2950, 2180, 2480],
-    },
-]
-
-const RECENT_ERRORS: RecentError[] = [
-    { agent: 'Report Agent', timestamp: '2026-02-23 14:32:05', message: 'LLM provider timeout after 30s', code: 504 },
-    { agent: 'Report Agent', timestamp: '2026-02-23 13:18:42', message: 'Token limit exceeded (128k context)', code: 400 },
-    { agent: 'KB Agent', timestamp: '2026-02-23 11:05:17', message: 'Vector store connection reset', code: 503 },
-    { agent: 'Report Agent', timestamp: '2026-02-23 09:47:33', message: 'Rate limit exceeded – retry after 12s', code: 429 },
-    { agent: 'Universal Agent', timestamp: '2026-02-22 23:12:08', message: 'Invalid tool call schema', code: 422 },
-    { agent: 'KB Agent', timestamp: '2026-02-22 20:41:55', message: 'Embedding service unavailable', code: 503 },
-]
-
-const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+import { useMonitoring, type TimeRange, type DailyPoint, type TraceRow, type AgentInfo } from '../hooks/useMonitoring'
 
 // --- Helpers --------------------------------------------------------------
 
 function fmtNum(n: number): string {
-    if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
-    if (n >= 1_000) return `${(n / 1_000).toFixed(1)}k`
-    return n.toString()
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}k`
+  return n.toFixed(0)
 }
 
-function fmtMs(ms: number): string {
-    if (ms >= 1_000) return `${(ms / 1_000).toFixed(2)}s`
-    return `${ms}ms`
+function fmtSec(sec: number): string {
+  if (sec >= 60) return `${(sec / 60).toFixed(1)}m`
+  if (sec >= 1) return `${sec.toFixed(2)}s`
+  return `${(sec * 1000).toFixed(0)}ms`
+}
+
+function fmtCost(c: number): string {
+  if (c === 0) return '$0'
+  if (c < 0.01) return `$${c.toFixed(4)}`
+  return `$${c.toFixed(2)}`
+}
+
+function fmtDate(iso: string): string {
+  const d = new Date(iso)
+  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+}
+
+function fmtTime(iso: string): string {
+  const d = new Date(iso)
+  return d.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
 }
 
 // --- Sub-components -------------------------------------------------------
 
-function KpiCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
-    return (
-        <div className="mon-kpi-card">
-            <span className="mon-kpi-label">{label}</span>
-            <span className="mon-kpi-value">{value}</span>
-            {sub && <span className="mon-kpi-sub">{sub}</span>}
-        </div>
-    )
+function KpiCard({ label, value, sub, accent }: { label: string; value: string; sub?: string; accent?: 'error' | 'success' }) {
+  const cls = accent ? `mon-kpi-card mon-kpi-${accent}` : 'mon-kpi-card'
+  return (
+    <div className={cls}>
+      <span className="mon-kpi-label">{label}</span>
+      <span className="mon-kpi-value">{value}</span>
+      {sub && <span className="mon-kpi-sub">{sub}</span>}
+    </div>
+  )
 }
 
-function Sparkline({ values, color, formatter }: { values: number[]; color: string; formatter?: (v: number) => string }) {
-    const fmt = formatter || ((v: number) => String(v))
-    const max = Math.max(...values)
-    const min = Math.min(...values)
-    const range = max - min || 1
-    const padY = 6
-    const w = 220
-    const h = 64
-    const chartH = h - 20 // space for labels
-    const step = w / (values.length - 1)
+/**
+ * Sparkline rendered with a fixed-ratio viewBox.
+ * The outer container controls the display size via CSS;
+ * the SVG preserves its aspect ratio so circles stay round.
+ */
+function Sparkline({ data, valueKey, color, formatter }: {
+  data: DailyPoint[]
+  valueKey: keyof DailyPoint
+  color: string
+  formatter?: (v: number) => string
+}) {
+  const fmt = formatter || String
+  const values = data.map(d => d[valueKey] as number)
+  if (values.length === 0) return null
 
-    const points = values.map((v, i) => ({
-        x: i * step,
-        y: padY + (1 - (v - min) / range) * (chartH - padY * 2),
-    }))
+  const max = Math.max(...values)
+  const min = Math.min(...values)
+  const range = max - min || 1
+  const padY = 10
+  const w = 600
+  const h = 140
+  const chartH = h - 28
+  const step = values.length > 1 ? (w - 40) / (values.length - 1) : (w - 40)
 
-    const linePath = points.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' ')
-    const areaPath = `${linePath} L${points[points.length - 1].x},${chartH} L${points[0].x},${chartH} Z`
+  const points = values.map((v, i) => ({
+    x: 20 + i * step,
+    y: padY + (1 - (v - min) / range) * (chartH - padY * 2),
+  }))
 
-    return (
-        <svg className="mon-sparkline" viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none">
-            <defs>
-                <linearGradient id={`grad-${color.replace(/[^a-z0-9]/gi, '')}`} x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor={color} stopOpacity="0.18" />
-                    <stop offset="100%" stopColor={color} stopOpacity="0.02" />
-                </linearGradient>
-            </defs>
-            <path d={areaPath} fill={`url(#grad-${color.replace(/[^a-z0-9]/gi, '')})`} />
-            <path d={linePath} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            {points.map((p, i) => (
-                <g key={i}>
-                    <circle cx={p.x} cy={p.y} r="3" fill="var(--color-bg-primary)" stroke={color} strokeWidth="1.5" />
-                    <text x={p.x} y={p.y - 8} textAnchor="middle" fontSize="8" fontWeight="500" fill="var(--color-text-muted)">
-                        {fmt(values[i])}
-                    </text>
-                    <text x={p.x} y={h - 2} textAnchor="middle" fontSize="8" fill="var(--color-text-muted)">
-                        {DAY_LABELS[i]}
-                    </text>
-                </g>
-            ))}
+  const linePath = points.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' ')
+  const areaPath = `${linePath} L${points[points.length - 1].x},${chartH} L${points[0].x},${chartH} Z`
+  const gradId = `grad-${color.replace(/[^a-z0-9]/gi, '')}-${valueKey as string}`
+
+  // Horizontal grid lines
+  const gridLines = [0.25, 0.5, 0.75].map(pct => padY + pct * (chartH - padY * 2))
+
+  return (
+    <svg className="mon-sparkline" viewBox={`0 0 ${w} ${h}`}>
+      <defs>
+        <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity="0.12" />
+          <stop offset="100%" stopColor={color} stopOpacity="0.01" />
+        </linearGradient>
+      </defs>
+      {/* Subtle grid lines */}
+      {gridLines.map((y, i) => (
+        <line key={i} x1="20" y1={y} x2={w - 20} y2={y} stroke="var(--color-border)" strokeWidth="0.5" strokeDasharray="4 4" />
+      ))}
+      <path d={areaPath} fill={`url(#${gradId})`} />
+      <path d={linePath} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      {points.map((p, i) => (
+        <g key={i}>
+          <circle cx={p.x} cy={p.y} r="4.5" fill="var(--color-bg-primary)" stroke={color} strokeWidth="2" />
+          <text x={p.x} y={p.y - 12} textAnchor="middle" fontSize="11" fontWeight="600" fill="var(--color-text-secondary)">
+            {fmt(values[i])}
+          </text>
+          <text x={p.x} y={h - 4} textAnchor="middle" fontSize="10" fill="var(--color-text-muted)">
+            {fmtDate(data[i].date)}
+          </text>
+        </g>
+      ))}
+    </svg>
+  )
+}
+
+function TraceStatusIcon({ hasError }: { hasError: boolean }) {
+  if (hasError) {
+    return <span className="mon-trace-status mon-trace-error" title="Error">✗</span>
+  }
+  return <span className="mon-trace-status mon-trace-ok" title="OK">✓</span>
+}
+
+function ChevronIcon({ expanded }: { expanded: boolean }) {
+  return (
+    <svg
+      className={`mon-chevron ${expanded ? 'mon-chevron-open' : ''}`}
+      viewBox="0 0 20 20"
+      fill="currentColor"
+      width="14"
+      height="14"
+    >
+      <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clipRule="evenodd" />
+    </svg>
+  )
+}
+
+// --- Disabled state -------------------------------------------------------
+
+function MonitoringDisabled({ title, desc }: { title: string; desc: string }) {
+  return (
+    <div className="mon-disabled">
+      <div className="mon-disabled-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="48" height="48">
+          <path d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126z" />
+          <path d="M12 15.75h.007v.008H12v-.008z" />
         </svg>
-    )
-}
-
-function AvailabilityRing({ pct }: { pct: number }) {
-    const r = 28
-    const circ = 2 * Math.PI * r
-    const offset = circ * (1 - pct / 100)
-    const color = pct >= 99.5 ? 'var(--color-success)' : pct >= 98 ? 'var(--color-warning)' : 'var(--color-error)'
-    return (
-        <svg className="mon-ring" viewBox="0 0 64 64" width="64" height="64">
-            <circle cx="32" cy="32" r={r} fill="none" stroke="var(--color-border)" strokeWidth="5" />
-            <circle
-                cx="32" cy="32" r={r}
-                fill="none"
-                stroke={color}
-                strokeWidth="5"
-                strokeLinecap="round"
-                strokeDasharray={circ}
-                strokeDashoffset={offset}
-                transform="rotate(-90 32 32)"
-            />
-            <text x="32" y="35" textAnchor="middle" fontSize="11" fontWeight="600" fill="var(--color-text-primary)">
-                {pct.toFixed(1)}%
-            </text>
-        </svg>
-    )
-}
-
-function StatusBadge({ status }: { status: AgentMetrics['status'] }) {
-    return <span className={`mon-status mon-status-${status}`}>{status}</span>
+      </div>
+      <h2 className="mon-disabled-title">{title}</h2>
+      <p className="mon-disabled-desc">{desc}</p>
+    </div>
+  )
 }
 
 // --- Main page ------------------------------------------------------------
 
-type TimeRange = '24h' | '7d'
+const RANGES: TimeRange[] = ['1h', '24h', '7d', '30d']
 
 export default function Monitoring() {
-    const { t } = useTranslation()
-    const [range, setRange] = useState<TimeRange>('24h')
+  const { t } = useTranslation()
+  const { status, overview, traces, observations, agents, isLoading, error, range, setRange, refresh } = useMonitoring()
+  const [traceFilter, setTraceFilter] = useState<'all' | 'errors'>('all')
 
-    // aggregated KPIs
-    const totalRequests = AGENTS_METRICS.reduce((s, a) => s + a.requests24h, 0)
-    const avgResponse = Math.round(AGENTS_METRICS.reduce((s, a) => s + a.avgResponseMs, 0) / AGENTS_METRICS.length)
-    const totalTokens = AGENTS_METRICS.reduce((s, a) => s + a.tokensInput + a.tokensOutput, 0)
-    const avgAvailability = (AGENTS_METRICS.reduce((s, a) => s + a.availability, 0) / AGENTS_METRICS.length).toFixed(2)
-    const totalErrors = RECENT_ERRORS.length
+  const filteredTraces = traceFilter === 'errors' ? traces.filter(tr => tr.hasError) : traces
 
+  // --- Disabled / error states ---
+  if (!isLoading && status && !status.enabled) {
     return (
-        <div className="page-container monitoring-page">
-            <div className="page-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div>
-                    <h1 className="page-title">{t('monitoring.title')}</h1>
-                    <p className="page-subtitle">
-                        {t('monitoring.subtitle')}
-                        <a
-                            href="http://localhost:3100/"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="mon-langfuse-link"
-                        >
-                            {t('monitoring.openLangfuse')}
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14">
-                                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-                                <polyline points="15 3 21 3 21 9" />
-                                <line x1="10" y1="14" x2="21" y2="3" />
-                            </svg>
-                        </a>
-                    </p>
-                </div>
-                <div className="mon-range-toggle">
-                    <button className={`mon-range-btn ${range === '24h' ? 'active' : ''}`} onClick={() => setRange('24h')}>24 h</button>
-                    <button className={`mon-range-btn ${range === '7d' ? 'active' : ''}`} onClick={() => setRange('7d')}>7 d</button>
-                </div>
-            </div>
-
-            {/* ---- KPI row ---- */}
-            <div className="mon-kpi-row">
-                <KpiCard label={t('monitoring.totalRequests')} value={fmtNum(range === '7d' ? totalRequests * 7 : totalRequests)} sub={range === '24h' ? t('monitoring.last24h') : t('monitoring.last7d')} />
-                <KpiCard label={t('monitoring.avgRespTime')} value={fmtMs(avgResponse)} sub={t('monitoring.acrossAllAgents')} />
-                <KpiCard label={t('monitoring.totalTokens')} value={fmtNum(range === '7d' ? totalTokens * 7 : totalTokens)} sub={t('monitoring.inputOutput')} />
-                <KpiCard label={t('monitoring.avgAvailability')} value={`${avgAvailability}%`} sub={t('monitoring.uptime')} />
-                <KpiCard label={t('monitoring.errors')} value={String(range === '7d' ? totalErrors : Math.ceil(totalErrors / 2))} sub={range === '24h' ? t('monitoring.last24h') : t('monitoring.last7d')} />
-            </div>
-
-            {/* ---- Per-agent cards ---- */}
-            <h2 className="mon-section-title">{t('monitoring.agentDetails')}</h2>
-            <div className="mon-agent-grid">
-                {AGENTS_METRICS.map(agent => (
-                    <div key={agent.id} className="mon-agent-card">
-                        {/* header */}
-                        <div className="mon-agent-header">
-                            <div className="mon-agent-name-row">
-                                <span className={`status-dot status-${agent.status === 'healthy' ? 'running' : agent.status === 'degraded' ? 'idle' : 'error'}`} />
-                                <span className="mon-agent-name">{agent.name}</span>
-                            </div>
-                            <StatusBadge status={agent.status} />
-                        </div>
-
-                        {/* metric pairs */}
-                        <div className="mon-metric-grid">
-                            <div className="mon-metric">
-                                <span className="mon-metric-label">{t('monitoring.requests24h')}</span>
-                                <span className="mon-metric-value">{fmtNum(agent.requests24h)}</span>
-                            </div>
-                            <div className="mon-metric">
-                                <span className="mon-metric-label">{t('monitoring.avgLatency')}</span>
-                                <span className="mon-metric-value">{fmtMs(agent.avgResponseMs)}</span>
-                            </div>
-                            <div className="mon-metric">
-                                <span className="mon-metric-label">{t('monitoring.p95Latency')}</span>
-                                <span className="mon-metric-value">{fmtMs(agent.p95ResponseMs)}</span>
-                            </div>
-                            <div className="mon-metric">
-                                <span className="mon-metric-label">{t('monitoring.successRate')}</span>
-                                <span className="mon-metric-value">{agent.successRate}%</span>
-                            </div>
-                            <div className="mon-metric">
-                                <span className="mon-metric-label">{t('monitoring.tokensIn')}</span>
-                                <span className="mon-metric-value">{fmtNum(agent.tokensInput)}</span>
-                            </div>
-                            <div className="mon-metric">
-                                <span className="mon-metric-label">{t('monitoring.tokensOut')}</span>
-                                <span className="mon-metric-value">{fmtNum(agent.tokensOutput)}</span>
-                            </div>
-                        </div>
-
-                        {/* availability ring + bar charts */}
-                        <div className="mon-visuals">
-                            <div className="mon-visual-block">
-                                <span className="mon-visual-title">{t('monitoring.availability')}</span>
-                                <AvailabilityRing pct={agent.availability} />
-                            </div>
-                            <div className="mon-visual-block mon-visual-block-grow">
-                                <span className="mon-visual-title">{t('monitoring.dailyRequests')}</span>
-                                <Sparkline values={agent.dailyRequests} color="var(--color-accent)" />
-                            </div>
-                            <div className="mon-visual-block mon-visual-block-grow">
-                                <span className="mon-visual-title">{t('monitoring.dailyLatency')}</span>
-                                <Sparkline values={agent.dailyLatency} color="var(--color-warning)" formatter={fmtMs} />
-                            </div>
-                        </div>
-
-                        {/* error rate bar */}
-                        <div className="mon-error-bar-wrapper">
-                            <div className="mon-error-bar-header">
-                                <span className="mon-metric-label">{t('monitoring.errorRate')}</span>
-                                <span className="mon-metric-value">{agent.errorRate}%</span>
-                            </div>
-                            <div className="mon-error-bar-track">
-                                <div
-                                    className="mon-error-bar-fill"
-                                    style={{ width: `${Math.min(agent.errorRate * 10, 100)}%` }}
-                                />
-                            </div>
-                        </div>
-                    </div>
-                ))}
-            </div>
-
-            {/* ---- Recent errors ---- */}
-            <h2 className="mon-section-title">{t('monitoring.recentErrors')}</h2>
-            <div className="mon-errors-table">
-                <div className="mon-errors-header">
-                    <span>{t('monitoring.timestamp')}</span>
-                    <span>{t('sidebar.agents')}</span>
-                    <span>{t('monitoring.code')}</span>
-                    <span>{t('monitoring.message')}</span>
-                </div>
-                {RECENT_ERRORS.map((err, i) => (
-                    <div key={i} className="mon-errors-row">
-                        <span className="mon-errors-ts">{err.timestamp}</span>
-                        <span>{err.agent}</span>
-                        <span className="mon-errors-code">{err.code}</span>
-                        <span className="mon-errors-msg">{err.message}</span>
-                    </div>
-                ))}
-            </div>
+      <div className="page-container monitoring-page">
+        <div className="page-header">
+          <h1 className="page-title">{t('monitoring.title')}</h1>
         </div>
+        <MonitoringDisabled title={t('monitoring.notEnabled')} desc={t('monitoring.notEnabledDesc')} />
+      </div>
     )
+  }
+
+  if (!isLoading && status && status.enabled && !status.reachable) {
+    return (
+      <div className="page-container monitoring-page">
+        <div className="page-header">
+          <h1 className="page-title">{t('monitoring.title')}</h1>
+        </div>
+        <MonitoringDisabled
+          title={t('monitoring.notReachable')}
+          desc={t('monitoring.notReachableDesc', { host: status.host })}
+        />
+      </div>
+    )
+  }
+
+  return (
+    <div className="page-container monitoring-page">
+      {/* Header */}
+      <div className="mon-page-header">
+        <div className="mon-header-left">
+          <h1 className="page-title" style={{ marginBottom: 0 }}>{t('monitoring.title')}</h1>
+          {status?.host && (
+            <a href={status.host} target="_blank" rel="noopener noreferrer" className="mon-langfuse-link">
+              {t('monitoring.openLangfuse')}
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="13" height="13">
+                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                <polyline points="15 3 21 3 21 9" />
+                <line x1="10" y1="14" x2="21" y2="3" />
+              </svg>
+            </a>
+          )}
+        </div>
+        <div className="mon-range-toggle">
+          {RANGES.map(r => (
+            <button
+              key={r}
+              className={`mon-range-btn ${range === r ? 'active' : ''}`}
+              onClick={() => setRange(r)}
+              disabled={isLoading}
+            >
+              {t(`monitoring.last${r}` as any)}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Loading */}
+      {isLoading && !overview && (
+        <div className="mon-loading">{t('monitoring.loading')}</div>
+      )}
+
+      {/* Error */}
+      {error && (
+        <div className="mon-error-banner">
+          <span>{t('monitoring.errorLoading')}: {error}</span>
+          <button onClick={refresh} className="mon-retry-btn">{t('monitoring.retry')}</button>
+        </div>
+      )}
+
+      {/* KPI Row */}
+      {overview && (
+        <>
+          <div className="mon-kpi-row">
+            <KpiCard label={t('monitoring.totalTraces')} value={fmtNum(overview.totalTraces)} />
+            <KpiCard label={t('monitoring.totalCost')} value={fmtCost(overview.totalCost)} />
+            <KpiCard label={t('monitoring.avgLatency')} value={fmtSec(overview.avgLatency)} />
+            <KpiCard label={t('monitoring.p95Latency')} value={fmtSec(overview.p95Latency)} />
+            <KpiCard label={t('monitoring.totalObservations')} value={fmtNum(overview.totalObservations)} />
+            <KpiCard
+              label={t('monitoring.errors')}
+              value={String(overview.errorCount)}
+              accent={overview.errorCount > 0 ? 'error' : undefined}
+            />
+          </div>
+
+          {/* Trend charts */}
+          {overview.daily.length > 1 && (
+            <div className="mon-section">
+              <div className="mon-chart-block">
+                <span className="mon-chart-title">{t('monitoring.trendTraces')}</span>
+                <Sparkline data={overview.daily} valueKey="traces" color="var(--color-accent)" formatter={v => String(v)} />
+              </div>
+            </div>
+          )}
+
+          {/* Agent details table */}
+          {agents.length > 0 && (
+            <div className="mon-section">
+              <h2 className="mon-section-title">{t('monitoring.agentDetails')}</h2>
+              <div className="mon-agent-table">
+                <div className="mon-agent-table-header">
+                  <span>{t('monitoring.agentName')}</span>
+                  <span>{t('monitoring.agentProvider')}</span>
+                  <span>{t('monitoring.agentModel')}</span>
+                  <span>{t('monitoring.agentStatus')}</span>
+                </div>
+                {agents.map((agent: AgentInfo) => (
+                  <div key={agent.id} className="mon-agent-table-row">
+                    <span className="mon-agent-name">{agent.name}</span>
+                    <span className="mon-agent-provider">{agent.provider}</span>
+                    <span className="mon-agent-model">{agent.model}</span>
+                    <span>
+                      <span className={`status-pill status-${agent.status}`}>{agent.status}</span>
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Observation breakdown table */}
+          {observations && observations.observations.length > 0 && (
+            <div className="mon-section">
+              <h2 className="mon-section-title">{t('monitoring.observationBreakdown')}</h2>
+              <div className="mon-obs-table">
+                <div className="mon-obs-header">
+                  <span>{t('monitoring.obsName')}</span>
+                  <span>{t('monitoring.obsCount')}</span>
+                  <span>{t('monitoring.obsAvgLatency')}</span>
+                  <span>{t('monitoring.obsP95Latency')}</span>
+                </div>
+                {observations.observations.map(o => (
+                  <div key={o.name} className="mon-obs-row">
+                    <span className="mon-obs-name">{o.name}</span>
+                    <span className="mon-obs-count">{o.count}</span>
+                    <span>{fmtSec(o.avgLatency)}</span>
+                    <span>{fmtSec(o.p95Latency)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Recent Traces */}
+          <div className="mon-section">
+            <div className="mon-traces-header-row">
+              <h2 className="mon-section-title">{t('monitoring.recentTraces')}</h2>
+              <div className="mon-trace-filter">
+                <button className={`mon-filter-btn ${traceFilter === 'all' ? 'active' : ''}`} onClick={() => setTraceFilter('all')}>
+                  {t('monitoring.filterAll')}
+                </button>
+                <button className={`mon-filter-btn ${traceFilter === 'errors' ? 'active' : ''}`} onClick={() => setTraceFilter('errors')}>
+                  {t('monitoring.filterErrors')}
+                </button>
+              </div>
+            </div>
+
+            {filteredTraces.length === 0 ? (
+              <div className="mon-no-data">{t('monitoring.noData')}</div>
+            ) : (
+              <div className="mon-traces-table">
+                <div className="mon-traces-table-header">
+                  <span></span>
+                  <span>{t('monitoring.timestamp')}</span>
+                  <span>{t('monitoring.traceName')}</span>
+                  <span>{t('monitoring.input')}</span>
+                  <span>{t('monitoring.latency')}</span>
+                  <span>{t('monitoring.observations')}</span>
+                  <span>{t('monitoring.status')}</span>
+                </div>
+                {filteredTraces.map(tr => (
+                  <TraceRowComp key={tr.id} trace={tr} langfuseHost={status?.host} />
+                ))}
+              </div>
+            )}
+          </div>
+        </>
+      )}
+
+      {/* Empty state if loaded but no data */}
+      {!isLoading && !error && overview && overview.totalTraces === 0 && (
+        <div className="mon-no-data">{t('monitoring.noData')}</div>
+      )}
+    </div>
+  )
+}
+
+function TraceRowComp({ trace: tr, langfuseHost }: { trace: TraceRow; langfuseHost?: string }) {
+  const { t } = useTranslation()
+  const [expanded, setExpanded] = useState(false)
+  const rowClass = `mon-traces-row ${tr.hasError ? 'mon-traces-row-error' : ''}`
+
+  return (
+    <>
+      <div className={rowClass} onClick={() => setExpanded(!expanded)}>
+        <span className="mon-traces-chevron"><ChevronIcon expanded={expanded} /></span>
+        <span className="mon-traces-ts">{fmtTime(tr.timestamp)}</span>
+        <span className="mon-traces-name">{tr.name}</span>
+        <span className="mon-traces-input" title={tr.input}>{tr.input.slice(0, 60)}{tr.input.length > 60 ? '...' : ''}</span>
+        <span className="mon-traces-latency">{fmtSec(tr.latency)}</span>
+        <span className="mon-traces-obs-count">{tr.observationCount}</span>
+        <span><TraceStatusIcon hasError={tr.hasError} /></span>
+      </div>
+      {expanded && (
+        <div className="mon-traces-detail">
+          <div className="mon-traces-detail-content">
+            <div className="mon-traces-detail-field">
+              <span className="mon-traces-detail-label">{t('monitoring.input')}</span>
+              <span>{tr.input}</span>
+            </div>
+            {tr.totalCost > 0 && (
+              <div className="mon-traces-detail-field">
+                <span className="mon-traces-detail-label">{t('monitoring.totalCost')}</span>
+                <span>{fmtCost(tr.totalCost)}</span>
+              </div>
+            )}
+            {tr.hasError && tr.errorMessage && (
+              <div className="mon-traces-detail-error">{tr.errorMessage}</div>
+            )}
+            {langfuseHost && (
+              <a
+                href={`${langfuseHost}/project/opsfactory-agents/traces/${tr.id}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mon-traces-detail-link"
+              >
+                View in Langfuse
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="12" height="12">
+                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                  <polyline points="15 3 21 3 21 9" />
+                  <line x1="10" y1="14" x2="21" y2="3" />
+                </svg>
+              </a>
+            )}
+          </div>
+        </div>
+      )}
+    </>
+  )
 }

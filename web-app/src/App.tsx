@@ -10,7 +10,6 @@ import ScheduledActions from './pages/ScheduledActions'
 import Monitoring from './pages/Monitoring'
 import Inbox from './pages/Inbox'
 import Login from './pages/Login'
-import Settings from './pages/Settings'
 import FilePreview from './components/FilePreview'
 import { PreviewProvider, usePreview } from './contexts/PreviewContext'
 import { ToastProvider } from './contexts/ToastContext'
@@ -44,7 +43,6 @@ function AppContent() {
                         <Route path="/inbox" element={<Inbox />} />
                         <Route path="/agents" element={<Agents />} />
                         <Route path="/agents/:agentId/configure" element={<AgentConfigure />} />
-                        <Route path="/settings" element={<Settings />} />
                     </Routes>
                 </main>
                 <FilePreview />

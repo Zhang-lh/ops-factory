@@ -165,7 +165,7 @@ export default function History() {
     }
 
     return (
-        <div className="page-container">
+        <div className="page-container history-page">
             <header className="page-header">
                 <h1 className="page-title">{t('history.title')}</h1>
                 <p className="page-subtitle">

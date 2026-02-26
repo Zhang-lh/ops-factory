@@ -45,6 +45,12 @@ export interface UploadConfig {
   retentionHours: number
 }
 
+export interface LangfuseConfig {
+  host: string
+  publicKey: string
+  secretKey: string
+}
+
 export interface GatewayConfig {
   host: string
   port: number
@@ -59,6 +65,7 @@ export interface GatewayConfig {
   idleCheckIntervalMs: number
   upload: UploadConfig
   vision: VisionGlobalConfig
+  langfuse: LangfuseConfig | null
 }
 
 const __filename = fileURLToPath(import.meta.url)
@@ -128,6 +135,34 @@ export function loadGatewayConfig(): GatewayConfig {
 - Any relevant details that would help answer questions about this image
 Be precise and factual.`
 
+  // Langfuse observability — optional, monitoring disabled when not configured.
+  // Try env vars first; fall back to reading from the first agent's config.yaml.
+  let langfuse: LangfuseConfig | null = null
+  {
+    let lfHost = process.env.LANGFUSE_HOST || ''
+    let lfPub  = process.env.LANGFUSE_PUBLIC_KEY || ''
+    let lfSec  = process.env.LANGFUSE_SECRET_KEY || ''
+
+    if (!lfHost || !lfPub || !lfSec) {
+      // Auto-detect from agent configs
+      for (const agent of yamlConfig.agents || []) {
+        const cfgPath = join(agentsDir, agent.id, 'config', 'config.yaml')
+        if (!existsSync(cfgPath)) continue
+        try {
+          const agentCfg = parse(readFileSync(cfgPath, 'utf-8')) as Record<string, unknown>
+          if (!lfHost && agentCfg.LANGFUSE_URL) lfHost = String(agentCfg.LANGFUSE_URL)
+          if (!lfPub && agentCfg.LANGFUSE_INIT_PROJECT_PUBLIC_KEY) lfPub = String(agentCfg.LANGFUSE_INIT_PROJECT_PUBLIC_KEY)
+          if (!lfSec && agentCfg.LANGFUSE_INIT_PROJECT_SECRET_KEY) lfSec = String(agentCfg.LANGFUSE_INIT_PROJECT_SECRET_KEY)
+          if (lfHost && lfPub && lfSec) break
+        } catch { /* skip */ }
+      }
+    }
+
+    if (lfHost && lfPub && lfSec) {
+      langfuse = { host: lfHost.replace(/\/+$/, ''), publicKey: lfPub, secretKey: lfSec }
+    }
+  }
+
   const vision: VisionGlobalConfig = {
     mode: process.env.VISION_MODE || 'off',
     provider: process.env.VISION_PROVIDER || '',
@@ -152,5 +187,6 @@ Be precise and factual.`
     idleCheckIntervalMs,
     upload,
     vision,
+    langfuse,
   }
 }
