@@ -1,6 +1,6 @@
-GOOSE_PROVIDER: litellm
-GOOSE_MODEL: z-ai/glm-5
-LITELLM_HOST: https://openrouter.ai/api/
+GOOSE_PROVIDER: openai
+GOOSE_MODEL: qwen/qwen3.5-35b-a3b
+OPENAI_HOST: https://openrouter.ai/api
 GOOSE_MODE: auto
 GOOSE_DISABLE_KEYRING: '1'
 GOOSE_TELEMETRY_ENABLED: true

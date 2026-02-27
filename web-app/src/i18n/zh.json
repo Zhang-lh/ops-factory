@@ -68,7 +68,9 @@
     "noMessages": "暂无消息",
     "startConversation": "在下方输入消息开始对话。",
     "thinking": "思考中...",
-    "compactingContext": "正在压缩上下文..."
+    "compactingContext": "正在压缩上下文...",
+    "voiceInput": "语音输入",
+    "stopRecording": "停止录音"
   },
   "newSession": {
     "title": "新建对话",

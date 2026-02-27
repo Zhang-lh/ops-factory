@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import type { TokenState, ImageData } from '@goosed/sdk'
 import AgentSelector from './AgentSelector'
 import { compressImageDataUrl, isImageFile, parseDataUrl, readFileAsDataUrl } from '../utils/imageUtils'
+import { useVoiceInput } from '../hooks/useVoiceInput'
 
 // File handling constants
 const MAX_IMAGES_PER_MESSAGE = 3
@@ -75,13 +76,19 @@ export default function ChatInput({
     presetToken,
     visionMode = 'off',
 }: ChatInputProps) {
-    const { t } = useTranslation()
+    const { t, i18n } = useTranslation()
     const [value, setValue] = useState('')
     const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([])
     const [isDragging, setIsDragging] = useState(false)
     const [isTemplateAppliedFlash, setIsTemplateAppliedFlash] = useState(false)
     const textareaRef = useRef<HTMLTextAreaElement>(null)
     const fileInputRef = useRef<HTMLInputElement>(null)
+
+    const { state: voiceState, isSupported: voiceSupported, startListening, stopListening } = useVoiceInput({
+        onTranscript: (text) => setValue(text),
+        lang: i18n.language.startsWith('zh') ? 'zh-CN' : 'en-US',
+    })
+    const isListening = voiceState === 'listening'
 
     // Auto-resize textarea
     useEffect(() => {
@@ -505,24 +512,60 @@ export default function ChatInput({
                     />
                 )}
 
-                <button
-                    className={`chat-send-btn-new ${isGenerating ? 'is-stop' : ''}`}
-                    onClick={isGenerating ? handleStopGeneration : handleSubmit}
-                    disabled={isGenerating ? !onStopGeneration : (disabled || !hasContent || isAnyFileLoading)}
-                    aria-label={isGenerating ? t('chat.stopGeneration') : t('chat.sendMessage')}
-                    title={isGenerating ? t('chat.stopGeneration') : t('chat.sendMessage')}
-                >
-                    {isGenerating ? (
-                        <svg viewBox="0 0 24 24" fill="currentColor" width="15" height="15">
-                            <rect x="5.5" y="5.5" width="13" height="13" rx="2.1" />
-                        </svg>
-                    ) : (
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" width="18" height="18">
-                            <path d="M12 19V5" />
-                            <path d="M6.5 10.5L12 5l5.5 5.5" />
-                        </svg>
-                    )}
-                </button>
+                {(() => {
+                    const showMic = !hasContent && !isGenerating && !isListening && voiceSupported
+                    return (
+                        <button
+                            className={`chat-send-btn-new ${isGenerating ? 'is-stop' : ''} ${isListening ? 'is-recording' : ''}`}
+                            onClick={
+                                isGenerating ? handleStopGeneration :
+                                isListening ? stopListening :
+                                showMic ? startListening :
+                                handleSubmit
+                            }
+                            disabled={
+                                isGenerating ? !onStopGeneration :
+                                isListening ? false :
+                                showMic ? disabled :
+                                (disabled || !hasContent || isAnyFileLoading)
+                            }
+                            aria-label={
+                                isListening ? t('chat.stopRecording') :
+                                showMic ? t('chat.voiceInput') :
+                                isGenerating ? t('chat.stopGeneration') :
+                                t('chat.sendMessage')
+                            }
+                            title={
+                                isListening ? t('chat.stopRecording') :
+                                showMic ? t('chat.voiceInput') :
+                                isGenerating ? t('chat.stopGeneration') :
+                                t('chat.sendMessage')
+                            }
+                        >
+                            {isGenerating ? (
+                                <svg viewBox="0 0 24 24" fill="currentColor" width="15" height="15">
+                                    <rect x="5.5" y="5.5" width="13" height="13" rx="2.1" />
+                                </svg>
+                            ) : isListening ? (
+                                <svg viewBox="0 0 24 24" fill="currentColor" width="15" height="15">
+                                    <rect x="5.5" y="5.5" width="13" height="13" rx="2.1" />
+                                </svg>
+                            ) : showMic ? (
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="18" height="18">
+                                    <rect x="9" y="1" width="6" height="12" rx="3" />
+                                    <path d="M19 10v1a7 7 0 0 1-14 0v-1" />
+                                    <line x1="12" y1="18" x2="12" y2="23" />
+                                    <line x1="8" y1="23" x2="16" y2="23" />
+                                </svg>
+                            ) : (
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" width="18" height="18">
+                                    <path d="M12 19V5" />
+                                    <path d="M6.5 10.5L12 5l5.5 5.5" />
+                                </svg>
+                            )}
+                        </button>
+                    )
+                })()}
             </div>
         </div>
     )

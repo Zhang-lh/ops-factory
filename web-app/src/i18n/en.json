@@ -68,7 +68,9 @@
     "noMessages": "No messages yet",
     "startConversation": "Start a conversation by typing a message below.",
     "thinking": "Thinking...",
-    "compactingContext": "Compacting context..."
+    "compactingContext": "Compacting context...",
+    "voiceInput": "Voice input",
+    "stopRecording": "Stop recording"
   },
   "newSession": {
     "title": "New Chat Session",

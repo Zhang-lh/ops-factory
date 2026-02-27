@@ -3576,6 +3576,26 @@ textarea {
     transform: none;
 }
 
+.chat-send-btn-new.is-recording {
+    background: #dc2626;
+    border-color: #dc2626;
+    animation: recording-pulse 1.5s ease-in-out infinite;
+}
+
+.chat-send-btn-new.is-recording:hover:not(:disabled) {
+    background: #b91c1c;
+    border-color: #b91c1c;
+}
+
+@keyframes recording-pulse {
+    0%, 100% {
+        box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.4);
+    }
+    50% {
+        box-shadow: 0 0 0 8px rgba(220, 38, 38, 0);
+    }
+}
+
 .chat-inline-hint {
     align-self: flex-start;
     margin-left: 10px;
