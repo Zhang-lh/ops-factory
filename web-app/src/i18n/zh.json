@@ -303,5 +303,29 @@
     "loadingSkills": "正在加载技能...",
     "noDescription": "无描述",
     "noSkills": "未配置技能。"
+  },
+  "prompts": {
+    "title": "系统提示词",
+    "description": "自定义智能体运行时使用的系统提示词模板。",
+    "templateWarning": "提示词使用 Jinja2 模板语法。模板变量如 {{ variable }} 会在运行时被替换。请注意不要删除必需的变量。",
+    "loading": "正在加载提示词...",
+    "noPrompts": "暂无可用的提示词模板。",
+    "customized": "已自定义",
+    "collapse": "收起",
+    "restoreDefault": "恢复默认",
+    "resetToDefault": "重置为默认",
+    "resetAll": "全部重置",
+    "saved": "提示词保存成功",
+    "saveFailed": "保存提示词失败",
+    "resetSuccess": "提示词已重置为默认",
+    "resetFailed": "重置提示词失败",
+    "resetAllSuccess": "所有提示词已重置为默认",
+    "resetAllFailed": "重置所有提示词失败"
+  },
+  "configTabs": {
+    "overview": "概览",
+    "prompts": "提示词",
+    "mcp": "MCP",
+    "skills": "技能"
   }
 }

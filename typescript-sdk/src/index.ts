@@ -32,4 +32,7 @@ export type {
     ListSchedulesResponse,
     RunNowResponse,
     ScheduleSessionInfo,
+    PromptTemplate,
+    PromptListResponse,
+    PromptContentResponse,
 } from './types.js';

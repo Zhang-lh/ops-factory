@@ -303,5 +303,29 @@
     "loadingSkills": "Loading skills...",
     "noDescription": "No description",
     "noSkills": "No skills configured."
+  },
+  "prompts": {
+    "title": "System Prompts",
+    "description": "Customize the system prompt templates used by the agent runtime.",
+    "templateWarning": "Prompts use Jinja2 template syntax. Template variables like {{ variable }} will be replaced at runtime. Be careful not to remove required variables.",
+    "loading": "Loading prompts...",
+    "noPrompts": "No prompt templates available.",
+    "customized": "Customized",
+    "collapse": "Collapse",
+    "restoreDefault": "Restore Default",
+    "resetToDefault": "Reset to Default",
+    "resetAll": "Reset All",
+    "saved": "Prompt saved successfully",
+    "saveFailed": "Failed to save prompt",
+    "resetSuccess": "Prompt reset to default",
+    "resetFailed": "Failed to reset prompt",
+    "resetAllSuccess": "All prompts reset to default",
+    "resetAllFailed": "Failed to reset all prompts"
+  },
+  "configTabs": {
+    "overview": "Overview",
+    "prompts": "Prompts",
+    "mcp": "MCP",
+    "skills": "Skills"
   }
 }

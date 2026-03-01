@@ -164,6 +164,27 @@ export interface RunNowResponse {
     session_id: string;
 }
 
+// === Prompt Types ===
+
+export interface PromptTemplate {
+    name: string;
+    description: string;
+    default_content: string;
+    user_content: string | null;
+    is_customized: boolean;
+}
+
+export interface PromptListResponse {
+    prompts: PromptTemplate[];
+}
+
+export interface PromptContentResponse {
+    name: string;
+    content: string;
+    default_content: string;
+    is_customized: boolean;
+}
+
 export interface ScheduleSessionInfo {
     id: string;
     name: string;

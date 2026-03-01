@@ -5,7 +5,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Directory Permissions
 
 - `ops-factory/` is the project directory. Files within this directory **can be modified**.
-- `goose-main/` (`/Users/buyangnie/Documents/GitHub/goose-main`) is a reference directory. Files within this directory **must NOT be modified** — read-only for reference purposes.
+- `goose/` (`/Users/buyangnie/Documents/GitHub/goose`) is a reference directory. **Full read access granted** (all files and directories). Files within this directory **must NOT be modified** — read-only for reference purposes.
 
 ## Project Overview
 

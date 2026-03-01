@@ -18,6 +18,9 @@ import type {
     ListSchedulesResponse,
     RunNowResponse,
     ScheduleSessionInfo,
+    PromptTemplate,
+    PromptListResponse,
+    PromptContentResponse,
 } from './types.js';
 
 export class GoosedException extends Error {
@@ -495,6 +498,25 @@ export class GoosedClient {
             processStartTime?: string | null;
             runningDurationSeconds?: number | null;
         }>(`/schedule/${id}/inspect`);
+    }
+
+    // === Prompt APIs ===
+
+    async listPrompts(): Promise<PromptTemplate[]> {
+        const data = await this.get<PromptListResponse>('/config/prompts');
+        return data.prompts ?? [];
+    }
+
+    async getPrompt(name: string): Promise<PromptContentResponse> {
+        return this.get<PromptContentResponse>(`/config/prompts/${encodeURIComponent(name)}`);
+    }
+
+    async savePrompt(name: string, content: string): Promise<void> {
+        await this.put(`/config/prompts/${encodeURIComponent(name)}`, { content });
+    }
+
+    async resetPrompt(name: string): Promise<void> {
+        await this.delete(`/config/prompts/${encodeURIComponent(name)}`);
     }
 
 }
