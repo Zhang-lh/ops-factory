@@ -8,6 +8,7 @@ import MessageList from '../components/MessageList'
 import ChatInput from '../components/ChatInput'
 import { getAgentWorkingDir } from '../components/AgentSelector'
 import type { Session, ImageData } from '@goosed/sdk'
+import type { AttachedFile } from '../components/Message'
 import { useAgentConfig } from '../hooks/useAgentConfig'
 
 interface LocationState {
@@ -45,7 +46,7 @@ export default function Chat() {
     const [initError, setInitError] = useState<string | null>(null)
     const [isCreatingSession, setIsCreatingSession] = useState(false)
     const [modelInfo, setModelInfo] = useState<ModelInfo | null>(null)
-    const [visionMode, setVisionMode] = useState<string>('off')
+    const [visionMode, setVisionMode] = useState<string>('passthrough')
     const [showStopHint, setShowStopHint] = useState(false)
     const stopHintTimerRef = useRef<number | null>(null)
 
@@ -95,7 +96,7 @@ export default function Chat() {
         if (agentConfig?.visionMode) {
             setVisionMode(agentConfig.visionMode)
         } else {
-            setVisionMode('off')
+            setVisionMode('passthrough')
         }
     }, [agentConfig])
 
@@ -195,13 +196,13 @@ export default function Chat() {
         }
     }, [])
 
-    const handleSendMessage = useCallback((text: string, images?: ImageData[]) => {
+    const handleSendMessage = useCallback((text: string, images?: ImageData[], attachedFiles?: AttachedFile[]) => {
         if (stopHintTimerRef.current !== null) {
             window.clearTimeout(stopHintTimerRef.current)
             stopHintTimerRef.current = null
         }
         setShowStopHint(false)
-        sendMessage(text, images)
+        sendMessage(text, images, attachedFiles)
     }, [sendMessage])
 
     const handleUploadFile = useCallback(async (file: File): Promise<{ path: string }> => {

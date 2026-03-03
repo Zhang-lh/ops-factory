@@ -173,7 +173,8 @@ async function main() {
       return
     }
 
-    const userId = (req.headers['x-user-id'] as string) || DEFAULT_USER
+    const userId = (req.headers['x-user-id'] as string)
+      || (isFileRoute ? urlObj.searchParams.get('uid') : null) || DEFAULT_USER
     const role = getUserRole(userId)
     const pathname = urlObj.pathname
 

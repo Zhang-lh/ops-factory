@@ -200,7 +200,7 @@ const agentCatalog = [
     provider: 'mock-openai',
     model: 'gpt-4.1-mini',
     skills: ['incident-summary', 'release-checklist'],
-    visionMode: 'off',
+    visionMode: 'passthrough',
     agentsMd: '# Universal Agent\n\nThis is a mock agent used for webapp development.',
   },
   {
@@ -209,7 +209,7 @@ const agentCatalog = [
     provider: 'mock-anthropic',
     model: 'claude-3.7-sonnet',
     skills: ['knowledge-search', 'doc-answer'],
-    visionMode: 'off',
+    visionMode: 'passthrough',
     agentsMd: '# KB Agent\n\nThis is a mock KB agent.',
   },
   {
@@ -218,7 +218,7 @@ const agentCatalog = [
     provider: 'mock-openai',
     model: 'gpt-4.1',
     skills: ['report-generation', 'chart-summary'],
-    visionMode: 'off',
+    visionMode: 'passthrough',
     agentsMd: '# Report Agent\n\nThis is a mock reporting agent.',
   },
 ]

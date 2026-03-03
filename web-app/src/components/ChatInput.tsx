@@ -4,6 +4,7 @@ import type { TokenState, ImageData } from '@goosed/sdk'
 import AgentSelector from './AgentSelector'
 import { compressImageDataUrl, isImageFile, parseDataUrl, readFileAsDataUrl } from '../utils/imageUtils'
 import { useVoiceInput } from '../hooks/useVoiceInput'
+import type { AttachedFile } from './Message'
 
 // File handling constants
 const MAX_IMAGES_PER_MESSAGE = 3
@@ -42,7 +43,7 @@ interface UploadedFile {
 }
 
 interface ChatInputProps {
-    onSubmit: (message: string, images?: ImageData[]) => void
+    onSubmit: (message: string, images?: ImageData[], attachedFiles?: AttachedFile[]) => void
     onStopGeneration?: () => void | Promise<void>
     onUploadFile?: (file: File) => Promise<{ path: string }>
     disabled?: boolean
@@ -74,7 +75,7 @@ export default function ChatInput({
     tokenState,
     presetMessage,
     presetToken,
-    visionMode = 'off',
+    visionMode = 'passthrough',
 }: ChatInputProps) {
     const { t, i18n } = useTranslation()
     const [value, setValue] = useState('')
@@ -322,19 +323,25 @@ export default function ChatInput({
             .map(f => parseDataUrl(f.preview!))
             .filter((parsed): parsed is { data: string; mimeType: string } => parsed !== null)
 
-        // Collect non-image file paths to append to text
-        const filePaths = uploadedFiles
+        // Collect non-image files as AttachedFile metadata (not appended to text)
+        const attachedFiles: AttachedFile[] = uploadedFiles
             .filter(f => !f.isImage && f.uploadedPath && !f.error && !f.isLoading)
-            .map(f => f.uploadedPath!)
+            .map(f => {
+                const fileName = f.name
+                const ext = fileName.includes('.') ? fileName.split('.').pop()?.toLowerCase() || '' : ''
+                const pathBasename = f.uploadedPath!.split('/').pop() || f.uploadedPath!
+                return { name: fileName, path: pathBasename, ext, serverPath: f.uploadedPath! }
+            })
 
-        let text = value.trim()
-        if (filePaths.length > 0) {
-            text = text ? `${text} ${filePaths.join(' ')}` : filePaths.join(' ')
-        }
+        const text = value.trim()
 
-        if (!text && images.length === 0) return
+        if (!text && images.length === 0 && attachedFiles.length === 0) return
 
-        onSubmit(text, images.length > 0 ? images : undefined)
+        onSubmit(
+            text,
+            images.length > 0 ? images : undefined,
+            attachedFiles.length > 0 ? attachedFiles : undefined
+        )
         setValue('')
         setUploadedFiles([])
         // Reset textarea height

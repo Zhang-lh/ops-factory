@@ -4,6 +4,7 @@ import Message, { ChatMessage, type DetectedFile } from './Message'
 import type { ToolResponseMap } from './Message'
 import { ChatState } from '../hooks/useChat'
 import { extractSourceDocuments, type Citation } from '../utils/citationParser'
+import { useUser } from '../contexts/UserContext'
 
 interface MessageListProps {
     messages: ChatMessage[]
@@ -26,6 +27,7 @@ const GATEWAY_SECRET_KEY = import.meta.env.VITE_GATEWAY_SECRET_KEY || 'test'
 
 export default function MessageList({ messages, isLoading = false, chatState = ChatState.Idle, agentId, onRetry }: MessageListProps) {
     const { t } = useTranslation()
+    const { userId } = useUser()
     const containerRef = useRef<HTMLDivElement>(null)
     const bottomRef = useRef<HTMLDivElement>(null)
     const baselineFilesRef = useRef<Map<string, ListedFile>>(new Map())
@@ -78,8 +80,10 @@ export default function MessageList({ messages, isLoading = false, chatState = C
     }, [visibleMessages])
 
     const fetchAgentFiles = async (targetAgentId: string): Promise<ListedFile[]> => {
+        const headers: Record<string, string> = { 'x-secret-key': GATEWAY_SECRET_KEY }
+        if (userId) headers['x-user-id'] = userId
         const res = await fetch(`${GATEWAY_URL}/agents/${targetAgentId}/files`, {
-            headers: { 'x-secret-key': GATEWAY_SECRET_KEY },
+            headers,
         })
         if (!res.ok) return []
         const data = await res.json() as { files?: ListedFile[] }
@@ -189,6 +193,7 @@ export default function MessageList({ messages, isLoading = false, chatState = C
                         message={message}
                         toolResponses={toolResponses}
                         agentId={agentId}
+                        userId={userId}
                         isStreaming={isLastAssistant}
                         onRetry={message.role === 'assistant' && index === visibleMessages.length - 1 ? onRetry : undefined}
                         sourceDocuments={isFinalAssistantResponse ? sourceDocuments : undefined}

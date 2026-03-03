@@ -22,20 +22,22 @@ interface ImageContent {
  */
 function resolveVisionConfig(agentConfig: Record<string, unknown>, globalVision: VisionGlobalConfig): VisionConfig {
   const agentVision = (agentConfig.vision || {}) as Record<string, unknown>
-  // API key: vision.apiKey > LITELLM_API_KEY (from secrets.yaml) > global default
+  // API key: vision.apiKey > chat-compatible agent secrets > global default
   const apiKey = (agentVision.apiKey as string)
     || (agentConfig.LITELLM_API_KEY as string)
+    || (agentConfig.OPENAI_API_KEY as string)
     || globalVision.apiKey
     || ''
-  // Base URL: vision.baseUrl > LITELLM_HOST (from config.yaml) > global default
+  // Base URL: vision.baseUrl > chat-compatible agent config > global default
   const baseUrl = (agentVision.baseUrl as string)
     || (agentConfig.LITELLM_HOST as string)
+    || (agentConfig.OPENAI_HOST as string)
     || globalVision.baseUrl
     || ''
   return {
-    mode:      (agentVision.mode as string)      || globalVision.mode      || 'off',
-    provider:  (agentVision.provider as string)   || globalVision.provider  || '',
-    model:     (agentVision.model as string)      || globalVision.model     || '',
+    mode:      (agentVision.mode as string)      || globalVision.mode      || 'passthrough',
+    provider:  (agentVision.provider as string)  || (agentConfig.GOOSE_PROVIDER as string) || globalVision.provider || '',
+    model:     (agentVision.model as string)     || (agentConfig.GOOSE_MODEL as string) || globalVision.model || '',
     apiKey,
     baseUrl,
     maxTokens: (agentVision.maxTokens as number)   || globalVision.maxTokens || 1024,

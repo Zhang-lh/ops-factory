@@ -105,9 +105,10 @@ describe('Mock gateway contract', () => {
     })
 
     const configRes = await gateway.fetchAs(USER_ID, `/agents/${AGENT_ID}/config`)
-    const config = await configRes.json() as { id: string; agentsMd: string }
+    const config = await configRes.json() as { id: string; agentsMd: string; visionMode?: string }
     expect(config.id).toBe(AGENT_ID)
     expect(config.agentsMd).toContain('mock agent')
+    expect(config.visionMode).toBe('passthrough')
 
     const prompts = await client.listPrompts()
     expect(prompts.length).toBeGreaterThan(0)

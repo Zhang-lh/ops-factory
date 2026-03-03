@@ -183,11 +183,11 @@ Be precise and factual.`
   }
 
   const vision: VisionGlobalConfig = {
-    mode: process.env.VISION_MODE || 'off',
-    provider: process.env.VISION_PROVIDER || '',
-    model: process.env.VISION_MODEL || '',
-    apiKey: process.env.VISION_API_KEY || '',
-    baseUrl: process.env.VISION_BASE_URL || '',
+    mode: process.env.VISION_MODE || 'passthrough',
+    provider: process.env.VISION_PROVIDER || process.env.GOOSE_PROVIDER || '',
+    model: process.env.VISION_MODEL || process.env.GOOSE_MODEL || '',
+    apiKey: process.env.VISION_API_KEY || process.env.OPENAI_API_KEY || process.env.LITELLM_API_KEY || '',
+    baseUrl: process.env.VISION_BASE_URL || process.env.OPENAI_HOST || process.env.LITELLM_HOST || '',
     maxTokens: parseInt(process.env.VISION_MAX_TOKENS || '1024', 10),
     prompt: process.env.VISION_PROMPT || DEFAULT_VISION_PROMPT,
   }

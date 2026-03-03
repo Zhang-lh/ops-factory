@@ -6,6 +6,9 @@ GOOSE_DISABLE_KEYRING: '1'
 GOOSE_TELEMETRY_ENABLED: true
 vision:
   mode: passthrough
+  provider: openai
+  model: qwen/qwen3.5-35b-a3b
+  baseUrl: https://openrouter.ai/api
 LANGFUSE_INIT_PROJECT_PUBLIC_KEY: pk-lf-opsfactory
 LANGFUSE_INIT_PROJECT_SECRET_KEY: sk-lf-opsfactory
 LANGFUSE_URL: http://localhost:3100
@@ -36,7 +39,7 @@ extensions:
     bundled: true
     available_tools: []
   computercontroller:
-    enabled: false
+    enabled: true
     type: builtin
     name: computercontroller
     description: General computer control tools that don't require you to be a developer or engineer.

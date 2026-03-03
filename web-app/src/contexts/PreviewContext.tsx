@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react'
 import { getPreviewKind, inferFileType, needsTextContent, PreviewKind } from '../utils/filePreview'
 import { parseCsvTable } from '../utils/officePreview'
+import { useUser } from './UserContext'
 
 const GATEWAY_URL = import.meta.env.VITE_GATEWAY_URL || 'http://127.0.0.1:3000'
 const GATEWAY_SECRET_KEY = import.meta.env.VITE_GATEWAY_SECRET_KEY || 'test'
@@ -42,6 +43,7 @@ interface PreviewContextType {
 const PreviewContext = createContext<PreviewContextType | null>(null)
 
 export function PreviewProvider({ children }: { children: ReactNode }) {
+    const { userId } = useUser()
     const [previewFile, setPreviewFile] = useState<PreviewFile | null>(null)
     const [isLoading, setIsLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
@@ -96,7 +98,9 @@ export function PreviewProvider({ children }: { children: ReactNode }) {
 
                 if (previewKind === 'spreadsheet') {
                     const url = `${GATEWAY_URL}/agents/${file.agentId}/files/${encodeURIComponent(file.path)}?key=${GATEWAY_SECRET_KEY}`
-                    const res = await fetch(url)
+                    const fetchHeaders: Record<string, string> = { 'x-secret-key': GATEWAY_SECRET_KEY }
+                    if (userId) fetchHeaders['x-user-id'] = userId
+                    const res = await fetch(url, { headers: fetchHeaders })
                     if (!res.ok) throw new Error(`Failed to fetch spreadsheet: ${res.status}`)
 
                     const tableData = parseCsvTable(await res.text(), normalizedType === 'tsv' ? '\t' : ',')
@@ -110,7 +114,9 @@ export function PreviewProvider({ children }: { children: ReactNode }) {
             }
 
             const url = `${GATEWAY_URL}/agents/${file.agentId}/files/${encodeURIComponent(file.path)}?key=${GATEWAY_SECRET_KEY}`
-            const res = await fetch(url)
+            const fetchHeaders: Record<string, string> = { 'x-secret-key': GATEWAY_SECRET_KEY }
+            if (userId) fetchHeaders['x-user-id'] = userId
+            const res = await fetch(url, { headers: fetchHeaders })
 
             if (!res.ok) {
                 throw new Error(`Failed to fetch file: ${res.status}`)
@@ -125,7 +131,7 @@ export function PreviewProvider({ children }: { children: ReactNode }) {
         } finally {
             setIsLoading(false)
         }
-    }, [officePreview])
+    }, [officePreview, userId])
 
     const closePreview = useCallback(() => {
         setPreviewFile(null)

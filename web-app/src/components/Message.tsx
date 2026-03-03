@@ -28,9 +28,17 @@ export interface MessageContent {
     }
 }
 
+export interface AttachedFile {
+    name: string        // display name ("dependencies.pdf")
+    path: string        // basename for download URL
+    ext: string         // extension without dot
+    serverPath?: string // full server path (for API text, transient)
+}
+
 export interface MessageMetadata {
     userVisible?: boolean
     agentVisible?: boolean
+    attachedFiles?: AttachedFile[]
 }
 
 export interface ChatMessage {
@@ -45,6 +53,7 @@ interface MessageProps {
     message: ChatMessage
     toolResponses?: ToolResponseMap
     agentId?: string
+    userId?: string | null
     isStreaming?: boolean
     onRetry?: () => void
     sourceDocuments?: Citation[]
@@ -77,6 +86,7 @@ function MessageInner({
     message,
     toolResponses = new Map(),
     agentId,
+    userId,
     isStreaming = false,
     onRetry,
     sourceDocuments,
@@ -322,7 +332,7 @@ function MessageInner({
 
     // File capsule component
     const FileCapsule = ({ filePath, fileName, fileExt }: { filePath: string; fileName: string; fileExt: string }) => {
-        const downloadUrl = `${GATEWAY_URL}/agents/${agentId}/files/${encodeURIComponent(filePath)}?key=${GATEWAY_SECRET_KEY}`
+        const downloadUrl = `${GATEWAY_URL}/agents/${agentId}/files/${encodeURIComponent(filePath)}?key=${GATEWAY_SECRET_KEY}${userId ? `&uid=${encodeURIComponent(userId)}` : ''}`
         const canPreview = isPreviewable(fileExt, fileName, filePath)
 
         const handlePreview = (e: React.MouseEvent) => {
@@ -433,6 +443,20 @@ function MessageInner({
                         >
                             {displayText}
                         </ReactMarkdown>
+                    </div>
+                )}
+
+                {/* Attached file capsules for user messages */}
+                {isUser && message.metadata?.attachedFiles && message.metadata.attachedFiles.length > 0 && (
+                    <div className="file-capsules-container">
+                        {message.metadata.attachedFiles.map((file, idx) => (
+                            <FileCapsule
+                                key={`attached-${file.path}-${idx}`}
+                                filePath={file.path}
+                                fileName={file.name}
+                                fileExt={file.ext}
+                            />
+                        ))}
                     </div>
                 )}
 
