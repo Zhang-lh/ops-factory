@@ -1,0 +1,12 @@
+services:
+  onlyoffice:
+    image: onlyoffice/documentserver
+    container_name: onlyoffice
+    restart: unless-stopped
+    ports:
+      - "${ONLYOFFICE_PORT:-8080}:80"
+    environment:
+      JWT_ENABLED: "${JWT_ENABLED:-false}"
+      PLUGINS_ENABLED: "${PLUGINS_ENABLED:-false}"
+      ALLOW_PRIVATE_IP_ADDRESS: "${ALLOW_PRIVATE_IP_ADDRESS:-true}"
+      ALLOW_META_IP_ADDRESS: "${ALLOW_META_IP_ADDRESS:-true}"

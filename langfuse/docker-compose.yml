@@ -4,15 +4,15 @@ services:
     container_name: langfuse-db
     restart: unless-stopped
     environment:
-      POSTGRES_DB: langfuse
-      POSTGRES_USER: langfuse
-      POSTGRES_PASSWORD: langfuse
+      POSTGRES_DB: ${POSTGRES_DB:-langfuse}
+      POSTGRES_USER: ${POSTGRES_USER:-langfuse}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-langfuse}
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - langfuse_pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U langfuse"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-langfuse}"]
       interval: 5s
       timeout: 3s
       retries: 10
@@ -25,23 +25,23 @@ services:
       langfuse-db:
         condition: service_healthy
     ports:
-      - "3100:3000"
+      - "${LANGFUSE_PORT:-3100}:3000"
     environment:
-      DATABASE_URL: postgresql://langfuse:langfuse@langfuse-db:5432/langfuse
-      NEXTAUTH_SECRET: opsfactory-langfuse-secret-key
-      SALT: opsfactory-langfuse-salt
-      NEXTAUTH_URL: http://localhost:3100
-      TELEMETRY_ENABLED: "false"
+      DATABASE_URL: postgresql://${POSTGRES_USER:-langfuse}:${POSTGRES_PASSWORD:-langfuse}@langfuse-db:5432/${POSTGRES_DB:-langfuse}
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-opsfactory-langfuse-secret-key}
+      SALT: ${SALT:-opsfactory-langfuse-salt}
+      NEXTAUTH_URL: http://localhost:${LANGFUSE_PORT:-3100}
+      TELEMETRY_ENABLED: "${TELEMETRY_ENABLED:-false}"
       # Headless initialization: auto-create org, project, user, and API keys
-      LANGFUSE_INIT_ORG_ID: opsfactory
-      LANGFUSE_INIT_ORG_NAME: ops-factory
-      LANGFUSE_INIT_PROJECT_ID: opsfactory-agents
-      LANGFUSE_INIT_PROJECT_NAME: ops-factory-agents
-      LANGFUSE_INIT_PROJECT_PUBLIC_KEY: pk-lf-opsfactory
-      LANGFUSE_INIT_PROJECT_SECRET_KEY: sk-lf-opsfactory
-      LANGFUSE_INIT_USER_EMAIL: admin@opsfactory.local
-      LANGFUSE_INIT_USER_NAME: admin
-      LANGFUSE_INIT_USER_PASSWORD: opsfactory
+      LANGFUSE_INIT_ORG_ID: ${LANGFUSE_INIT_ORG_ID:-opsfactory}
+      LANGFUSE_INIT_ORG_NAME: ${LANGFUSE_INIT_ORG_NAME:-ops-factory}
+      LANGFUSE_INIT_PROJECT_ID: ${LANGFUSE_INIT_PROJECT_ID:-opsfactory-agents}
+      LANGFUSE_INIT_PROJECT_NAME: ${LANGFUSE_INIT_PROJECT_NAME:-ops-factory-agents}
+      LANGFUSE_INIT_PROJECT_PUBLIC_KEY: ${LANGFUSE_INIT_PROJECT_PUBLIC_KEY:-pk-lf-opsfactory}
+      LANGFUSE_INIT_PROJECT_SECRET_KEY: ${LANGFUSE_INIT_PROJECT_SECRET_KEY:-sk-lf-opsfactory}
+      LANGFUSE_INIT_USER_EMAIL: ${LANGFUSE_INIT_USER_EMAIL:-admin@opsfactory.local}
+      LANGFUSE_INIT_USER_NAME: ${LANGFUSE_INIT_USER_NAME:-admin}
+      LANGFUSE_INIT_USER_PASSWORD: ${LANGFUSE_INIT_USER_PASSWORD:-opsfactory}
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/public/health"]
       interval: 10s

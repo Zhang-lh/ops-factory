@@ -1,0 +1,8 @@
+# Prometheus Exporter configuration
+# Priority: environment variable > config.yaml value > default
+# Required fields will cause startup failure if missing from both sources.
+
+port: 9091                              # env: EXPORTER_PORT
+gatewayUrl: "http://127.0.0.1:3000"     # env: GATEWAY_URL         [REQUIRED]
+gatewaySecretKey: ""                    # env: GATEWAY_SECRET_KEY  [REQUIRED]
+collectTimeoutMs: 5000                  # env: COLLECT_TIMEOUT_MS

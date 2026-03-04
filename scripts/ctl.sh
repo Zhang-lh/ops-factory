@@ -30,7 +30,9 @@ ENABLE_LANGFUSE="${ENABLE_LANGFUSE:-true}"
 ENABLE_EXPORTER="${ENABLE_EXPORTER:-true}"
 # gateway and webapp are mandatory — no toggles
 
-# === Configuration (passed to sub-scripts via env) ===
+# === Configuration ===
+# Each component reads its own config.yaml as the primary config source.
+# Env vars set here (or passed by the user) act as OVERRIDES to config.yaml values.
 export GATEWAY_HOST="${GATEWAY_HOST:-0.0.0.0}"
 export GATEWAY_PORT="${GATEWAY_PORT:-3000}"
 export GATEWAY_SECRET_KEY="${GATEWAY_SECRET_KEY:-test}"

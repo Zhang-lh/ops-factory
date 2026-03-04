@@ -1,0 +1,5 @@
+port: 8080
+jwtEnabled: false
+pluginsEnabled: false
+allowPrivateIpAddress: true
+allowMetaIpAddress: true

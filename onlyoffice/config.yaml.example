@@ -1,0 +1,9 @@
+# OnlyOffice Document Server configuration
+# Priority: environment variable > config.yaml value > default
+# All parameters are optional with defaults.
+
+port: 8080                    # env: ONLYOFFICE_PORT
+jwtEnabled: false             # env: JWT_ENABLED
+pluginsEnabled: false         # env: PLUGINS_ENABLED
+allowPrivateIpAddress: true   # env: ALLOW_PRIVATE_IP_ADDRESS
+allowMetaIpAddress: true      # env: ALLOW_META_IP_ADDRESS

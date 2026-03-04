@@ -1,0 +1,22 @@
+port: 3100
+
+postgres:
+  db: langfuse
+  user: langfuse
+  password: langfuse
+  port: 5432
+
+nextauthSecret: "opsfactory-langfuse-secret-key"
+salt: "opsfactory-langfuse-salt"
+telemetryEnabled: false
+
+init:
+  orgId: "opsfactory"
+  orgName: "ops-factory"
+  projectId: "opsfactory-agents"
+  projectName: "ops-factory-agents"
+  projectPublicKey: "pk-lf-opsfactory"
+  projectSecretKey: "sk-lf-opsfactory"
+  userEmail: "admin@opsfactory.local"
+  userName: "admin"
+  userPassword: "opsfactory"

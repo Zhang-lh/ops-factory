@@ -1,0 +1,29 @@
+# Langfuse configuration
+# Priority: environment variable > config.yaml value > default
+# All parameters are optional with defaults for local development.
+
+port: 3100                    # env: LANGFUSE_PORT — external port mapped to container
+
+# PostgreSQL database
+postgres:
+  db: langfuse                # env: POSTGRES_DB
+  user: langfuse              # env: POSTGRES_USER
+  password: langfuse          # env: POSTGRES_PASSWORD
+  port: 5432                  # env: POSTGRES_PORT
+
+# Langfuse app secrets
+nextauthSecret: ""            # env: NEXTAUTH_SECRET
+salt: ""                      # env: SALT
+telemetryEnabled: false       # env: TELEMETRY_ENABLED
+
+# Headless initialization (auto-create org, project, user, API keys)
+init:
+  orgId: "opsfactory"                        # env: LANGFUSE_INIT_ORG_ID
+  orgName: "ops-factory"                     # env: LANGFUSE_INIT_ORG_NAME
+  projectId: "opsfactory-agents"             # env: LANGFUSE_INIT_PROJECT_ID
+  projectName: "ops-factory-agents"          # env: LANGFUSE_INIT_PROJECT_NAME
+  projectPublicKey: ""                       # env: LANGFUSE_INIT_PROJECT_PUBLIC_KEY
+  projectSecretKey: ""                       # env: LANGFUSE_INIT_PROJECT_SECRET_KEY
+  userEmail: "admin@opsfactory.local"        # env: LANGFUSE_INIT_USER_EMAIL
+  userName: "admin"                          # env: LANGFUSE_INIT_USER_NAME
+  userPassword: ""                           # env: LANGFUSE_INIT_USER_PASSWORD

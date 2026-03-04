@@ -15,12 +15,6 @@ export interface GatewayYamlConfig {
     id: string
     name: string
   }>
-  officePreview?: {
-    enabled?: boolean
-    onlyofficeUrl?: string
-    fileBaseUrl?: string
-  }
-  idleTimeoutMinutes?: number
 }
 
 export interface OfficePreviewConfig {
@@ -76,55 +70,124 @@ export interface GatewayConfig {
   langfuse: LangfuseConfig | null
 }
 
+// --- config.yaml type ---
+interface ConfigYaml {
+  server?: {
+    host?: string
+    port?: number
+    secretKey?: string
+    corsOrigin?: string
+  }
+  tls?: {
+    cert?: string
+    key?: string
+  }
+  paths?: {
+    projectRoot?: string
+    agentsDir?: string
+    usersDir?: string
+    goosedBin?: string
+  }
+  idle?: {
+    timeoutMinutes?: number
+    checkIntervalMs?: number
+  }
+  upload?: {
+    maxFileSizeMb?: number
+    maxImageSizeMb?: number
+    retentionHours?: number
+  }
+  officePreview?: {
+    enabled?: boolean
+    onlyofficeUrl?: string
+    fileBaseUrl?: string
+  }
+  vision?: {
+    mode?: string
+    provider?: string
+    model?: string
+    apiKey?: string
+    baseUrl?: string
+    maxTokens?: number
+    prompt?: string
+  }
+  langfuse?: {
+    host?: string
+    publicKey?: string
+    secretKey?: string
+  }
+}
+
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
 
-export function loadGatewayConfig(): GatewayConfig {
-  const host = process.env.GATEWAY_HOST || '0.0.0.0'
-  const port = parseInt(process.env.GATEWAY_PORT || '3000', 10)
-  const secretKey = process.env.GATEWAY_SECRET_KEY || 'test'
-  const corsOrigin = process.env.CORS_ORIGIN || '*'
+/**
+ * Load a YAML file and return the parsed object, or an empty object if not found.
+ */
+function loadYamlFile<T>(filePath: string): T {
+  if (!existsSync(filePath)) return {} as T
+  return (parse(readFileSync(filePath, 'utf-8')) as T) || ({} as T)
+}
 
-  // Optional TLS — set TLS_CERT and TLS_KEY to enable HTTPS directly on Gateway
-  const tlsCert = process.env.TLS_CERT || ''
-  const tlsKey = process.env.TLS_KEY || ''
+export function loadGatewayConfig(): GatewayConfig {
+  // Load gateway config.yaml (one level up from src/)
+  const configYamlPath = resolve(__dirname, '..', 'config.yaml')
+  const cfg = loadYamlFile<ConfigYaml>(configYamlPath)
+
+  // --- Server ---
+  const host = process.env.GATEWAY_HOST || cfg.server?.host || '0.0.0.0'
+  const port = parseInt(process.env.GATEWAY_PORT || String(cfg.server?.port ?? 3000), 10)
+  const corsOrigin = process.env.CORS_ORIGIN || cfg.server?.corsOrigin || '*'
+
+  // secretKey: REQUIRED — env var > config.yaml > error
+  const secretKey = process.env.GATEWAY_SECRET_KEY || cfg.server?.secretKey || ''
+  if (!secretKey) {
+    throw new Error(
+      'Missing required config: set "server.secretKey" in gateway/config.yaml or GATEWAY_SECRET_KEY env var'
+    )
+  }
+
+  // --- TLS ---
+  const tlsCert = process.env.TLS_CERT || cfg.tls?.cert || ''
+  const tlsKey = process.env.TLS_KEY || cfg.tls?.key || ''
   const tls: TlsConfig = {
     enabled: !!(tlsCert && tlsKey),
     cert: tlsCert,
     key: tlsKey,
   }
 
-  // Default to repository root regardless of current working directory.
-  const projectRoot = resolve(process.env.PROJECT_ROOT || join(__dirname, '../..'))
-  const agentsDir = resolve(process.env.AGENTS_DIR || join(projectRoot, 'gateway', 'agents'))
-  const usersDir = resolve(process.env.USERS_DIR || join(projectRoot, 'gateway', 'users'))
-  const goosedBin = process.env.GOOSED_BIN || 'goosed'
+  // --- Paths ---
+  const projectRoot = resolve(
+    process.env.PROJECT_ROOT || cfg.paths?.projectRoot || join(__dirname, '../..')
+  )
+  const agentsDir = resolve(
+    process.env.AGENTS_DIR || cfg.paths?.agentsDir || join(projectRoot, 'gateway', 'agents')
+  )
+  const usersDir = resolve(
+    process.env.USERS_DIR || cfg.paths?.usersDir || join(projectRoot, 'gateway', 'users')
+  )
+  const goosedBin = process.env.GOOSED_BIN || cfg.paths?.goosedBin || 'goosed'
 
-  // Load centralized agents config
+  // --- Load agents registry (separate file, unchanged) ---
   const gatewayConfigDir = resolve(__dirname, '../config')
   const agentsConfigPath = join(gatewayConfigDir, 'agents.yaml')
 
-  let yamlConfig: GatewayYamlConfig = {
-    agents: []
-  }
-
+  let agentsYaml: GatewayYamlConfig = { agents: [] }
   if (existsSync(agentsConfigPath)) {
-    const raw = readFileSync(agentsConfigPath, 'utf-8')
-    yamlConfig = parse(raw) as GatewayYamlConfig
+    agentsYaml = parse(readFileSync(agentsConfigPath, 'utf-8')) as GatewayYamlConfig
   } else {
     console.warn(`Warning: Gateway agents config not found at ${agentsConfigPath}`)
   }
 
-  // Convert to AgentConfig array with host and secret_key
-  const agents: AgentConfig[] = (yamlConfig.agents || []).map(agent => ({
+  const agents: AgentConfig[] = (agentsYaml.agents || []).map(agent => ({
     id: agent.id,
     name: agent.name,
     host,
     secret_key: secretKey,
   }))
 
-  // Office preview (OnlyOffice) configuration — YAML first, env vars override
-  const yamlOp = yamlConfig.officePreview || {}
+  // --- Office Preview ---
+  const yamlOp = cfg.officePreview || {}
   const officePreview: OfficePreviewConfig = {
     enabled: process.env.OFFICE_PREVIEW_ENABLED
       ? process.env.OFFICE_PREVIEW_ENABLED === 'true'
@@ -133,19 +196,29 @@ export function loadGatewayConfig(): GatewayConfig {
     fileBaseUrl: process.env.ONLYOFFICE_FILE_BASE_URL || yamlOp.fileBaseUrl || `http://host.docker.internal:${port}`,
   }
 
-  // Idle timeout for per-user goosed instances
-  const idleTimeoutMinutes = yamlConfig.idleTimeoutMinutes ?? 15
-  const idleTimeoutMs = parseInt(process.env.IDLE_TIMEOUT_MS || String(idleTimeoutMinutes * 60 * 1000), 10)
-  const idleCheckIntervalMs = parseInt(process.env.IDLE_CHECK_INTERVAL_MS || '60000', 10)
+  // --- Idle ---
+  const idleTimeoutMinutes = cfg.idle?.timeoutMinutes ?? 15
+  const idleTimeoutMs = parseInt(
+    process.env.IDLE_TIMEOUT_MS || String(idleTimeoutMinutes * 60 * 1000), 10
+  )
+  const idleCheckIntervalMs = parseInt(
+    process.env.IDLE_CHECK_INTERVAL_MS || String(cfg.idle?.checkIntervalMs ?? 60000), 10
+  )
 
-  // File upload configuration
+  // --- Upload ---
   const upload: UploadConfig = {
-    maxFileSizeMb: parseInt(process.env.MAX_UPLOAD_FILE_SIZE_MB || '10', 10),
-    maxImageSizeMb: parseInt(process.env.MAX_UPLOAD_IMAGE_SIZE_MB || '5', 10),
-    retentionHours: parseInt(process.env.UPLOAD_RETENTION_HOURS || '24', 10),
+    maxFileSizeMb: parseInt(
+      process.env.MAX_UPLOAD_FILE_SIZE_MB || String(cfg.upload?.maxFileSizeMb ?? 10), 10
+    ),
+    maxImageSizeMb: parseInt(
+      process.env.MAX_UPLOAD_IMAGE_SIZE_MB || String(cfg.upload?.maxImageSizeMb ?? 5), 10
+    ),
+    retentionHours: parseInt(
+      process.env.UPLOAD_RETENTION_HOURS || String(cfg.upload?.retentionHours ?? 24), 10
+    ),
   }
 
-  // Vision global defaults (agent config.yaml can override per-agent)
+  // --- Vision ---
   const DEFAULT_VISION_PROMPT = `Analyze this image thoroughly. Describe:
 - Main content and subject matter
 - Any text, numbers, or data visible
@@ -154,17 +227,29 @@ export function loadGatewayConfig(): GatewayConfig {
 - Any relevant details that would help answer questions about this image
 Be precise and factual.`
 
-  // Langfuse observability — optional, monitoring disabled when not configured.
-  // Try env vars first; fall back to reading from the first agent's config.yaml.
+  const vision: VisionGlobalConfig = {
+    mode: process.env.VISION_MODE || cfg.vision?.mode || 'passthrough',
+    provider: process.env.VISION_PROVIDER || process.env.GOOSE_PROVIDER || cfg.vision?.provider || '',
+    model: process.env.VISION_MODEL || process.env.GOOSE_MODEL || cfg.vision?.model || '',
+    apiKey: process.env.VISION_API_KEY || process.env.OPENAI_API_KEY || process.env.LITELLM_API_KEY || cfg.vision?.apiKey || '',
+    baseUrl: process.env.VISION_BASE_URL || process.env.OPENAI_HOST || process.env.LITELLM_HOST || cfg.vision?.baseUrl || '',
+    maxTokens: parseInt(
+      process.env.VISION_MAX_TOKENS || String(cfg.vision?.maxTokens ?? 1024), 10
+    ),
+    prompt: process.env.VISION_PROMPT || cfg.vision?.prompt || DEFAULT_VISION_PROMPT,
+  }
+
+  // --- Langfuse ---
+  // Priority: env var > config.yaml > auto-detect from agent configs
   let langfuse: LangfuseConfig | null = null
   {
-    let lfHost = process.env.LANGFUSE_HOST || ''
-    let lfPub  = process.env.LANGFUSE_PUBLIC_KEY || ''
-    let lfSec  = process.env.LANGFUSE_SECRET_KEY || ''
+    let lfHost = process.env.LANGFUSE_HOST || cfg.langfuse?.host || ''
+    let lfPub  = process.env.LANGFUSE_PUBLIC_KEY || cfg.langfuse?.publicKey || ''
+    let lfSec  = process.env.LANGFUSE_SECRET_KEY || cfg.langfuse?.secretKey || ''
 
     if (!lfHost || !lfPub || !lfSec) {
       // Auto-detect from agent configs
-      for (const agent of yamlConfig.agents || []) {
+      for (const agent of agentsYaml.agents || []) {
         const cfgPath = join(agentsDir, agent.id, 'config', 'config.yaml')
         if (!existsSync(cfgPath)) continue
         try {
@@ -180,16 +265,6 @@ Be precise and factual.`
     if (lfHost && lfPub && lfSec) {
       langfuse = { host: lfHost.replace(/\/+$/, ''), publicKey: lfPub, secretKey: lfSec }
     }
-  }
-
-  const vision: VisionGlobalConfig = {
-    mode: process.env.VISION_MODE || 'passthrough',
-    provider: process.env.VISION_PROVIDER || process.env.GOOSE_PROVIDER || '',
-    model: process.env.VISION_MODEL || process.env.GOOSE_MODEL || '',
-    apiKey: process.env.VISION_API_KEY || process.env.OPENAI_API_KEY || process.env.LITELLM_API_KEY || '',
-    baseUrl: process.env.VISION_BASE_URL || process.env.OPENAI_HOST || process.env.LITELLM_HOST || '',
-    maxTokens: parseInt(process.env.VISION_MAX_TOKENS || '1024', 10),
-    prompt: process.env.VISION_PROMPT || DEFAULT_VISION_PROMPT,
   }
 
   return {
