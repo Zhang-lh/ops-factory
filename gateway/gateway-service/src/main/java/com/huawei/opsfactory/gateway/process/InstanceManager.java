@@ -23,6 +23,12 @@ import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import javax.net.ssl.HttpsURLConnection;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
+import javax.net.ssl.SSLSocketFactory;
+import java.security.cert.X509Certificate;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -45,6 +51,7 @@ public class InstanceManager {
     private final PortAllocator portAllocator;
     private final RuntimePreparer runtimePreparer;
     private final AgentConfigService agentConfigService;
+    private final SSLSocketFactory trustAllSslFactory;
 
     /** key = "agentId:userId" -> ManagedInstance */
     private final ConcurrentHashMap<String, ManagedInstance> instances = new ConcurrentHashMap<>();
@@ -59,6 +66,26 @@ public class InstanceManager {
         this.portAllocator = portAllocator;
         this.runtimePreparer = runtimePreparer;
         this.agentConfigService = agentConfigService;
+        this.trustAllSslFactory = createTrustAllSslFactory();
+    }
+
+    private static SSLSocketFactory createTrustAllSslFactory() {
+        try {
+            TrustManager[] trustAll = { new X509TrustManager() {
+                public X509Certificate[] getAcceptedIssuers() { return new X509Certificate[0]; }
+                public void checkClientTrusted(X509Certificate[] certs, String authType) {}
+                public void checkServerTrusted(X509Certificate[] certs, String authType) {}
+            }};
+            SSLContext sc = SSLContext.getInstance("TLS");
+            sc.init(null, trustAll, new java.security.SecureRandom());
+            return sc.getSocketFactory();
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to create trust-all SSL factory", e);
+        }
+    }
+
+    private String goosedBaseUrl(int port) {
+        return properties.goosedScheme() + "://127.0.0.1:" + port;
     }
 
     /**
@@ -158,9 +185,19 @@ public class InstanceManager {
         }
     }
 
-    private String httpGet(int port, String path) throws IOException {
-        URL url = new URL("http://127.0.0.1:" + port + path);
+    private HttpURLConnection openConnection(URL url) throws IOException {
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+        if (properties.isGoosedTls() && conn instanceof HttpsURLConnection) {
+            HttpsURLConnection httpsConn = (HttpsURLConnection) conn;
+            httpsConn.setSSLSocketFactory(trustAllSslFactory);
+            httpsConn.setHostnameVerifier((hostname, session) -> true);
+        }
+        return conn;
+    }
+
+    private String httpGet(int port, String path) throws IOException {
+        URL url = new URL(goosedBaseUrl(port) + path);
+        HttpURLConnection conn = openConnection(url);
         conn.setConnectTimeout(5000);
         conn.setReadTimeout(5000);
         conn.setRequestMethod("GET");
@@ -177,8 +214,8 @@ public class InstanceManager {
     }
 
     private boolean httpPost(int port, String path, String body) throws IOException {
-        URL url = new URL("http://127.0.0.1:" + port + path);
-        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+        URL url = new URL(goosedBaseUrl(port) + path);
+        HttpURLConnection conn = openConnection(url);
         conn.setConnectTimeout(5000);
         conn.setReadTimeout(5000);
         conn.setRequestMethod("POST");
@@ -334,6 +371,7 @@ public class InstanceManager {
         env.put("GOOSE_SERVER__SECRET_KEY", properties.getSecretKey());
         env.put("GOOSE_PATH_ROOT", runtimeRoot.toString());
         env.put("GOOSE_DISABLE_KEYRING", "1");
+        env.put("GOOSE_TLS", String.valueOf(properties.isGoosedTls()));
 
         return env;
     }
@@ -342,8 +380,8 @@ public class InstanceManager {
         long interval = GatewayConstants.HEALTH_CHECK_INITIAL_INTERVAL_MS;
         for (int i = 0; i < GatewayConstants.HEALTH_CHECK_MAX_ATTEMPTS; i++) {
             try {
-                URL url = new URL("http://127.0.0.1:" + port + "/status");
-                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                URL url = new URL(goosedBaseUrl(port) + "/status");
+                HttpURLConnection conn = openConnection(url);
                 conn.setConnectTimeout(200);
                 conn.setReadTimeout(200);
                 conn.setRequestMethod("GET");

@@ -10,6 +10,7 @@ import reactor.core.publisher.Mono;
 import java.util.Collections;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -33,6 +34,8 @@ public class McpEndpointE2ETest extends BaseE2ETest {
         when(instanceManager.getOrSpawn("test-agent", "sys"))
                 .thenReturn(Mono.just(sysInstance));
         when(instanceManager.getAllInstances()).thenReturn(Collections.emptyList());
+        when(goosedProxy.goosedBaseUrl(anyInt())).thenAnswer(inv ->
+                "http://127.0.0.1:" + inv.getArgument(0));
     }
 
     // ====================== GET /agents/{agentId}/mcp ======================
