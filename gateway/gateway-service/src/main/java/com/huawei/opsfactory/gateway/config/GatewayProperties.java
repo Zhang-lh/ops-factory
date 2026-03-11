@@ -10,6 +10,7 @@ public class GatewayProperties {
     private String secretKey = "test";
     private String corsOrigin = "http://127.0.0.1:5173";
     private String goosedBin = "goosed";
+    private boolean goosedTls = true;
 
     private Paths paths = new Paths();
     private Idle idle = new Idle();
@@ -44,6 +45,18 @@ public class GatewayProperties {
 
     public void setGoosedBin(String goosedBin) {
         this.goosedBin = goosedBin;
+    }
+
+    public boolean isGoosedTls() {
+        return goosedTls;
+    }
+
+    public void setGoosedTls(boolean goosedTls) {
+        this.goosedTls = goosedTls;
+    }
+
+    public String goosedScheme() {
+        return goosedTls ? "https" : "http";
     }
 
     public Paths getPaths() {

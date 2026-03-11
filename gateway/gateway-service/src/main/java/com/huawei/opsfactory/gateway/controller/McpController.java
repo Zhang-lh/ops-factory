@@ -53,7 +53,7 @@ public class McpController {
         return instanceManager.getOrSpawn(agentId, GatewayConstants.SYS_USER)
                 .flatMap(sysInstance -> {
                     WebClient wc = goosedProxy.getWebClient();
-                    String sysTarget = "http://127.0.0.1:" + sysInstance.getPort();
+                    String sysTarget = goosedProxy.goosedBaseUrl(sysInstance.getPort());
 
                     return wc.post()
                             .uri(sysTarget + "/config/extensions")
@@ -80,7 +80,7 @@ public class McpController {
         return instanceManager.getOrSpawn(agentId, GatewayConstants.SYS_USER)
                 .flatMap(sysInstance -> {
                     WebClient wc = goosedProxy.getWebClient();
-                    String sysTarget = "http://127.0.0.1:" + sysInstance.getPort();
+                    String sysTarget = goosedProxy.goosedBaseUrl(sysInstance.getPort());
 
                     return wc.delete()
                             .uri(sysTarget + path)
@@ -107,7 +107,7 @@ public class McpController {
                         && !GatewayConstants.SYS_USER.equals(inst.getUserId())
                         && inst.getStatus() == ManagedInstance.Status.RUNNING)
                 .flatMap(inst -> {
-                    String target = "http://127.0.0.1:" + inst.getPort() + path;
+                    String target = goosedProxy.goosedBaseUrl(inst.getPort()) + path;
                     WebClient.RequestHeadersSpec<?> spec;
                     if (body != null) {
                         spec = wc.post().uri(target)

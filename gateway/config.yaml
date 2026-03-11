@@ -3,6 +3,7 @@ host: "0.0.0.0"
 secretKey: "test"
 corsOrigin: "*"
 goosedBin: "goosed"
+goosedTls: true
 
 paths:
   agentsDir: agents

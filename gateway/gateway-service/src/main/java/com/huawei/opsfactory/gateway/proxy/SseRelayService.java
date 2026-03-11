@@ -16,10 +16,12 @@ public class SseRelayService {
 
     private static final Logger log = LogManager.getLogger(SseRelayService.class);
 
+    private final GoosedProxy goosedProxy;
     private final WebClient webClient;
     private final GatewayProperties properties;
 
     public SseRelayService(GoosedProxy goosedProxy, GatewayProperties properties) {
+        this.goosedProxy = goosedProxy;
         this.webClient = goosedProxy.getWebClient();
         this.properties = properties;
     }
@@ -29,7 +31,7 @@ public class SseRelayService {
      * Returns a Flux of raw DataBuffer chunks for zero-copy streaming.
      */
     public Flux<DataBuffer> relay(int port, String path, String body) {
-        String target = "http://127.0.0.1:" + port + path;
+        String target = goosedProxy.goosedBaseUrl(port) + path;
 
         return webClient.post()
                 .uri(target)

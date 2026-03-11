@@ -2,16 +2,22 @@ package com.huawei.opsfactory.gateway.proxy;
 
 import com.huawei.opsfactory.gateway.common.constants.GatewayConstants;
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
+import io.netty.handler.ssl.SslContext;
+import io.netty.handler.ssl.SslContextBuilder;
+import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
 import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.client.reactive.ReactorClientHttpConnector;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
+import reactor.netty.http.client.HttpClient;
 
+import javax.net.ssl.SSLException;
 import java.time.Duration;
 
 @Component
@@ -22,17 +28,36 @@ public class GoosedProxy {
 
     public GoosedProxy(GatewayProperties properties) {
         this.properties = properties;
-        this.webClient = WebClient.builder()
+
+        WebClient.Builder builder = WebClient.builder()
                 .codecs(configurer -> configurer.defaultCodecs()
-                        .maxInMemorySize(50 * 1024 * 1024))
-                .build();
+                        .maxInMemorySize(50 * 1024 * 1024));
+
+        if (properties.isGoosedTls()) {
+            try {
+                SslContext sslContext = SslContextBuilder.forClient()
+                        .trustManager(InsecureTrustManagerFactory.INSTANCE)
+                        .build();
+                HttpClient httpClient = HttpClient.create()
+                        .secure(t -> t.sslContext(sslContext));
+                builder.clientConnector(new ReactorClientHttpConnector(httpClient));
+            } catch (SSLException e) {
+                throw new RuntimeException("Failed to configure TLS for goosed proxy", e);
+            }
+        }
+
+        this.webClient = builder.build();
+    }
+
+    public String goosedBaseUrl(int port) {
+        return properties.goosedScheme() + "://127.0.0.1:" + port;
     }
 
     /**
      * Proxy an arbitrary request to a goosed instance.
      */
     public Mono<Void> proxy(ServerHttpRequest request, ServerHttpResponse response, int port, String path) {
-        String target = "http://127.0.0.1:" + port + path;
+        String target = goosedBaseUrl(port) + path;
         HttpMethod method = request.getMethod();
 
         WebClient.RequestBodySpec spec = webClient.method(method != null ? method : HttpMethod.GET)
@@ -58,7 +83,7 @@ public class GoosedProxy {
      */
     public Mono<Void> proxyWithBody(ServerHttpResponse response, int port, String path,
                                      HttpMethod method, String body) {
-        String target = "http://127.0.0.1:" + port + path;
+        String target = goosedBaseUrl(port) + path;
 
         return webClient.method(method)
                 .uri(target)
@@ -76,7 +101,7 @@ public class GoosedProxy {
      * Fetch JSON from a goosed instance and return the raw body string.
      */
     public Mono<String> fetchJson(int port, String path) {
-        String target = "http://127.0.0.1:" + port + path;
+        String target = goosedBaseUrl(port) + path;
         return webClient.get()
                 .uri(target)
                 .header(GatewayConstants.HEADER_SECRET_KEY, properties.getSecretKey())

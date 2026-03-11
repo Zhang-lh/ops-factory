@@ -18,12 +18,14 @@ public class SessionService {
     private static final Logger log = LogManager.getLogger(SessionService.class);
 
     private final InstanceManager instanceManager;
+    private final com.huawei.opsfactory.gateway.proxy.GoosedProxy goosedProxy;
     private final WebClient webClient;
     private final String secretKey;
 
     public SessionService(InstanceManager instanceManager,
                           com.huawei.opsfactory.gateway.proxy.GoosedProxy goosedProxy) {
         this.instanceManager = instanceManager;
+        this.goosedProxy = goosedProxy;
         this.webClient = goosedProxy.getWebClient();
         this.secretKey = goosedProxy.getSecretKey();
     }
@@ -32,7 +34,7 @@ public class SessionService {
      * Query sessions from a specific goosed instance.
      */
     public Mono<String> getSessionsFromInstance(ManagedInstance instance) {
-        String url = "http://127.0.0.1:" + instance.getPort() + "/sessions";
+        String url = goosedProxy.goosedBaseUrl(instance.getPort()) + "/sessions";
         return webClient.get()
                 .uri(url)
                 .header(GatewayConstants.HEADER_SECRET_KEY, secretKey)

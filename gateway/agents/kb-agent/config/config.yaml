@@ -10,9 +10,8 @@ GOOSE_TEMPERATURE: '0.2'
 GOOSE_CONTEXT_STRATEGY: summarize
 GOOSE_AUTO_COMPACT_THRESHOLD: '0.8'
 GOOSE_MAX_TURNS: '50'
-# Vision configuration
 vision:
-  mode: "passthrough"
+  mode: passthrough
   provider: openai
   model: qwen/qwen3.5-35b-a3b
   baseUrl: https://openrouter.ai/api
@@ -40,9 +39,9 @@ extensions:
     enabled: false
     type: builtin
     name: developer
-    description: General development tools useful for software engineering.
+    description: Write and edit files, and execute shell commands
     display_name: Developer
-    timeout: 300
+    timeout: null
     bundled: true
     available_tools: []
   computercontroller:
@@ -138,5 +137,13 @@ extensions:
     name: summon
     description: Load knowledge and delegate tasks to subagents
     display_name: Summon
+    bundled: true
+    available_tools: []
+  analyze:
+    enabled: true
+    type: platform
+    name: analyze
+    description: 'Analyze code structure with tree-sitter: directory overviews, file details, symbol call graphs'
+    display_name: Analyze
     bundled: true
     available_tools: []
