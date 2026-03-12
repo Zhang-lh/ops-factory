@@ -2,26 +2,35 @@ package com.huawei.opsfactory.gateway.proxy;
 
 import com.huawei.opsfactory.gateway.common.constants.GatewayConstants;
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
+import io.netty.channel.ChannelOption;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.client.reactive.ReactorClientHttpConnector;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientRequestException;
+import org.springframework.web.server.ResponseStatusException;
 import reactor.core.publisher.Mono;
 import reactor.netty.http.client.HttpClient;
 
 import javax.net.ssl.SSLException;
 import java.time.Duration;
+import java.util.concurrent.TimeoutException;
 
 @Component
 public class GoosedProxy {
+
+    private static final Logger log = LogManager.getLogger(GoosedProxy.class);
 
     private final WebClient webClient;
     private final GatewayProperties properties;
@@ -29,24 +38,30 @@ public class GoosedProxy {
     public GoosedProxy(GatewayProperties properties) {
         this.properties = properties;
 
-        WebClient.Builder builder = WebClient.builder()
-                .codecs(configurer -> configurer.defaultCodecs()
-                        .maxInMemorySize(50 * 1024 * 1024));
+        // Use newConnection() to disable connection pooling.
+        // Each goosed instance is localhost on a dynamic port; pooled connections
+        // become stale when a goosed process restarts on a different port,
+        // causing SslHandshakeTimeoutException cascades.
+        HttpClient httpClient = HttpClient.newConnection()
+                .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 5000);
 
         if (properties.isGoosedTls()) {
             try {
                 SslContext sslContext = SslContextBuilder.forClient()
                         .trustManager(InsecureTrustManagerFactory.INSTANCE)
                         .build();
-                HttpClient httpClient = HttpClient.create()
-                        .secure(t -> t.sslContext(sslContext));
-                builder.clientConnector(new ReactorClientHttpConnector(httpClient));
+                httpClient = httpClient.secure(t -> t.sslContext(sslContext)
+                        .handshakeTimeout(Duration.ofSeconds(5)));
             } catch (SSLException e) {
                 throw new RuntimeException("Failed to configure TLS for goosed proxy", e);
             }
         }
 
-        this.webClient = builder.build();
+        this.webClient = WebClient.builder()
+                .clientConnector(new ReactorClientHttpConnector(httpClient))
+                .codecs(configurer -> configurer.defaultCodecs()
+                        .maxInMemorySize(50 * 1024 * 1024))
+                .build();
     }
 
     public String goosedBaseUrl(int port) {
@@ -75,7 +90,8 @@ public class GoosedProxy {
             response.setStatusCode(upstream.statusCode());
             copyUpstreamHeaders(upstream.headers().asHttpHeaders(), response.getHeaders());
             return response.writeWith(upstream.bodyToFlux(DataBuffer.class));
-        }).timeout(Duration.ofSeconds(60));
+        }).timeout(Duration.ofSeconds(60))
+                .onErrorMap(this::isProxyError, this::mapProxyError);
     }
 
     /**
@@ -94,7 +110,8 @@ public class GoosedProxy {
                     response.setStatusCode(upstream.statusCode());
                     copyUpstreamHeaders(upstream.headers().asHttpHeaders(), response.getHeaders());
                     return response.writeWith(upstream.bodyToFlux(DataBuffer.class));
-                }).timeout(Duration.ofSeconds(60));
+                }).timeout(Duration.ofSeconds(60))
+                .onErrorMap(this::isProxyError, this::mapProxyError);
     }
 
     /**
@@ -116,6 +133,25 @@ public class GoosedProxy {
 
     public String getSecretKey() {
         return properties.getSecretKey();
+    }
+
+    private boolean isProxyError(Throwable e) {
+        return e instanceof WebClientRequestException || e instanceof TimeoutException;
+    }
+
+    /**
+     * Map low-level Netty connection errors and timeouts to 503 Service Unavailable
+     * instead of letting them bubble as 500 Internal Server Error.
+     */
+    private Throwable mapProxyError(Throwable e) {
+        if (e instanceof TimeoutException) {
+            log.warn("Goosed proxy timeout: {}", e.getMessage());
+            return new ResponseStatusException(HttpStatus.GATEWAY_TIMEOUT,
+                    "Agent did not respond in time");
+        }
+        log.warn("Goosed connection error: {}", e.getMessage());
+        return new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
+                "Agent temporarily unavailable: " + e.getMessage());
     }
 
     private void copyHeaders(HttpHeaders source, HttpHeaders target) {

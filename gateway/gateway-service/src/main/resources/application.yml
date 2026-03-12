@@ -25,6 +25,11 @@ gateway:
     max-instances-per-user: ${MAX_INSTANCES_PER_USER:5}
     max-instances-global: ${MAX_INSTANCES_GLOBAL:50}
 
+  sse:
+    first-byte-timeout-sec: ${SSE_FIRST_BYTE_TIMEOUT:30}
+    idle-timeout-sec: ${SSE_IDLE_TIMEOUT:30}
+    max-duration-sec: ${SSE_MAX_DURATION:600}
+
   prewarm:
     enabled: ${PREWARM_ENABLED:true}
     default-agent-id: ${PREWARM_DEFAULT_AGENT_ID:universal-agent}

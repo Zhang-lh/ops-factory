@@ -20,7 +20,7 @@ LANGFUSE_INIT_PROJECT_SECRET_KEY: sk-lf-opsfactory
 LANGFUSE_URL: http://localhost:3100
 extensions:
   extensionmanager:
-    enabled: true
+    enabled: false
     type: platform
     name: Extension Manager
     description: Enable extension management tools for discovering, enabling, and disabling extensions
@@ -36,7 +36,7 @@ extensions:
     bundled: true
     available_tools: []
   developer:
-    enabled: true
+    enabled: false
     type: builtin
     name: developer
     description: Write and edit files, and execute shell commands
@@ -45,7 +45,7 @@ extensions:
     bundled: true
     available_tools: []
   computercontroller:
-    enabled: true
+    enabled: false
     type: builtin
     name: computercontroller
     description: General computer control tools that don't require you to be a developer or engineer.
@@ -54,7 +54,7 @@ extensions:
     bundled: true
     available_tools: []
   autovisualiser:
-    enabled: true
+    enabled: false
     type: builtin
     name: autovisualiser
     description: Data visualization and UI generation tools
@@ -96,7 +96,7 @@ extensions:
     bundled: true
     available_tools: []
   summon:
-    enabled: true
+    enabled: false
     type: platform
     name: summon
     description: Load knowledge and delegate tasks to subagents
@@ -104,7 +104,7 @@ extensions:
     bundled: true
     available_tools: []
   tom:
-    enabled: true
+    enabled: false
     type: platform
     name: tom
     description: Inject custom context into every turn via GOOSE_MOIM_MESSAGE_TEXT and GOOSE_MOIM_MESSAGE_FILE environment variables
@@ -112,7 +112,7 @@ extensions:
     bundled: true
     available_tools: []
   analyze:
-    enabled: true
+    enabled: false
     type: platform
     name: analyze
     description: 'Analyze code structure with tree-sitter: directory overviews, file details, symbol call graphs'

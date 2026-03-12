@@ -44,7 +44,7 @@ export function GoosedProvider({ children }: { children: ReactNode }) {
             clientCache.current[cacheKey] = new GoosedClient({
                 baseUrl: `${GATEWAY_URL}/agents/${agentId}`,
                 secretKey: GATEWAY_SECRET_KEY,
-                timeout: 5 * 60 * 1000, // 5 minutes for LLM responses
+                timeout: 3 * 60 * 1000, // 3 minutes — gateway SSE timeouts handle earlier detection
                 userId: userId || undefined,
             })
         }

@@ -17,6 +17,7 @@ public class GatewayProperties {
     private Upload upload = new Upload();
     private Limits limits = new Limits();
     private Prewarm prewarm = new Prewarm();
+    private Sse sse = new Sse();
     private Vision vision = new Vision();
     private Langfuse langfuse = new Langfuse();
     private OfficePreview officePreview = new OfficePreview();
@@ -115,6 +116,14 @@ public class GatewayProperties {
         this.prewarm = prewarm;
     }
 
+    public Sse getSse() {
+        return sse;
+    }
+
+    public void setSse(Sse sse) {
+        this.sse = sse;
+    }
+
     public OfficePreview getOfficePreview() {
         return officePreview;
     }
@@ -201,6 +210,19 @@ public class GatewayProperties {
         public void setMaxInstancesPerUser(int maxInstancesPerUser) { this.maxInstancesPerUser = maxInstancesPerUser; }
         public int getMaxInstancesGlobal() { return maxInstancesGlobal; }
         public void setMaxInstancesGlobal(int maxInstancesGlobal) { this.maxInstancesGlobal = maxInstancesGlobal; }
+    }
+
+    public static class Sse {
+        private int firstByteTimeoutSec = 30;
+        private int idleTimeoutSec = 30;
+        private int maxDurationSec = 600;
+
+        public int getFirstByteTimeoutSec() { return firstByteTimeoutSec; }
+        public void setFirstByteTimeoutSec(int firstByteTimeoutSec) { this.firstByteTimeoutSec = firstByteTimeoutSec; }
+        public int getIdleTimeoutSec() { return idleTimeoutSec; }
+        public void setIdleTimeoutSec(int idleTimeoutSec) { this.idleTimeoutSec = idleTimeoutSec; }
+        public int getMaxDurationSec() { return maxDurationSec; }
+        public void setMaxDurationSec(int maxDurationSec) { this.maxDurationSec = maxDurationSec; }
     }
 
     public static class Prewarm {

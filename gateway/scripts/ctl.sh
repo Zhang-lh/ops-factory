@@ -39,6 +39,11 @@ CORS_ORIGIN="${CORS_ORIGIN:-$(yaml_val corsOrigin)}"
 CORS_ORIGIN="${CORS_ORIGIN:-http://127.0.0.1:5173}"
 GOOSED_BIN="${GOOSED_BIN:-$(yaml_val goosedBin)}"
 GOOSED_BIN="${GOOSED_BIN:-goosed}"
+# Resolve relative goosedBin path against gateway root (JVM CWD is per-user agent dir)
+case "${GOOSED_BIN}" in
+    /*) ;;  # already absolute
+    *)  [ -f "${SERVICE_DIR}/${GOOSED_BIN}" ] && GOOSED_BIN="${SERVICE_DIR}/${GOOSED_BIN}" ;;
+esac
 GOOSED_TLS="${GOOSED_TLS:-$(yaml_val goosedTls)}"
 GOOSED_TLS="${GOOSED_TLS:-true}"
 GATEWAY_TLS="${GATEWAY_TLS:-$(yaml_val gatewayTls)}"

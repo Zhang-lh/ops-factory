@@ -202,6 +202,28 @@ public class InstanceManager {
         return conn;
     }
 
+    /**
+     * Quick health probe: HTTP GET /status with 3s timeout.
+     * Returns false if the goosed instance is unresponsive (hung, TLS broken, etc.).
+     */
+    private boolean isHealthy(int port) {
+        try {
+            URL url = new URL(goosedBaseUrl(port) + "/status");
+            HttpURLConnection conn = openConnection(url);
+            conn.setConnectTimeout(3000);
+            conn.setReadTimeout(3000);
+            conn.setRequestMethod("GET");
+            try {
+                return conn.getResponseCode() == 200;
+            } finally {
+                conn.disconnect();
+            }
+        } catch (Exception e) {
+            log.debug("Health check failed for port {}: {}", port, e.getMessage());
+            return false;
+        }
+    }
+
     private String httpGet(int port, String path) throws IOException {
         URL url = new URL(goosedBaseUrl(port) + path);
         HttpURLConnection conn = openConnection(url);
@@ -253,6 +275,10 @@ public class InstanceManager {
                         agentId, userId, existing.getPort());
                 existing.setStatus(ManagedInstance.Status.STOPPED);
                 instances.remove(key);
+            } else if (!isHealthy(existing.getPort())) {
+                log.warn("Instance {}:{} unresponsive on port={}, killing and respawning",
+                        agentId, userId, existing.getPort());
+                stopInstance(existing);
             } else {
                 existing.touch();
                 return Mono.just(existing);
@@ -379,6 +405,9 @@ public class InstanceManager {
         env.put("GOOSE_PATH_ROOT", runtimeRoot.toString());
         env.put("GOOSE_DISABLE_KEYRING", "1");
         env.put("GOOSE_TLS", String.valueOf(properties.isGoosedTls()));
+
+        // Diagnostic: verbose logging for agent internals to trace hang points
+        env.put("RUST_LOG", "goose::agents=trace,goose::providers=debug,goosed::routes=debug,goose::session=debug,rmcp=debug,goose::agents::extension_manager=trace,goose::agents::mcp_client=trace");
 
         // Gateway self-URL for MCP extensions that call back to the gateway
         String gatewayScheme = serverSslEnabled ? "https" : "http";
