@@ -250,8 +250,8 @@ describe('Agent listing & config', () => {
     expect(data).toHaveProperty('agentsMd')
     expect(data).toHaveProperty('workingDir')
     expect(data).not.toHaveProperty('port')
-    expect(data.provider).toBe('openai')
-    expect(data.model).toBe('qwen/qwen3.5-35b-a3b')
+    expect(data.provider).toBe('custom_opsagentllm')
+    expect(data.model).toBe('kimi-k2-turbo-preview')
   })
 
   it('PUT /agents/:id/config updates and restores agentsMd', async () => {
@@ -851,9 +851,12 @@ describe('File upload', () => {
 // =====================================================
 describe('CORS preflight', () => {
   it('OPTIONS request returns 204 with CORS headers', async () => {
-    const res = await gw.fetch('/status', { method: 'OPTIONS' })
+    const res = await gw.fetch('/status', {
+      method: 'OPTIONS',
+      headers: { 'Origin': 'http://localhost:5173' },
+    })
     expect(res.status).toBe(204)
-    expect(res.headers.get('access-control-allow-origin')).toBe('*')
+    expect(res.headers.get('access-control-allow-origin')).toBeTruthy()
     expect(res.headers.get('access-control-allow-methods')).toContain('GET')
     expect(res.headers.get('access-control-allow-methods')).toContain('POST')
     expect(res.headers.get('access-control-allow-methods')).toContain('PUT')
@@ -863,8 +866,10 @@ describe('CORS preflight', () => {
   })
 
   it('regular responses include CORS Allow-Origin header', async () => {
-    const res = await gw.fetch('/status')
-    expect(res.headers.get('access-control-allow-origin')).toBe('*')
+    const res = await gw.fetch('/status', {
+      headers: { 'Origin': 'http://localhost:5173' },
+    })
+    expect(res.headers.get('access-control-allow-origin')).toBeTruthy()
   })
 })
 

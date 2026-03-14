@@ -268,6 +268,8 @@ public class InstanceManager {
     public Mono<ManagedInstance> getOrSpawn(String agentId, String userId) {
         String key = ManagedInstance.buildKey(agentId, userId);
 
+        // Quick non-blocking check: reuse instance if process is alive.
+        // The blocking health probe runs on boundedElastic below.
         ManagedInstance existing = instances.get(key);
         if (existing != null && existing.getStatus() == ManagedInstance.Status.RUNNING) {
             if (!existing.getProcess().isAlive()) {
@@ -275,15 +277,20 @@ public class InstanceManager {
                         agentId, userId, existing.getPort());
                 existing.setStatus(ManagedInstance.Status.STOPPED);
                 instances.remove(key);
-            } else if (!isHealthy(existing.getPort())) {
-                log.warn("Instance {}:{} unresponsive on port={}, killing and respawning",
-                        agentId, userId, existing.getPort());
-                stopInstance(existing);
             } else {
-                log.debug("Reusing existing instance {}:{} port={} pid={}", agentId, userId,
-                        existing.getPort(), existing.getPid());
-                existing.touch();
-                return Mono.just(existing);
+                // Process alive — run blocking health probe off the reactor thread
+                return Mono.fromCallable(() -> {
+                    if (!isHealthy(existing.getPort())) {
+                        log.warn("Instance {}:{} unresponsive on port={}, killing and respawning",
+                                agentId, userId, existing.getPort());
+                        stopInstance(existing);
+                        return doSpawn(agentId, userId);
+                    }
+                    log.debug("Reusing existing instance {}:{} port={} pid={}", agentId, userId,
+                            existing.getPort(), existing.getPid());
+                    existing.touch();
+                    return existing;
+                }).subscribeOn(Schedulers.boundedElastic());
             }
         }
 

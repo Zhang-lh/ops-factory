@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { usePreview } from '../contexts/PreviewContext'
 import { useToast } from '../contexts/ToastContext'
+import { useUser } from '../contexts/UserContext'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import hljs from 'highlight.js'
@@ -113,6 +114,7 @@ export default function FilePreview() {
     const { t } = useTranslation()
     const { showToast } = useToast()
     const { previewFile, isLoading, error, closePreview } = usePreview()
+    const { userId } = useUser()
     const [copied, setCopied] = useState(false)
     const [showSource, setShowSource] = useState(false)
 
@@ -136,8 +138,10 @@ export default function FilePreview() {
 
     const getDownloadUrl = useCallback(() => {
         if (!previewFile) return ''
-        return `${GATEWAY_URL}/agents/${previewFile.agentId}/files/${encodeURIComponent(previewFile.path)}?key=${GATEWAY_SECRET_KEY}`
-    }, [previewFile])
+        let url = `${GATEWAY_URL}/agents/${previewFile.agentId}/files/${encodeURIComponent(previewFile.path)}?key=${GATEWAY_SECRET_KEY}`
+        if (userId) url += `&uid=${encodeURIComponent(userId)}`
+        return url
+    }, [previewFile, userId])
 
     // Syntax highlighted code
     const highlightedCode = useMemo(() => {

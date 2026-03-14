@@ -87,7 +87,7 @@ public class ReplyEndpointE2ETest extends BaseE2ETest {
     public void resume_authenticatedUser_proxiesToGoosed() {
         when(instanceManager.getOrSpawn("test-agent", "alice"))
                 .thenReturn(Mono.just(mockInstance));
-        when(goosedProxy.fetchJson(eq(9999), eq(HttpMethod.POST), eq("/agent/resume"), anyString()))
+        when(goosedProxy.fetchJson(eq(9999), eq(HttpMethod.POST), eq("/agent/resume"), anyString(), anyInt()))
                 .thenReturn(Mono.just("{\"session\":{\"id\":\"session-123\"},\"extension_results\":[]}"));
 
         webClient.post().uri("/agents/test-agent/resume")
@@ -100,7 +100,7 @@ public class ReplyEndpointE2ETest extends BaseE2ETest {
                 .expectBody()
                 .jsonPath("$.session.id").isEqualTo("session-123");
 
-        verify(goosedProxy).fetchJson(eq(9999), eq(HttpMethod.POST), eq("/agent/resume"), anyString());
+        verify(goosedProxy).fetchJson(eq(9999), eq(HttpMethod.POST), eq("/agent/resume"), anyString(), anyInt());
     }
 
     @Test

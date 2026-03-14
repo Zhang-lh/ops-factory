@@ -1,6 +1,7 @@
 package com.huawei.opsfactory.gateway.controller;
 
 import com.huawei.opsfactory.gateway.common.model.ManagedInstance;
+import com.huawei.opsfactory.gateway.common.util.JsonUtil;
 import com.huawei.opsfactory.gateway.filter.UserContextFilter;
 import com.huawei.opsfactory.gateway.hook.HookContext;
 import com.huawei.opsfactory.gateway.hook.HookPipeline;
@@ -58,14 +59,15 @@ public class ReplyController {
         return hookPipeline.executeRequest(ctx)
                 .flatMapMany(processedBody -> {
                     log.debug("[REPLY] hooks done, getting instance for {}:{}", agentId, userId);
+                    String sessionId = JsonUtil.extractSessionId(processedBody);
                     return instanceManager.getOrSpawn(agentId, userId)
                             .flatMapMany(instance -> {
                                 log.info("[REPLY] instance ready {}:{} port={} pid={} sessionResumed={}",
                                         agentId, userId, instance.getPort(), instance.getPid(),
-                                        instance.isSessionResumed(extractSessionId(processedBody)));
+                                        instance.isSessionResumed(sessionId));
                                 instance.touch();
                                 instanceManager.touchAllForUser(userId);
-                                return ensureSessionResumed(instance, processedBody)
+                                return ensureSessionResumed(instance, sessionId)
                                         .thenMany(sseRelayService.relay(instance.getPort(), "/reply",
                                                 processedBody, agentId, userId));
                             });
@@ -78,8 +80,7 @@ public class ReplyController {
      * was already resumed (normal flow). After a force-recycle, the goosed process is
      * brand-new and needs an explicit /agent/resume call before it can handle /reply.
      */
-    private Mono<Void> ensureSessionResumed(ManagedInstance instance, String body) {
-        String sessionId = extractSessionId(body);
+    private Mono<Void> ensureSessionResumed(ManagedInstance instance, String sessionId) {
         if (sessionId == null || instance.isSessionResumed(sessionId)) {
             log.debug("[REPLY] session {} already resumed or null, skipping resume", sessionId);
             return Mono.empty();
@@ -97,25 +98,11 @@ public class ReplyController {
                 })
                 .onErrorResume(e -> {
                     long resumeMs = System.currentTimeMillis() - resumeStart;
-                    log.warn("[REPLY] session {} resume failed after {}ms on instance {}:{}: {} (proceeding anyway)",
+                    log.warn("[REPLY] session {} resume failed after {}ms on instance {}:{}: {} (will retry next request)",
                             sessionId, resumeMs, instance.getAgentId(), instance.getUserId(), e.getMessage());
-                    instance.markSessionResumed(sessionId);
                     return Mono.empty();
                 })
                 .then();
-    }
-
-    private static String extractSessionId(String body) {
-        int idx = body.indexOf("\"session_id\"");
-        if (idx < 0) idx = body.indexOf("\"sessionId\"");
-        if (idx < 0) return null;
-        int colonIdx = body.indexOf(':', idx);
-        if (colonIdx < 0) return null;
-        int startQuote = body.indexOf('"', colonIdx + 1);
-        if (startQuote < 0) return null;
-        int endQuote = body.indexOf('"', startQuote + 1);
-        if (endQuote < 0) return null;
-        return body.substring(startQuote + 1, endQuote);
     }
 
     @PostMapping(value = {"/resume", "/agent/resume"}, produces = MediaType.APPLICATION_JSON_VALUE)

@@ -127,6 +127,30 @@ do_startup() {
         docker exec "${CONTAINER_NAME}" update-ca-certificates >/dev/null 2>&1 || true
     fi
 
+    # Merge local-override.json into container's local.json (deep merge)
+    local override="/etc/onlyoffice/documentserver/local-override.json"
+    local target="/etc/onlyoffice/documentserver/local.json"
+    if docker exec "${CONTAINER_NAME}" test -f "${override}" 2>/dev/null; then
+        docker exec "${CONTAINER_NAME}" bash -c \
+            "python3 -c \"
+import json, sys
+with open('${target}') as f: base = json.load(f)
+with open('${override}') as f: over = json.load(f)
+def merge(a, b):
+    for k, v in b.items():
+        if k in a and isinstance(a[k], dict) and isinstance(v, dict):
+            merge(a[k], v)
+        else:
+            a[k] = v
+merge(base, over)
+with open('${target}', 'w') as f: json.dump(base, f, indent=4)
+\"" && {
+            log_info "Merged local-override.json into OnlyOffice config"
+            # Restart docservice and converter to pick up new config
+            docker exec "${CONTAINER_NAME}" supervisorctl restart ds:docservice ds:converter >/dev/null 2>&1 || true
+        }
+    fi
+
     log_info "Checking OnlyOffice readiness (timeout: 120s)..."
     if ! wait_ready 120 1; then
         log_warn "Not ready; recreating..."

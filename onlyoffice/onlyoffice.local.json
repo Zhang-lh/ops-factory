@@ -10,6 +10,9 @@
           "browser": false
         }
       },
+      "requestDefaults": {
+        "rejectUnauthorized": false
+      },
       "request-filtering-agent": {
         "allowPrivateIPAddress": true,
         "allowMetaIPAddress": true

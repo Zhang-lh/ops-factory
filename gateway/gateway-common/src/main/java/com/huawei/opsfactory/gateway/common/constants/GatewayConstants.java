@@ -9,6 +9,7 @@ public final class GatewayConstants {
     public static final String HEADER_SECRET_KEY = "x-secret-key";
     public static final String HEADER_USER_ID = "x-user-id";
     public static final String QUERY_KEY = "key";
+    public static final String QUERY_UID = "uid";
 
     // Default users
     public static final String SYS_USER = "sys";

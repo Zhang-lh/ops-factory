@@ -37,6 +37,9 @@ public class UserContextFilter implements WebFilter {
 
         String userId = request.getHeaders().getFirst(GatewayConstants.HEADER_USER_ID);
         if (userId == null || userId.isBlank()) {
+            userId = request.getQueryParams().getFirst(GatewayConstants.QUERY_UID);
+        }
+        if (userId == null || userId.isBlank()) {
             // System endpoints don't require user context
             if (isSystemEndpoint(path)) {
                 return chain.filter(exchange);

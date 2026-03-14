@@ -136,7 +136,7 @@ export async function startGateway(): Promise<GatewayHandle> {
     process: child,
     logs,
     fetch: (path, init) =>
-      fetch(`${baseUrl}${path}`, { ...init, headers: { ...headers(), ...init?.headers } }),
+      fetch(`${baseUrl}${path}`, { ...init, headers: { ...headers('sys'), ...init?.headers } }),
     fetchAs: (userId, path, init) =>
       fetch(`${baseUrl}${path}`, { ...init, headers: { ...headers(userId), ...init?.headers } }),
     stop: async () => {
@@ -167,6 +167,7 @@ export async function startJavaGateway(): Promise<GatewayHandle> {
     '-Dserver.address=127.0.0.1',
     `-Dgateway.secret-key=${SECRET_KEY}`,
     `-Dgateway.goosed-bin=${process.env.GOOSED_BIN || 'goosed'}`,
+    '-Dgateway.goosed-tls=true',
     `-Dgateway.paths.project-root=${PROJECT_ROOT}`,
     '-Dgateway.cors-origin=*',
     `-Dlogging.config=file:${log4jConfig}`,
@@ -236,7 +237,7 @@ export async function startJavaGateway(): Promise<GatewayHandle> {
     process: child,
     logs,
     fetch: (path, init) =>
-      fetch(`${baseUrl}${path}`, { ...init, headers: { ...headers(), ...init?.headers } }),
+      fetch(`${baseUrl}${path}`, { ...init, headers: { ...headers('sys'), ...init?.headers } }),
     fetchAs: (userId, path, init) =>
       fetch(`${baseUrl}${path}`, { ...init, headers: { ...headers(userId), ...init?.headers } }),
     stop: async () => {

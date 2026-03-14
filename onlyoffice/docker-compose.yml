@@ -13,3 +13,4 @@ services:
       NODE_EXTRA_CA_CERTS: "${NODE_EXTRA_CA_CERTS:-}"
     volumes:
       - ${MKCERT_CA_CERT:-/dev/null}:/usr/local/share/ca-certificates/custom-ca.crt:ro
+      - ./onlyoffice.local.json:/etc/onlyoffice/documentserver/local-override.json:ro

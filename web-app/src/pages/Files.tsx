@@ -2,7 +2,8 @@ import { useState, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useGoosed } from '../contexts/GoosedContext'
 import { usePreview } from '../contexts/PreviewContext'
-import { GATEWAY_URL, GATEWAY_SECRET_KEY } from '../config/runtime'
+import { useUser } from '../contexts/UserContext'
+import { GATEWAY_URL, GATEWAY_SECRET_KEY, gatewayHeaders } from '../config/runtime'
 
 interface FileInfo {
     name: string
@@ -108,14 +109,17 @@ function getFileIcon(type: string) {
     }
 }
 
-function getDownloadUrl(file: AgentFile): string {
-    return `${GATEWAY_URL}/agents/${file.agentId}/files/${encodeURIComponent(file.path)}?key=${GATEWAY_SECRET_KEY}`
+function getDownloadUrl(file: AgentFile, userId?: string | null): string {
+    let url = `${GATEWAY_URL}/agents/${file.agentId}/files/${encodeURIComponent(file.path)}?key=${GATEWAY_SECRET_KEY}`
+    if (userId) url += `&uid=${encodeURIComponent(userId)}`
+    return url
 }
 
 export default function Files() {
     const { t } = useTranslation()
     const { agents, isConnected, error: connectionError } = useGoosed()
     const { openPreview, isPreviewable } = usePreview()
+    const { userId } = useUser()
     const [files, setFiles] = useState<AgentFile[]>([])
     const [isLoading, setIsLoading] = useState(true)
     const [searchTerm, setSearchTerm] = useState('')
@@ -137,7 +141,7 @@ export default function Files() {
                 const results = await Promise.allSettled(
                     agents.map(async (agent) => {
                         const res = await fetch(`${GATEWAY_URL}/agents/${agent.id}/files`, {
-                            headers: { 'x-secret-key': GATEWAY_SECRET_KEY },
+                            headers: gatewayHeaders(userId),
                         })
                         if (!res.ok) return []
                         const data = await res.json() as { files: FileInfo[] }
@@ -168,7 +172,7 @@ export default function Files() {
         }
 
         loadFiles()
-    }, [agents, isConnected])
+    }, [agents, isConnected, userId])
 
     const categoryCounts = useMemo(() => {
         const counts: Record<FileCategory, number> = {
@@ -365,7 +369,7 @@ export default function Files() {
                                         </button>
                                     )}
                                     <a
-                                        href={getDownloadUrl(file)}
+                                        href={getDownloadUrl(file, userId)}
                                         className="file-download-btn"
                                         title={t('files.download')}
                                         target="_blank"

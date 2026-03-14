@@ -1,6 +1,7 @@
 package com.huawei.opsfactory.gateway.proxy;
 
 import com.huawei.opsfactory.gateway.common.constants.GatewayConstants;
+import com.huawei.opsfactory.gateway.common.util.JsonUtil;
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
 import com.huawei.opsfactory.gateway.process.InstanceManager;
 import org.apache.logging.log4j.LogManager;
@@ -87,16 +88,16 @@ public class SseRelayService {
                     int readable = buf.readableByteCount();
                     totalBytes.addAndGet(readable);
 
-                    // Only reset content idle timer for non-Ping chunks
-                    if (isPingChunk(buf)) {
+                    // Peek once, derive both ping check and preview from it
+                    String preview = peekContent(buf, 500);
+                    boolean isPing = isPingContent(preview);
+
+                    if (isPing) {
                         pingCount.incrementAndGet();
                     } else {
                         lastContentTime.set(now);
                     }
 
-                    // DEBUG: log every chunk for diagnosis
-                    String preview = peekContent(buf, 200);
-                    boolean isPing = isPingChunk(buf);
                     long contentIdleMs = now - lastContentTime.get();
                     if (seq <= 3 || seq % 10 == 0 || gap > 5000 || !isPing) {
                         log.info("[SSE-DIAG] chunk#{} {}B gap={}ms elapsed={}ms ping={} contentIdle={}ms preview={}",
@@ -167,7 +168,6 @@ public class SseRelayService {
                         long elapsed = System.currentTimeMillis() - startTime;
                         int chunks = chunkCount.get();
                         int pings = pingCount.get();
-                        boolean goosedAlive = pings > 0;
 
                         String reason;
                         if (chunks == 0) {
@@ -211,7 +211,7 @@ public class SseRelayService {
         Mono.fromRunnable(() -> {
             try {
                 // Extract session_id from the reply body (JSON: {"session_id":"...","user_message":...})
-                String sessionId = extractSessionId(body);
+                String sessionId = JsonUtil.extractSessionId(body);
                 if (sessionId == null) {
                     log.warn("[SSE-DIAG] Cannot stop agent: no session_id in body");
                     return;
@@ -236,19 +236,6 @@ public class SseRelayService {
         }).subscribeOn(Schedulers.boundedElastic()).subscribe();
     }
 
-    private static String extractSessionId(String body) {
-        // Simple extraction without Jackson dependency — find "session_id":"<value>"
-        int idx = body.indexOf("\"session_id\"");
-        if (idx < 0) return null;
-        int colonIdx = body.indexOf(':', idx);
-        if (colonIdx < 0) return null;
-        int startQuote = body.indexOf('"', colonIdx + 1);
-        if (startQuote < 0) return null;
-        int endQuote = body.indexOf('"', startQuote + 1);
-        if (endQuote < 0) return null;
-        return body.substring(startQuote + 1, endQuote);
-    }
-
     /**
      * Kill the hung instance on a separate thread to avoid blocking the SSE response.
      */
@@ -260,19 +247,19 @@ public class SseRelayService {
     }
 
     /**
-     * Check if a DataBuffer contains ONLY Ping SSE events (no real content).
-     * A single Ping is 'data: {"type":"Ping"}\n\n' (~23 bytes).
-     * Multiple Pings can be batched into one DataBuffer by TCP buffering.
+     * Check if peeked content contains ONLY Ping SSE events (no real content).
+     * Handles both single and batched Pings (multiple events in one TCP buffer).
+     * Input is already escaped by peekContent (\n → \\n).
      */
-    private static boolean isPingChunk(DataBuffer buf) {
-        String content = peekContent(buf, 500);
+    private static boolean isPingContent(String content) {
         if (!content.contains("\"type\":\"Ping\"")) return false;
-        // Contains Ping — check that there's no other event type mixed in
-        String stripped = content
-                .replace("data: {\"type\":\"Ping\"}", "")
-                .replace("\\n", "")
-                .trim();
-        return stripped.isEmpty();
+        // Strip all Ping events including their "data: " prefix and trailing \\n
+        String stripped = content;
+        // Each SSE event looks like: "data: {\"type\":\"Ping\"}\\n\\n"
+        stripped = stripped.replace("data: {\"type\":\"Ping\"}","");
+        stripped = stripped.replace("\\n", "");
+        stripped = stripped.replace("\\r", "");
+        return stripped.trim().isEmpty();
     }
 
     /**

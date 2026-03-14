@@ -23,6 +23,8 @@ import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
 import java.io.IOException;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
@@ -62,9 +64,11 @@ public class FileController {
         Path workingDir = agentConfigService.getUserAgentDir(userId, agentId);
 
         // Extract the file path after /agents/{agentId}/files/
+        // getPath().value() returns the raw percent-encoded URI; decode so that
+        // non-ASCII filenames (e.g. Chinese characters) resolve correctly on disk.
         String fullPath = exchange.getRequest().getPath().value();
         String prefix = "/agents/" + agentId + "/files/";
-        String relativePath = fullPath.substring(prefix.length());
+        String relativePath = URLDecoder.decode(fullPath.substring(prefix.length()), StandardCharsets.UTF_8);
 
         // Check for path traversal — return 403
         if (!PathSanitizer.isSafe(workingDir, relativePath)) {

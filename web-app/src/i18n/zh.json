@@ -286,8 +286,9 @@
     "failedToCreateSession": "创建会话失败：{{error}}"
   },
   "onlyoffice": {
-    "loadFailed": "加载 OnlyOffice 文档服务器失败。",
-    "ensureRunning": "请确认服务器正在 {{url}} 运行"
+    "loadFailed": "文档预览服务不可用",
+    "loadFailedHint": "请检查文档预览服务是否正常运行",
+    "downloadInstead": "下载文件查看"
   },
   "agentConfigure": {
     "loadingConfig": "正在加载智能体配置...",

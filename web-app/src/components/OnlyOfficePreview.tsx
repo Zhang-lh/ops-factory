@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-const GATEWAY_SECRET_KEY = import.meta.env.VITE_GATEWAY_SECRET_KEY || 'test'
+import { GATEWAY_URL, GATEWAY_SECRET_KEY } from '../config/runtime'
+import { useUser } from '../contexts/UserContext'
 
 interface OnlyOfficePreviewProps {
     name: string
@@ -39,6 +40,7 @@ export default function OnlyOfficePreview({
     name, path, agentId, type, onlyofficeUrl, fileBaseUrl,
 }: OnlyOfficePreviewProps) {
     const { t, i18n } = useTranslation()
+    const { userId } = useUser()
     const editorRef = useRef<OnlyOfficeEditor | null>(null)
     const [scriptError, setScriptError] = useState(false)
 
@@ -54,7 +56,8 @@ export default function OnlyOfficePreview({
                 editorRef.current = null
             }
 
-            const fileUrl = `${fileBaseUrl}/agents/${agentId}/files/${encodeURIComponent(path)}?key=${GATEWAY_SECRET_KEY}`
+            let fileUrl = `${fileBaseUrl}/agents/${agentId}/files/${encodeURIComponent(path)}?key=${GATEWAY_SECRET_KEY}`
+            if (userId) fileUrl += `&uid=${encodeURIComponent(userId)}`
 
             editorRef.current = new window.DocsAPI.DocEditor(EDITOR_CONTAINER_ID, {
                 document: {
@@ -94,7 +97,13 @@ export default function OnlyOfficePreview({
         const scriptId = 'onlyoffice-api-script'
         let script = document.getElementById(scriptId) as HTMLScriptElement | null
 
-        if (!script) {
+        // Remove any previously failed script tag so we retry cleanly
+        const existing = document.getElementById(scriptId) as HTMLScriptElement | null
+        if (existing && !window.DocsAPI) {
+            existing.remove()
+        }
+
+        if (!document.getElementById(scriptId)) {
             script = document.createElement('script')
             script.id = scriptId
             script.src = `${onlyofficeUrl}/web-apps/apps/api/documents/api.js`
@@ -107,14 +116,8 @@ export default function OnlyOfficePreview({
             }
             document.head.appendChild(script)
         } else {
-            // Script tag exists but may still be loading
-            if (window.DocsAPI) {
-                initEditor()
-            } else {
-                script.addEventListener('load', () => {
-                    if (!cancelled) initEditor()
-                })
-            }
+            // Script tag exists and DocsAPI is loaded (checked above)
+            initEditor()
         }
 
         return () => {
@@ -127,22 +130,33 @@ export default function OnlyOfficePreview({
     }, [name, path, agentId, type, onlyofficeUrl, fileBaseUrl])
 
     if (scriptError) {
+        let downloadUrl = `${GATEWAY_URL}/agents/${agentId}/files/${encodeURIComponent(path)}?key=${GATEWAY_SECRET_KEY}`
+        if (userId) downloadUrl += `&uid=${encodeURIComponent(userId)}`
         return (
-            <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                height: '100%',
-                color: 'var(--color-text-secondary)',
-                padding: 'var(--spacing-6)',
-                textAlign: 'center',
-            }}>
-                <div>
-                    <p>{t('onlyoffice.loadFailed')}</p>
-                    <p style={{ fontSize: 'var(--font-size-sm)', marginTop: 'var(--spacing-2)' }}>
-                        {t('onlyoffice.ensureRunning', { url: onlyofficeUrl })}
-                    </p>
-                </div>
+            <div className="file-preview-error">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="32" height="32">
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="12" y1="8" x2="12" y2="12" />
+                    <line x1="12" y1="16" x2="12.01" y2="16" />
+                </svg>
+                <p>{t('onlyoffice.loadFailed')}</p>
+                <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-muted)' }}>
+                    {t('onlyoffice.loadFailedHint')}
+                </p>
+                <a
+                    href={downloadUrl}
+                    className="btn btn-secondary"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ marginTop: 'var(--spacing-2)' }}
+                >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16" style={{ marginRight: 'var(--spacing-1)' }}>
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                        <polyline points="7 10 12 15 17 10" />
+                        <line x1="12" y1="15" x2="12" y2="3" />
+                    </svg>
+                    {t('onlyoffice.downloadInstead')}
+                </a>
             </div>
         )
     }

@@ -1,0 +1,43 @@
+
+[1m[46m RUN [49m[22m [36mv4.0.18 [39m[90m/Users/buyangnie/Documents/GitHub/ops-factory/test[39m
+
+[90mstdout[2m | stress.test.ts[2m > [22m[2mStress tests[2m > [22m[2mTest A: 3 concurrent users, 10 rounds each, simple chat
+[22m[39m
+╔════════════════════════════════════════════════════════╗
+║ Stress Test: Test A: 3 users × 10 rounds (simple)      ║
+╠════════════════════════════════════════════════════════╣
+║ Users: 3 | Rounds/user: 10 | Total: 30                 ║
+║ Success rate: 100% (30/30)                             ║
+╠────────────────────────────────────────────────────────╣
+║ User          | Pass | Fail | Avg(s) | Max(s)          ║
+║ stress-a1     |   10 |    0 |    2.0 |    2.0          ║
+║ stress-a2     |   10 |    0 |    2.0 |    2.0          ║
+║ stress-a3     |   10 |    0 |    2.0 |    2.0          ║
+╚════════════════════════════════════════════════════════╝
+
+
+ [32m✓[39m stress.test.ts[2m > [22mStress tests[2m > [22mTest A: 3 concurrent users, 10 rounds each, simple chat[33m 20527[2mms[22m[39m
+[90mstdout[2m | stress.test.ts[2m > [22m[2mStress tests[2m > [22m[2mTest B: 5 concurrent users, 10 rounds each, tool calls every 3rd round
+[22m[39m
+╔════════════════════════════════════════════════════════╗
+║ Stress Test: Test B: 5 users × 10 rounds (with tools)  ║
+╠════════════════════════════════════════════════════════╣
+║ Users: 5 | Rounds/user: 10 | Total: 50                 ║
+║ Success rate: 100% (50/50)                             ║
+╠────────────────────────────────────────────────────────╣
+║ User          | Pass | Fail | Avg(s) | Max(s)          ║
+║ stress-b1     |   10 |    0 |    2.4 |    4.0          ║
+║ stress-b2     |   10 |    0 |    2.4 |    4.0          ║
+║ stress-b3     |   10 |    0 |    2.4 |    4.0          ║
+║ stress-b4     |   10 |    0 |    2.4 |    4.0          ║
+║ stress-b5     |   10 |    0 |    2.4 |    4.0          ║
+╚════════════════════════════════════════════════════════╝
+
+
+ [32m✓[39m stress.test.ts[2m > [22mStress tests[2m > [22mTest B: 5 concurrent users, 10 rounds each, tool calls every 3rd round[33m 24415[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[32m2 passed[39m[22m[90m (2)[39m
+[2m   Start at [22m 20:55:14
+[2m   Duration [22m 50.17s[2m (transform 37ms, setup 0ms, import 63ms, tests 50.04s, environment 0ms)[22m
+

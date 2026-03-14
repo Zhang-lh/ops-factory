@@ -286,8 +286,9 @@
     "failedToCreateSession": "Failed to create session: {{error}}"
   },
   "onlyoffice": {
-    "loadFailed": "Failed to load OnlyOffice Document Server.",
-    "ensureRunning": "Ensure the server is running at {{url}}"
+    "loadFailed": "Document preview service unavailable",
+    "loadFailedHint": "Please check if the document preview service is running properly",
+    "downloadInstead": "Download file to view"
   },
   "agentConfigure": {
     "loadingConfig": "Loading agent configuration...",

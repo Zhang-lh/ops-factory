@@ -1,0 +1,117 @@
+
+[1m[46m RUN [49m[22m [36mv4.0.18 [39m[90m/Users/buyangnie/Documents/GitHub/ops-factory/test[39m
+
+ [32m✓[39m integration.test.ts[2m > [22mGateway health & auth[2m > [22mGET /status returns ok[32m 3[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mGateway health & auth[2m > [22mrejects unauthenticated requests[32m 1[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mGateway health & auth[2m > [22mGET /me returns userId from x-user-id header[32m 19[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mGateway health & auth[2m > [22mGET /me defaults to sys when no x-user-id[32m 4[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mGateway health & auth[2m > [22mGET /config returns officePreview setting[32m 4[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mAgent listing & config[2m > [22mGET /agents lists only configured agents[32m 11[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mAgent listing & config[2m > [22magent listing includes name, provider, model and no port[32m 3[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mAgent listing & config[2m > [22mGET /agents/:id/config returns full config[32m 6[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mAgent listing & config[2m > [22mPUT /agents/:id/config updates and restores agentsMd[32m 16[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mAgent listing & config[2m > [22mGET /agents/:id/config returns 404 for unknown agent[32m 1[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mAgent listing & config[2m > [22mGET /agents/:id/skills returns skills array[32m 2[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mSession lifecycle — alice[2m > [22mcreates a session[32m 135[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mSession lifecycle — alice[2m > [22mresumes the session[32m 14[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mSession lifecycle — alice[2m > [22msends a message and gets a streamed reply[33m 4020[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mSession lifecycle — alice[2m > [22mretrieves the session with conversation via agent-prefixed route[32m 32[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mSession lifecycle — alice[2m > [22mretrieves the session via global /sessions/:id route[32m 20[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mSession lifecycle — alice[2m > [22msession appears in agent-prefixed listing[32m 24[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mSession lifecycle — alice[2m > [22msession appears in global /sessions listing[32m 24[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mSession lifecycle — alice[2m > [22mrenames the session via agent-prefixed route[32m 21[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mSession lifecycle — alice[2m > [22msends a second message and the conversation grows[33m 2034[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mSession lifecycle — alice[2m > [22mstops the session[32m 19[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mSession lifecycle — alice[2m > [22msession still accessible in history after stop[32m 11[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mSession lifecycle — bob[2m > [22mcreates a session and chats[33m 2053[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mSession lifecycle — bob[2m > [22mretrieves bob session with conversation[32m 18[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mSession lifecycle — bob[2m > [22mbob session appears in bob listing[32m 13[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mCross-user session isolation[2m > [22malice cannot see bob sessions by working_dir[32m 16[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mCross-user session isolation[2m > [22mbob cannot see alice sessions by working_dir[32m 17[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mCross-user session isolation[2m > [22magent-prefixed listing also respects isolation[32m 28[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mSession delete[2m > [22mcreates and deletes a session via global route[32m 51[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mSession delete[2m > [22mcreates and deletes a session via agent-prefixed route[32m 41[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mSession delete[2m > [22mreturns 404 when deleting nonexistent session[32m 11[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mMultiple sessions per user[2m > [22malice creates 3 sessions with different messages[33m 6143[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mMultiple sessions per user[2m > [22mall 3 sessions appear in listing[32m 23[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mMultiple sessions per user[2m > [22meach session has its own conversation content[32m 24[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mSSE reply format[2m > [22mreply returns text/event-stream with SSE data lines[33m 2029[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mFile routes[2m > [22mper-user file isolation[32m 23[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mFile routes[2m > [22mserves file with correct content[32m 6[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mFile routes[2m > [22mHTML files served inline, DOCX as attachment[32m 4[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mFile routes[2m > [22mfinds file in subdirectory via fallback search[32m 3[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mFile routes[2m > [22mfilters out goose system directories[32m 3[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mFile routes[2m > [22mblocks path traversal[32m 6[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mMCP extension routes[2m > [22mGET /agents/:id/mcp returns extensions list[32m 121[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mMCP extension routes[2m > [22mPOST adds and DELETE removes an extension[33m 4309[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mCatch-all proxy & error handling[2m > [22m/agents/:id/* proxies to default instance[32m 9[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mCatch-all proxy & error handling[2m > [22mreturns 404 for unknown routes[32m 12[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mCatch-all proxy & error handling[2m > [22mreturns 404 for unknown agent config[32m 1[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mCatch-all proxy & error handling[2m > [22mGET /sessions/:id returns 404 for nonexistent session[32m 129[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mCatch-all proxy & error handling[2m > [22magent-prefixed GET returns 404 for nonexistent session[32m 9[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mFile upload[2m > [22mcreates a session for upload tests[32m 22[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mFile upload[2m > [22muploads a text file via multipart[32m 23[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mFile upload[2m > [22mrejects upload without file[32m 2[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mFile upload[2m > [22mrejects disallowed file types[32m 2[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mFile upload[2m > [22mcleans up uploaded files when session is deleted[32m 6[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mCORS preflight[2m > [22mOPTIONS request returns 204 with CORS headers[32m 1[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mCORS preflight[2m > [22mregular responses include CORS Allow-Origin header[32m 1[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mQuery-string auth for file routes[2m > [22mfile listing accepts ?key= query param for auth[32m 2[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mQuery-string auth for file routes[2m > [22mfile serving accepts ?key= query param for auth[32m 1[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mQuery-string auth for file routes[2m > [22mrejects file request with wrong query key[32m 0[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mFile upload edge cases[2m > [22mrejects non-multipart content-type[32m 1[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mFile upload edge cases[2m > [22muploads allowed file types: .json[32m 2[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mFile upload edge cases[2m > [22muploads allowed file types: .png[32m 3[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mFile upload edge cases[2m > [22mrejects disallowed file type: .bat[32m 1[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mFile upload edge cases[2m > [22msanitizes dangerous characters in filenames[32m 2[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mFile serving — MIME types & edge cases[2m > [22mreturns 404 for nonexistent file[32m 1[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mFile serving — MIME types & edge cases[2m > [22mserves PDF files inline with correct content-type[32m 1[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mFile serving — MIME types & edge cases[2m > [22mserves PNG files inline with correct content-type[32m 1[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mFile serving — MIME types & edge cases[2m > [22mserves CSV files with correct content-type[32m 1[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mFile serving — MIME types & edge cases[2m > [22mserves unknown extensions as application/octet-stream with attachment[32m 1[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mFile serving — MIME types & edge cases[2m > [22mserves XLSX files as attachment[32m 1[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mFile listing edge cases[2m > [22mreturns empty array for a fresh user directory[32m 1[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mFile listing edge cases[2m > [22mskips .DS_Store and AGENTS.md files[32m 3[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mFile listing edge cases[2m > [22mskips node_modules directory[32m 2[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mAgent config PUT edge cases[2m > [22mreturns 400 for invalid JSON body[32m 2[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mAgent config PUT edge cases[2m > [22mreturns 404 for PUT on nonexistent agent[32m 1[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mAgent config PUT edge cases[2m > [22mGET /agents/:id/skills returns empty or array for unknown agent[32m 1[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mCross-user session security[2m > [22mbob cannot access alice session via agent-prefixed route[32m 118[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mCross-user session security[2m > [22mbob cannot delete alice session via agent-prefixed route[32m 6[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mPath traversal — additional vectors[2m > [22mblocks encoded path traversal in file route[32m 2[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mPath traversal — additional vectors[2m > [22mblocks double-dot in nested file path[32m 1[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mRole-based access control[2m > [22mGET /me returns role=admin for sys user[32m 1[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mRole-based access control[2m > [22mGET /me returns role=user for non-sys user[32m 1[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mRole-based access control[2m > [22mGET /me defaults to role=admin when no x-user-id (defaults to sys)[32m 1[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mRole-based access control[2m > [22madmin can GET /agents/:id/config[32m 1[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mRole-based access control[2m > [22madmin can GET /agents/:id/skills[32m 1[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mRole-based access control[2m > [22madmin can GET /agents/:id/mcp[32m 6[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mRole-based access control[2m > [22madmin can GET /monitoring/status[32m 1[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mRole-based access control[2m > [22mregular user cannot GET /agents/:id/config[32m 1[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mRole-based access control[2m > [22mregular user cannot PUT /agents/:id/config[32m 1[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mRole-based access control[2m > [22mregular user cannot GET /agents/:id/skills[32m 1[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mRole-based access control[2m > [22mregular user cannot GET /agents/:id/mcp[32m 1[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mRole-based access control[2m > [22mregular user cannot POST /agents/:id/mcp[32m 1[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mRole-based access control[2m > [22mregular user cannot DELETE /agents/:id/mcp/:name[32m 1[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mRole-based access control[2m > [22mregular user cannot GET /monitoring/status[32m 1[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mRole-based access control[2m > [22mregular user cannot GET /monitoring/system[32m 1[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mRole-based access control[2m > [22mregular user cannot GET /monitoring/traces[32m 3[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mRole-based access control[2m > [22mregular user cannot GET /monitoring/observations[32m 2[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mRole-based access control[2m > [22mregular user cannot access catch-all proxy (schedules etc.)[32m 1[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mRole-based access control[2m > [22mregular user can GET /agents (listing)[32m 1[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mRole-based access control[2m > [22mregular user can GET /sessions[32m 16[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mRole-based access control[2m > [22mregular user can GET /config[32m 1[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mRole-based access control[2m > [22mregular user can GET /agents/:id/system_info[32m 6[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mRole-based access control[2m > [22madmin can also GET /agents/:id/system_info[32m 5[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mRole-based access control[2m > [22magents listing does not contain working_dir[32m 2[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mSession working_dir is set by gateway[2m > [22malice session gets correct working_dir without client sending it[32m 13[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mSession working_dir is set by gateway[2m > [22mbob session gets correct working_dir without client sending it[32m 18[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mSession working_dir is set by gateway[2m > [22mgateway overrides client-supplied working_dir with correct path[32m 13[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mSession working_dir is set by gateway[2m > [22mreply works via /reply path (without /agent/ prefix)[32m 107[2mms[22m[39m
+ [32m✓[39m integration.test.ts[2m > [22mSession working_dir is set by gateway[2m > [22magent-created file lands in correct user directory and is isolated per user[33m 60180[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[32m108 passed[39m[22m[90m (108)[39m
+[2m   Start at [22m 21:18:36
+[2m   Duration [22m 87.96s[2m (transform 73ms, setup 0ms, import 111ms, tests 87.77s, environment 0ms)[22m
+

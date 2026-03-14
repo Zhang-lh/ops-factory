@@ -1,0 +1,36 @@
+
+[1m[46m RUN [49m[22m [36mv4.0.18 [39m[90m/Users/buyangnie/Documents/GitHub/ops-factory/test[39m
+
+ [32m✓[39m user-journey.test.ts[2m > [22mJourney 1: New user multi-round chat[2m > [22mStep 1: App init — list agents[32m 18[2mms[22m[39m
+ [32m✓[39m user-journey.test.ts[2m > [22mJourney 1: New user multi-round chat[2m > [22mStep 2: Start new chat session[32m 197[2mms[22m[39m
+ [32m✓[39m user-journey.test.ts[2m > [22mJourney 1: New user multi-round chat[2m > [22mStep 3: Send first message[33m 2023[2mms[22m[39m
+ [32m✓[39m user-journey.test.ts[2m > [22mJourney 1: New user multi-round chat[2m > [22mStep 4: Send second message[33m 2036[2mms[22m[39m
+ [32m✓[39m user-journey.test.ts[2m > [22mJourney 1: New user multi-round chat[2m > [22mStep 5: Send third message[33m 2028[2mms[22m[39m
+ [32m✓[39m user-journey.test.ts[2m > [22mJourney 1: New user multi-round chat[2m > [22mStep 6: View history — session appears[32m 32[2mms[22m[39m
+ [32m✓[39m user-journey.test.ts[2m > [22mJourney 1: New user multi-round chat[2m > [22mStep 7: View session detail — conversation has messages[32m 23[2mms[22m[39m
+ [32m✓[39m user-journey.test.ts[2m > [22mJourney 2: Resume session and continue chatting[2m > [22mStep 1: Create initial session with a message[33m 2199[2mms[22m[39m
+ [32m✓[39m user-journey.test.ts[2m > [22mJourney 2: Resume session and continue chatting[2m > [22mStep 2: Resume the session from history[32m 17[2mms[22m[39m
+ [32m✓[39m user-journey.test.ts[2m > [22mJourney 2: Resume session and continue chatting[2m > [22mStep 3: Send message in resumed session[33m 2014[2mms[22m[39m
+ [32m✓[39m user-journey.test.ts[2m > [22mJourney 2: Resume session and continue chatting[2m > [22mStep 4: Verify conversation grew[32m 24[2mms[22m[39m
+ [32m✓[39m user-journey.test.ts[2m > [22mJourney 3: Tool call verification[2m > [22mStep 1: Start new session[32m 166[2mms[22m[39m
+ [32m✓[39m user-journey.test.ts[2m > [22mJourney 3: Tool call verification[2m > [22mStep 2: Trigger tool call — list files[33m 6015[2mms[22m[39m
+ [32m✓[39m user-journey.test.ts[2m > [22mJourney 3: Tool call verification[2m > [22mStep 3: Trigger tool call — create file[33m 4025[2mms[22m[39m
+ [32m✓[39m user-journey.test.ts[2m > [22mJourney 3: Tool call verification[2m > [22mStep 4: Trigger tool call — read file back[33m 4023[2mms[22m[39m
+ [32m✓[39m user-journey.test.ts[2m > [22mJourney 3: Tool call verification[2m > [22mStep 5: Trigger tool call — delete file[33m 4020[2mms[22m[39m
+ [32m✓[39m user-journey.test.ts[2m > [22mJourney 4: Stop generation mid-stream[2m > [22mStep 1: Start session[32m 177[2mms[22m[39m
+ [32m✓[39m user-journey.test.ts[2m > [22mJourney 4: Stop generation mid-stream[2m > [22mStep 2: Send message and abort mid-stream[33m 2098[2mms[22m[39m
+ [32m✓[39m user-journey.test.ts[2m > [22mJourney 4: Stop generation mid-stream[2m > [22mStep 3: Resume and send new message — session still works[33m 2049[2mms[22m[39m
+ [32m✓[39m user-journey.test.ts[2m > [22mJourney 5: Multi-user concurrent isolation[2m > [22mStep 1: Both users start sessions concurrently[32m 168[2mms[22m[39m
+ [32m✓[39m user-journey.test.ts[2m > [22mJourney 5: Multi-user concurrent isolation[2m > [22mStep 2: Both send messages concurrently[33m 2010[2mms[22m[39m
+ [32m✓[39m user-journey.test.ts[2m > [22mJourney 5: Multi-user concurrent isolation[2m > [22mStep 3: Verify session isolation — each user sees only their own[32m 33[2mms[22m[39m
+ [32m✓[39m user-journey.test.ts[2m > [22mJourney 6: File upload and reference[2m > [22mStep 1: Start session[32m 155[2mms[22m[39m
+ [32m✓[39m user-journey.test.ts[2m > [22mJourney 6: File upload and reference[2m > [22mStep 2: Upload a text file[32m 25[2mms[22m[39m
+ [32m✓[39m user-journey.test.ts[2m > [22mJourney 6: File upload and reference[2m > [22mStep 3: Reference uploaded file in chat[33m 4012[2mms[22m[39m
+ [32m✓[39m user-journey.test.ts[2m > [22mJourney 6: File upload and reference[2m > [22mStep 4: Verify file appears in file list[32m 13[2mms[22m[39m
+ [32m✓[39m user-journey.test.ts[2m > [22mJourney 6: File upload and reference[2m > [22mStep 5: Clean up — delete session[32m 22[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[32m27 passed[39m[22m[90m (27)[39m
+[2m   Start at [22m 20:54:18
+[2m   Duration [22m 44.85s[2m (transform 39ms, setup 0ms, import 66ms, tests 44.71s, environment 0ms)[22m
+
