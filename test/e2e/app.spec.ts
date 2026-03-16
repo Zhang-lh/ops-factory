@@ -311,15 +311,16 @@ test.describe('Chat — session working_dir isolation', () => {
 
   test('regular user creates session and working_dir points to correct user directory', async ({ page }) => {
     await loginAs(page, USER_A)
+    // Wait for agents to load
+    await page.waitForSelector('.prompt-template-card', { timeout: 15_000 })
+
     // Intercept the /agent/start response to verify working_dir
     const startResponsePromise = page.waitForResponse(
       resp => resp.url().includes('/agent/start') && resp.status() === 200
     )
-    await page.goto('/chat')
-    const chatInput = page.locator('textarea').or(page.locator('[contenteditable]')).or(page.locator('input[type="text"]'))
-    await expect(chatInput.first()).toBeVisible({ timeout: 15_000 })
-    await chatInput.first().fill('Reply with only "ok"')
-    await chatInput.first().press('Enter')
+    // Click New Chat to create a session
+    await page.locator('.new-chat-nav').click()
+    await expect(page).toHaveURL(/\/chat/, { timeout: 15_000 })
 
     const startResponse = await startResponsePromise
     const sessionData = await startResponse.json()
@@ -332,14 +333,15 @@ test.describe('Chat — session working_dir isolation', () => {
 
   test('different user gets different working_dir', async ({ page }) => {
     await loginAs(page, USER_B)
+    // Wait for agents to load
+    await page.waitForSelector('.prompt-template-card', { timeout: 15_000 })
+
     const startResponsePromise = page.waitForResponse(
       resp => resp.url().includes('/agent/start') && resp.status() === 200
     )
-    await page.goto('/chat')
-    const chatInput = page.locator('textarea').or(page.locator('[contenteditable]')).or(page.locator('input[type="text"]'))
-    await expect(chatInput.first()).toBeVisible({ timeout: 15_000 })
-    await chatInput.first().fill('Reply with only "ok"')
-    await chatInput.first().press('Enter')
+    // Click New Chat to create a session
+    await page.locator('.new-chat-nav').click()
+    await expect(page).toHaveURL(/\/chat/, { timeout: 15_000 })
 
     const startResponse = await startResponsePromise
     const sessionData = await startResponse.json()

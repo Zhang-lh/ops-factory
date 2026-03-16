@@ -169,7 +169,7 @@ export default function AddMcpModal({
 
   return (
     <div className="modal-overlay" onClick={handleClose}>
-      <div className="modal-content mcp-modal" onClick={e => e.stopPropagation()}>
+      <div className="modal mcp-modal" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
           <h2 className="modal-title">{isEditMode ? t('mcp.editTitle') : t('mcp.addTitle')}</h2>
           <button
@@ -182,174 +182,185 @@ export default function AddMcpModal({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="mcp-form">
-          {error && (
-            <div className="mcp-form-error">{error}</div>
-          )}
-
-          <div className="mcp-form-group">
-            <label className="mcp-form-label">
-              {t('mcp.name')} <span className="mcp-form-required">*</span>
-            </label>
-            <input
-              type="text"
-              className="mcp-form-input"
-              value={name}
-              onChange={e => setName(e.target.value)}
-              placeholder={t('mcp.namePlaceholder')}
-              disabled={isEditMode}
-            />
-            {isEditMode && (
-              <span className="mcp-form-hint">{t('mcp.nameCannotChange')}</span>
+        <form onSubmit={handleSubmit}>
+          <div className="modal-body">
+            {error && (
+              <div className="agents-alert agents-alert-error" style={{ marginBottom: 'var(--spacing-4)' }}>
+                {error}
+              </div>
             )}
-          </div>
 
-          <div className="mcp-form-group">
-            <label className="mcp-form-label">{t('mcp.description')}</label>
-            <input
-              type="text"
-              className="mcp-form-input"
-              value={description}
-              onChange={e => setDescription(e.target.value)}
-              placeholder={t('mcp.descriptionPlaceholder')}
-            />
-          </div>
-
-          <div className="mcp-form-group">
-            <label className="mcp-form-label">{t('mcp.connectionType')}</label>
-            <div className="mcp-form-radio-group">
-              <label className="mcp-form-radio">
-                <input
-                  type="radio"
-                  name="connectionType"
-                  value="stdio"
-                  checked={connectionType === 'stdio'}
-                  onChange={() => setConnectionType('stdio')}
-                />
-                <span>{t('mcp.stdio')}</span>
-              </label>
-              <label className="mcp-form-radio">
-                <input
-                  type="radio"
-                  name="connectionType"
-                  value="streamable_http"
-                  checked={connectionType === 'streamable_http'}
-                  onChange={() => setConnectionType('streamable_http')}
-                />
-                <span>{t('mcp.streamableHttp')}</span>
-              </label>
-            </div>
-          </div>
-
-          {connectionType === 'stdio' && (
-            <>
-              <div className="mcp-form-group">
-                <label className="mcp-form-label">
-                  {t('mcp.command')} <span className="mcp-form-required">*</span>
-                </label>
-                <input
-                  type="text"
-                  className="mcp-form-input"
-                  value={command}
-                  onChange={e => setCommand(e.target.value)}
-                  placeholder="python"
-                />
-              </div>
-
-              <div className="mcp-form-group">
-                <label className="mcp-form-label">{t('mcp.arguments')}</label>
-                <input
-                  type="text"
-                  className="mcp-form-input"
-                  value={args}
-                  onChange={e => setArgs(e.target.value)}
-                  placeholder="-m my_mcp_server"
-                />
-                <span className="mcp-form-hint">{t('mcp.argumentsHint')}</span>
-              </div>
-            </>
-          )}
-
-          {connectionType === 'streamable_http' && (
-            <div className="mcp-form-group">
-              <label className="mcp-form-label">
-                {t('mcp.uri')} <span className="mcp-form-required">*</span>
+            <div className="form-group">
+              <label className="form-label">
+                {t('mcp.name')} <span className="form-required">*</span>
               </label>
               <input
                 type="text"
-                className="mcp-form-input"
-                value={uri}
-                onChange={e => setUri(e.target.value)}
-                placeholder="http://localhost:8080/mcp"
+                className="form-input"
+                value={name}
+                onChange={e => setName(e.target.value)}
+                placeholder={t('mcp.namePlaceholder')}
+                disabled={isEditMode}
+              />
+              {isEditMode && (
+                <p style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-muted)', marginTop: 'var(--spacing-1)' }}>
+                  {t('mcp.nameCannotChange')}
+                </p>
+              )}
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">{t('mcp.description')}</label>
+              <input
+                type="text"
+                className="form-input"
+                value={description}
+                onChange={e => setDescription(e.target.value)}
+                placeholder={t('mcp.descriptionPlaceholder')}
               />
             </div>
-          )}
 
-          <div className="mcp-form-group">
-            <label className="mcp-form-label">
-              {t('mcp.envVars')}
-              <button
-                type="button"
-                className="mcp-form-add-btn"
-                onClick={addEnvVar}
-              >
-                {t('mcp.envAdd')}
-              </button>
-            </label>
-            {envVars.map((env, index) => (
-              <div key={index} className="mcp-form-env-row">
+            <div className="form-group">
+              <label className="form-label">{t('mcp.connectionType')}</label>
+              <div className="mcp-form-radio-group">
+                <label className="mcp-form-radio">
+                  <input
+                    type="radio"
+                    name="connectionType"
+                    value="stdio"
+                    checked={connectionType === 'stdio'}
+                    onChange={() => setConnectionType('stdio')}
+                  />
+                  <span>{t('mcp.stdio')}</span>
+                </label>
+                <label className="mcp-form-radio">
+                  <input
+                    type="radio"
+                    name="connectionType"
+                    value="streamable_http"
+                    checked={connectionType === 'streamable_http'}
+                    onChange={() => setConnectionType('streamable_http')}
+                  />
+                  <span>{t('mcp.streamableHttp')}</span>
+                </label>
+              </div>
+            </div>
+
+            {connectionType === 'stdio' && (
+              <>
+                <div className="form-group">
+                  <label className="form-label">
+                    {t('mcp.command')} <span className="form-required">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={command}
+                    onChange={e => setCommand(e.target.value)}
+                    placeholder="python"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">{t('mcp.arguments')}</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={args}
+                    onChange={e => setArgs(e.target.value)}
+                    placeholder="-m my_mcp_server"
+                  />
+                  <p style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-muted)', marginTop: 'var(--spacing-1)' }}>
+                    {t('mcp.argumentsHint')}
+                  </p>
+                </div>
+              </>
+            )}
+
+            {connectionType === 'streamable_http' && (
+              <div className="form-group">
+                <label className="form-label">
+                  {t('mcp.uri')} <span className="form-required">*</span>
+                </label>
                 <input
                   type="text"
-                  className="mcp-form-input mcp-form-env-key"
-                  value={env.key}
-                  onChange={e => updateEnvVar(index, 'key', e.target.value)}
-                  placeholder={t('mcp.envKeyPlaceholder')}
-                  disabled={env.fromExisting}
+                  className="form-input"
+                  value={uri}
+                  onChange={e => setUri(e.target.value)}
+                  placeholder="http://localhost:8080/mcp"
                 />
-                <input
-                  type="text"
-                  className="mcp-form-input mcp-form-env-value"
-                  value={env.value}
-                  onChange={e => updateEnvVar(index, 'value', e.target.value)}
-                  placeholder={env.fromExisting ? t('mcp.envKeepCurrentValue') : t('mcp.envValuePlaceholder')}
-                />
+              </div>
+            )}
+
+            <div className="form-group">
+              <div className="mcp-env-header">
+                <label className="form-label" style={{ marginBottom: 0 }}>{t('mcp.envVars')}</label>
                 <button
                   type="button"
-                  className="mcp-form-remove-btn"
-                  onClick={() => removeEnvVar(index)}
+                  className="mcp-form-add-btn"
+                  onClick={addEnvVar}
                 >
-                  &times;
+                  {t('mcp.envAdd')}
                 </button>
               </div>
-            ))}
-          </div>
-          {isEditMode && envVars.some(env => env.fromExisting) && (
-            <span className="mcp-form-hint">{t('mcp.envExistingHint')}</span>
-          )}
+              {envVars.map((env, index) => (
+                <div key={index} className="mcp-form-env-row">
+                  <input
+                    type="text"
+                    className="form-input mcp-form-env-key"
+                    value={env.key}
+                    onChange={e => updateEnvVar(index, 'key', e.target.value)}
+                    placeholder={t('mcp.envKeyPlaceholder')}
+                    disabled={env.fromExisting}
+                  />
+                  <input
+                    type="text"
+                    className="form-input mcp-form-env-value"
+                    value={env.value}
+                    onChange={e => updateEnvVar(index, 'value', e.target.value)}
+                    placeholder={env.fromExisting ? t('mcp.envKeepCurrentValue') : t('mcp.envValuePlaceholder')}
+                  />
+                  <button
+                    type="button"
+                    className="mcp-form-remove-btn"
+                    onClick={() => removeEnvVar(index)}
+                  >
+                    &times;
+                  </button>
+                </div>
+              ))}
+              {isEditMode && envVars.some(env => env.fromExisting) && (
+                <p style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-muted)', marginTop: 'var(--spacing-1)' }}>
+                  {t('mcp.envExistingHint')}
+                </p>
+              )}
+            </div>
 
-          <div className="mcp-form-group">
-            <label className="mcp-form-label">{t('mcp.timeout')}</label>
-            <input
-              type="number"
-              className="mcp-form-input mcp-form-input-small"
-              value={timeout}
-              onChange={e => setTimeout(e.target.value)}
-              min="1"
-              max="3600"
-            />
+            <div className="form-group">
+              <label className="form-label">{t('mcp.timeout')}</label>
+              <input
+                type="number"
+                className="form-input"
+                style={{ width: '120px' }}
+                value={timeout}
+                onChange={e => setTimeout(e.target.value)}
+                min="1"
+                max="3600"
+              />
+            </div>
           </div>
 
-          <div className="mcp-form-actions">
+          <div className="modal-footer">
             <button
               type="button"
-              className="mcp-form-btn mcp-form-btn-secondary"
+              className="btn btn-secondary"
               onClick={handleClose}
             >
               {t('common.cancel')}
             </button>
             <button
               type="submit"
-              className="mcp-form-btn mcp-form-btn-primary"
+              className="btn btn-primary"
               disabled={isSubmitting}
             >
               {isSubmitting

@@ -304,4 +304,191 @@ public class AgentConfigServiceTest {
         freshService.loadRegistry();
         assertTrue(freshService.getRegistry().isEmpty());
     }
+
+    @Test
+    public void testLoadRegistry_enabledFalseExcludesAgent() throws IOException {
+        String configYaml = "agents:\n"
+                + "  - id: agent-a\n    name: Agent A\n"
+                + "  - id: agent-b\n    name: Agent B\n    enabled: false\n"
+                + "  - id: agent-c\n    name: Agent C\n";
+        Files.writeString(gatewayRoot.resolve("config.yaml"), configYaml);
+
+        AgentConfigService freshService = new AgentConfigService(properties);
+        freshService.loadRegistry();
+
+        List<AgentRegistryEntry> registry = freshService.getRegistry();
+        assertEquals(2, registry.size());
+        assertEquals("agent-a", registry.get(0).id());
+        assertEquals("agent-c", registry.get(1).id());
+        assertNull(freshService.findAgent("agent-b"));
+    }
+
+    @Test
+    public void testLoadRegistry_enabledTrueIncludesAgent() throws IOException {
+        String configYaml = "agents:\n"
+                + "  - id: agent-a\n    name: Agent A\n    enabled: true\n";
+        Files.writeString(gatewayRoot.resolve("config.yaml"), configYaml);
+
+        AgentConfigService freshService = new AgentConfigService(properties);
+        freshService.loadRegistry();
+
+        assertEquals(1, freshService.getRegistry().size());
+        assertNotNull(freshService.findAgent("agent-a"));
+    }
+
+    @Test
+    public void testLoadRegistry_enabledOmittedDefaultsToTrue() throws IOException {
+        String configYaml = "agents:\n"
+                + "  - id: agent-no-enabled\n    name: No Enabled Field\n";
+        Files.writeString(gatewayRoot.resolve("config.yaml"), configYaml);
+
+        AgentConfigService freshService = new AgentConfigService(properties);
+        freshService.loadRegistry();
+
+        assertEquals(1, freshService.getRegistry().size());
+        assertNotNull(freshService.findAgent("agent-no-enabled"));
+    }
+
+    @Test
+    public void testLoadRegistry_allDisabledResultsInEmptyRegistry() throws IOException {
+        String configYaml = "agents:\n"
+                + "  - id: agent-x\n    name: Agent X\n    enabled: false\n"
+                + "  - id: agent-y\n    name: Agent Y\n    enabled: false\n";
+        Files.writeString(gatewayRoot.resolve("config.yaml"), configYaml);
+
+        AgentConfigService freshService = new AgentConfigService(properties);
+        freshService.loadRegistry();
+
+        assertTrue(freshService.getRegistry().isEmpty());
+    }
+
+    // ── Memory file tests ──────────────────────────────────────────
+
+    @Test
+    public void testListMemoryFiles_empty() {
+        List<Map<String, String>> files = service.listMemoryFiles("test-agent");
+        assertTrue(files.isEmpty());
+    }
+
+    @Test
+    public void testListMemoryFiles_withFiles() throws IOException {
+        Path memoryDir = gatewayRoot.resolve("agents").resolve("test-agent")
+                .resolve("config").resolve("memory");
+        Files.createDirectories(memoryDir);
+        Files.writeString(memoryDir.resolve("development.txt"), "# tools\nuse black for formatting");
+        Files.writeString(memoryDir.resolve("personal.txt"), "prefer Chinese replies");
+
+        List<Map<String, String>> files = service.listMemoryFiles("test-agent");
+        assertEquals(2, files.size());
+
+        List<String> categories = files.stream().map(f -> f.get("category")).toList();
+        assertTrue(categories.contains("development"));
+        assertTrue(categories.contains("personal"));
+
+        Map<String, String> dev = files.stream()
+                .filter(f -> "development".equals(f.get("category"))).findFirst().orElseThrow();
+        assertEquals("# tools\nuse black for formatting", dev.get("content"));
+    }
+
+    @Test
+    public void testListMemoryFiles_ignoresNonTxt() throws IOException {
+        Path memoryDir = gatewayRoot.resolve("agents").resolve("test-agent")
+                .resolve("config").resolve("memory");
+        Files.createDirectories(memoryDir);
+        Files.writeString(memoryDir.resolve("valid.txt"), "content");
+        Files.writeString(memoryDir.resolve("ignored.md"), "markdown");
+
+        List<Map<String, String>> files = service.listMemoryFiles("test-agent");
+        assertEquals(1, files.size());
+        assertEquals("valid", files.get(0).get("category"));
+    }
+
+    @Test
+    public void testReadMemoryFile_exists() throws IOException {
+        Path memoryDir = gatewayRoot.resolve("agents").resolve("test-agent")
+                .resolve("config").resolve("memory");
+        Files.createDirectories(memoryDir);
+        Files.writeString(memoryDir.resolve("dev.txt"), "hello world");
+
+        String content = service.readMemoryFile("test-agent", "dev");
+        assertEquals("hello world", content);
+    }
+
+    @Test
+    public void testReadMemoryFile_notFound() {
+        String content = service.readMemoryFile("test-agent", "nonexistent");
+        assertNull(content);
+    }
+
+    @Test
+    public void testWriteMemoryFile_createsDirectoryAndFile() throws IOException {
+        service.writeMemoryFile("test-agent", "new-category", "some content");
+
+        Path file = gatewayRoot.resolve("agents").resolve("test-agent")
+                .resolve("config").resolve("memory").resolve("new-category.txt");
+        assertTrue(Files.exists(file));
+        assertEquals("some content", Files.readString(file));
+    }
+
+    @Test
+    public void testWriteMemoryFile_updatesExisting() throws IOException {
+        service.writeMemoryFile("test-agent", "cat", "v1");
+        service.writeMemoryFile("test-agent", "cat", "v2");
+
+        assertEquals("v2", service.readMemoryFile("test-agent", "cat"));
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testWriteMemoryFile_tooLarge() throws IOException {
+        String largeContent = "x".repeat(101 * 1024);
+        service.writeMemoryFile("test-agent", "big", largeContent);
+    }
+
+    @Test
+    public void testDeleteMemoryFile_success() throws IOException {
+        Path memoryDir = gatewayRoot.resolve("agents").resolve("test-agent")
+                .resolve("config").resolve("memory");
+        Files.createDirectories(memoryDir);
+        Files.writeString(memoryDir.resolve("toDelete.txt"), "bye");
+
+        service.deleteMemoryFile("test-agent", "toDelete");
+        assertFalse(Files.exists(memoryDir.resolve("toDelete.txt")));
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testDeleteMemoryFile_notFound() throws IOException {
+        service.deleteMemoryFile("test-agent", "nonexistent");
+    }
+
+    @Test
+    public void testWriteAndReadRoundTrip() throws IOException {
+        String content = "# formatting tools\nuse black\n\n# deployment\nuse k8s";
+        service.writeMemoryFile("test-agent", "dev", content);
+        assertEquals(content, service.readMemoryFile("test-agent", "dev"));
+    }
+
+    @Test
+    public void testListMemoryFiles_afterWriteAndDelete() throws IOException {
+        service.writeMemoryFile("test-agent", "a", "content-a");
+        service.writeMemoryFile("test-agent", "b", "content-b");
+        assertEquals(2, service.listMemoryFiles("test-agent").size());
+
+        service.deleteMemoryFile("test-agent", "a");
+        List<Map<String, String>> remaining = service.listMemoryFiles("test-agent");
+        assertEquals(1, remaining.size());
+        assertEquals("b", remaining.get(0).get("category"));
+    }
+
+    @Test
+    public void testLoadRegistry_sysOnlyWithEnabledFalseIsExcluded() throws IOException {
+        String configYaml = "agents:\n"
+                + "  - id: sys-agent\n    name: Sys Agent\n    sysOnly: true\n    enabled: false\n";
+        Files.writeString(gatewayRoot.resolve("config.yaml"), configYaml);
+
+        AgentConfigService freshService = new AgentConfigService(properties);
+        freshService.loadRegistry();
+
+        assertTrue(freshService.getRegistry().isEmpty());
+        assertNull(freshService.findAgent("sys-agent"));
+    }
 }

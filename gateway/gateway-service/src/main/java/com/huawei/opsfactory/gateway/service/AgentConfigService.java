@@ -49,6 +49,11 @@ public class AgentConfigService {
                 if (item instanceof Map<?, ?> rawMap) {
                     @SuppressWarnings("unchecked")
                     Map<String, Object> map = (Map<String, Object>) rawMap;
+                    boolean enabled = !Boolean.FALSE.equals(map.get("enabled"));
+                    if (!enabled) {
+                        log.info("Skipping disabled agent: {}", map.get("id"));
+                        continue;
+                    }
                     String id = YamlLoader.getString(map, "id", "");
                     String name = YamlLoader.getString(map, "name", "");
                     boolean sysOnly = Boolean.TRUE.equals(map.get("sysOnly"));
@@ -190,6 +195,80 @@ public class AgentConfigService {
     public void writeAgentsMd(String agentId, String content) throws IOException {
         Path mdPath = getAgentsDir().resolve(agentId).resolve("AGENTS.md");
         Files.writeString(mdPath, content);
+    }
+
+    // ── Memory file management ──────────────────────────────────────────
+
+    private static final int MAX_MEMORY_CONTENT_SIZE = 100 * 1024; // 100KB
+
+    /**
+     * List all memory files (*.txt) for an agent, returning category name + content.
+     */
+    public List<Map<String, String>> listMemoryFiles(String agentId) {
+        Path memoryDir = getAgentConfigDir(agentId).resolve("memory");
+        List<Map<String, String>> files = new ArrayList<>();
+        if (!Files.isDirectory(memoryDir)) {
+            return files;
+        }
+        try (DirectoryStream<Path> stream = Files.newDirectoryStream(memoryDir, "*.txt")) {
+            for (Path entry : stream) {
+                if (Files.isRegularFile(entry)) {
+                    String fileName = entry.getFileName().toString();
+                    String category = fileName.substring(0, fileName.length() - 4); // strip .txt
+                    Map<String, String> file = new HashMap<>();
+                    file.put("category", category);
+                    try {
+                        file.put("content", Files.readString(entry));
+                    } catch (IOException e) {
+                        log.warn("Failed to read memory file {}/{}", agentId, fileName, e);
+                        file.put("content", "");
+                    }
+                    files.add(file);
+                }
+            }
+        } catch (IOException e) {
+            log.error("Failed to list memory files for {}", agentId, e);
+        }
+        return files;
+    }
+
+    /**
+     * Read a single memory file content.
+     */
+    public String readMemoryFile(String agentId, String category) {
+        Path filePath = getAgentConfigDir(agentId).resolve("memory").resolve(category + ".txt");
+        try {
+            return Files.readString(filePath);
+        } catch (java.nio.file.NoSuchFileException e) {
+            return null;
+        } catch (IOException e) {
+            log.error("Failed to read memory file {}/{}", agentId, category, e);
+            return null;
+        }
+    }
+
+    /**
+     * Write (create/update) a memory file. Creates the memory directory if needed.
+     */
+    public void writeMemoryFile(String agentId, String category, String content) throws IOException {
+        if (content != null && content.getBytes(java.nio.charset.StandardCharsets.UTF_8).length > MAX_MEMORY_CONTENT_SIZE) {
+            throw new IllegalArgumentException("Memory file content exceeds maximum size of 100KB");
+        }
+        Path memoryDir = getAgentConfigDir(agentId).resolve("memory");
+        Files.createDirectories(memoryDir);
+        Files.writeString(memoryDir.resolve(category + ".txt"), content != null ? content : "");
+    }
+
+    /**
+     * Delete a memory file.
+     */
+    public void deleteMemoryFile(String agentId, String category) throws IOException {
+        Path filePath = getAgentConfigDir(agentId).resolve("memory").resolve(category + ".txt");
+        try {
+            Files.delete(filePath);
+        } catch (java.nio.file.NoSuchFileException e) {
+            throw new IllegalArgumentException("Memory file '" + category + "' not found");
+        }
     }
 
     /**

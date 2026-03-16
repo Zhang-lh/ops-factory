@@ -149,6 +149,86 @@ public class AgentController {
         return Mono.just(ResponseEntity.ok(Map.of("success", (Object) true)));
     }
 
+    // ── Memory endpoints ──────────────────────────────────────────
+
+    private static final java.util.regex.Pattern CATEGORY_PATTERN =
+            java.util.regex.Pattern.compile("^[a-zA-Z0-9_-]+$");
+
+    @GetMapping("/{id}/memory")
+    public Mono<ResponseEntity<Map<String, Object>>> listMemory(@PathVariable String id,
+                                                                  ServerWebExchange exchange) {
+        requireAdmin(exchange);
+        return Mono.fromCallable(() -> {
+            List<Map<String, String>> files = agentConfigService.listMemoryFiles(id);
+            return ResponseEntity.ok(Map.<String, Object>of("files", files));
+        }).subscribeOn(Schedulers.boundedElastic());
+    }
+
+    @GetMapping("/{id}/memory/{category}")
+    public Mono<ResponseEntity<Map<String, Object>>> getMemoryFile(@PathVariable String id,
+                                                                     @PathVariable String category,
+                                                                     ServerWebExchange exchange) {
+        requireAdmin(exchange);
+        if (!isValidCategory(category)) {
+            return badCategory();
+        }
+        return Mono.fromCallable(() -> {
+            String content = agentConfigService.readMemoryFile(id, category);
+            if (content == null) {
+                return ResponseEntity.<Map<String, Object>>notFound().build();
+            }
+            return ResponseEntity.ok(Map.<String, Object>of("category", category, "content", content));
+        }).subscribeOn(Schedulers.boundedElastic());
+    }
+
+    @PutMapping("/{id}/memory/{category}")
+    public Mono<ResponseEntity<Map<String, Object>>> putMemoryFile(@PathVariable String id,
+                                                                     @PathVariable String category,
+                                                                     @RequestBody Map<String, String> body,
+                                                                     ServerWebExchange exchange) {
+        requireAdmin(exchange);
+        if (!isValidCategory(category)) {
+            return badCategory();
+        }
+        return Mono.fromCallable(() -> {
+            try {
+                agentConfigService.writeMemoryFile(id, category, body.getOrDefault("content", ""));
+                return ResponseEntity.ok(Map.<String, Object>of("success", (Object) true));
+            } catch (IllegalArgumentException e) {
+                return ResponseEntity.badRequest()
+                        .body(Map.<String, Object>of("success", (Object) false, "error", e.getMessage()));
+            }
+        }).subscribeOn(Schedulers.boundedElastic());
+    }
+
+    @DeleteMapping("/{id}/memory/{category}")
+    public Mono<ResponseEntity<Map<String, Object>>> deleteMemoryFile(@PathVariable String id,
+                                                                        @PathVariable String category,
+                                                                        ServerWebExchange exchange) {
+        requireAdmin(exchange);
+        if (!isValidCategory(category)) {
+            return badCategory();
+        }
+        return Mono.fromCallable(() -> {
+            try {
+                agentConfigService.deleteMemoryFile(id, category);
+                return ResponseEntity.ok(Map.<String, Object>of("success", (Object) true));
+            } catch (IllegalArgumentException e) {
+                return ResponseEntity.badRequest()
+                        .body(Map.<String, Object>of("success", (Object) false, "error", e.getMessage()));
+            }
+        }).subscribeOn(Schedulers.boundedElastic());
+    }
+
+    private static boolean isValidCategory(String category) {
+        return CATEGORY_PATTERN.matcher(category).matches();
+    }
+
+    private static Mono<ResponseEntity<Map<String, Object>>> badCategory() {
+        return Mono.just(ResponseEntity.badRequest()
+                .body(Map.of("success", (Object) false, "error", "Invalid category name")));
+    }
+
     private void requireAdmin(ServerWebExchange exchange) {
         UserContextFilter.requireAdmin(exchange);
     }

@@ -561,10 +561,35 @@
     "voiceError": "Voice input error: {{error}}",
     "micPermissionDenied": "Microphone access denied. Please allow microphone permission."
   },
+  "memory": {
+    "title": "Agent Memory",
+    "description": "These memories are automatically injected into the agent context at the start of each session.",
+    "loading": "Loading memory files...",
+    "noFiles": "No memory files yet.",
+    "newFile": "+ New File",
+    "newFileTitle": "New Memory File",
+    "categoryName": "Category Name",
+    "categoryHint": "Only letters, numbers, hyphens, underscores",
+    "categoryRequired": "Category name is required",
+    "categoryInvalid": "Only letters, numbers, hyphens, and underscores allowed",
+    "categoryExists": "A file with this category already exists",
+    "create": "Create",
+    "createFailed": "Failed to create memory file",
+    "saved": "Memory file saved successfully",
+    "saveFailed": "Failed to save memory file",
+    "deleted": "Memory file deleted",
+    "deleteFailed": "Failed to delete memory file",
+    "emptyFile": "Empty file — click Edit to add content",
+    "formatHint": "Separate entries with blank lines. Lines starting with # are parsed as tags.",
+    "entryCount": "{{count}} entry",
+    "entryCount_other": "{{count}} entries",
+    "untagged": "untagged"
+  },
   "configTabs": {
     "overview": "Overview",
     "prompts": "Prompts",
     "mcp": "MCP",
-    "skills": "Skills"
+    "skills": "Skills",
+    "memory": "Memory"
   }
 }

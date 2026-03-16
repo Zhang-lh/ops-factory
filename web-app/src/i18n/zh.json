@@ -561,10 +561,34 @@
     "voiceError": "语音输入错误：{{error}}",
     "micPermissionDenied": "麦克风权限被拒绝，请允许麦克风访问。"
   },
+  "memory": {
+    "title": "智能体记忆",
+    "description": "这些记忆会在每次会话开始时自动注入到智能体上下文中。",
+    "loading": "正在加载记忆文件...",
+    "noFiles": "暂无记忆文件。",
+    "newFile": "+ 新建文件",
+    "newFileTitle": "新建记忆文件",
+    "categoryName": "分类名称",
+    "categoryHint": "仅允许字母、数字、连字符和下划线",
+    "categoryRequired": "分类名称为必填项",
+    "categoryInvalid": "仅允许字母、数字、连字符和下划线",
+    "categoryExists": "该分类文件已存在",
+    "create": "创建",
+    "createFailed": "创建记忆文件失败",
+    "saved": "记忆文件保存成功",
+    "saveFailed": "保存记忆文件失败",
+    "deleted": "记忆文件已删除",
+    "deleteFailed": "删除记忆文件失败",
+    "emptyFile": "空文件 — 点击编辑添加内容",
+    "formatHint": "条目之间用空行分隔，以 # 开头的行会被解析为标签。",
+    "entryCount": "{{count}} 条",
+    "untagged": "未分类"
+  },
   "configTabs": {
     "overview": "概览",
     "prompts": "提示词",
     "mcp": "MCP",
-    "skills": "技能"
+    "skills": "技能",
+    "memory": "记忆"
   }
 }

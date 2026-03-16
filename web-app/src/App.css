@@ -4243,71 +4243,19 @@ textarea {
    Add MCP Modal
    ======================================== */
 .mcp-modal {
-    max-width: 500px;
-    width: 90%;
+    max-width: 520px;
 }
 
-.mcp-form {
-    display: flex;
-    flex-direction: column;
-    gap: var(--spacing-4);
+.form-required {
+    color: var(--color-error);
+    margin-left: 2px;
 }
 
-.mcp-form-error {
-    padding: var(--spacing-3);
-    background: #fef2f2;
-    color: #dc2626;
-    border: 1px solid #fecaca;
-    border-radius: var(--radius-md);
-    font-size: var(--font-size-sm);
-}
-
-.mcp-form-group {
-    display: flex;
-    flex-direction: column;
-    gap: var(--spacing-2);
-}
-
-.mcp-form-label {
-    font-size: var(--font-size-sm);
-    font-weight: 600;
-    color: #374151;
+.mcp-env-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-}
-
-.mcp-form-required {
-    color: #dc2626;
-}
-
-.mcp-form-input {
-    padding: var(--spacing-2) var(--spacing-3);
-    font-size: var(--font-size-sm);
-    background: #f9fafb;
-    border: 1px solid #d1d5db;
-    border-radius: var(--radius-md);
-    color: #1f2937;
-    transition: all var(--transition-fast);
-}
-
-.mcp-form-input::placeholder {
-    color: #9ca3af;
-}
-
-.mcp-form-input:focus {
-    outline: none;
-    border-color: #32353b;
-    box-shadow: 0 0 0 3px rgba(50, 53, 59, 0.1);
-}
-
-.mcp-form-input-small {
-    width: 100px;
-}
-
-.mcp-form-hint {
-    font-size: var(--font-size-xs);
-    color: #6b7280;
+    margin-bottom: var(--spacing-2);
 }
 
 .mcp-form-radio-group {
@@ -4379,48 +4327,6 @@ textarea {
     color: #dc2626;
 }
 
-.mcp-form-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: var(--spacing-3);
-    padding-top: var(--spacing-4);
-    border-top: 1px solid #e5e7eb;
-}
-
-.mcp-form-btn {
-    padding: var(--spacing-2) var(--spacing-4);
-    font-size: var(--font-size-sm);
-    font-weight: 500;
-    border-radius: var(--radius-md);
-    cursor: pointer;
-    transition: all var(--transition-fast);
-}
-
-.mcp-form-btn-secondary {
-    color: #374151;
-    background: #f3f4f6;
-    border: 1px solid #d1d5db;
-}
-
-.mcp-form-btn-secondary:hover {
-    background: #e5e7eb;
-    border-color: #9ca3af;
-}
-
-.mcp-form-btn-primary {
-    color: white;
-    background: #32353b;
-    border: none;
-}
-
-.mcp-form-btn-primary:hover {
-    background: #22252a;
-}
-
-.mcp-form-btn-primary:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-}
 
 /* ========================================
    Agent Extensions Display (Skills + MCP count)
@@ -6358,6 +6264,152 @@ textarea {
 
 .pagination-ellipsis {
     padding: 0 var(--spacing-2);
+    color: var(--color-text-muted);
+    font-size: var(--font-size-sm);
+}
+
+/* ── Memory Section ────────────────────────────────────────── */
+
+.memory-section {
+    width: 100%;
+}
+
+.memory-file-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-4);
+}
+
+.memory-file-card {
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    background: var(--color-bg-primary);
+    transition: border-color var(--transition-fast);
+}
+
+.memory-file-card:hover {
+    border-color: var(--color-border-hover);
+}
+
+.memory-file-card-editing {
+    border-color: var(--color-border-hover);
+}
+
+.memory-file-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--spacing-3) var(--spacing-4);
+}
+
+.memory-file-title {
+    display: flex;
+    align-items: baseline;
+    gap: var(--spacing-2);
+}
+
+.memory-file-name {
+    font-size: var(--font-size-base);
+    font-weight: 700;
+    color: var(--color-text-primary);
+}
+
+.memory-file-count {
+    font-size: var(--font-size-xs);
+    color: var(--color-text-muted);
+}
+
+.memory-file-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
+}
+
+.memory-delete-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: none;
+    border-radius: var(--radius-md);
+    background: none;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.memory-delete-icon:hover {
+    color: var(--color-error);
+    background: rgba(239, 68, 68, 0.08);
+}
+
+.memory-file-editor {
+    padding: 0 var(--spacing-4) var(--spacing-4);
+    border-top: 1px solid var(--color-border);
+    padding-top: var(--spacing-3);
+}
+
+.memory-format-hint {
+    margin-top: var(--spacing-2);
+    font-size: var(--font-size-xs);
+    color: var(--color-text-muted);
+    line-height: 1.5;
+}
+
+.memory-entries {
+    padding: var(--spacing-1) var(--spacing-4) var(--spacing-4);
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-2);
+}
+
+.memory-entry {
+    padding: var(--spacing-3);
+    background: var(--color-bg-secondary);
+    border-radius: var(--radius-md);
+    border: 1px solid transparent;
+    transition: border-color var(--transition-fast);
+}
+
+.memory-entry:hover {
+    border-color: var(--color-border);
+}
+
+.memory-entry-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 6px;
+}
+
+.memory-tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 9px;
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    font-family: 'SF Mono', Monaco, Consolas, monospace;
+    border-radius: var(--radius-md);
+}
+
+.memory-tag-untagged {
+    font-style: italic;
+    color: var(--color-text-muted);
+    background: var(--color-bg-tertiary);
+}
+
+.memory-entry-content {
+    font-size: var(--font-size-sm);
+    color: var(--color-text-primary);
+    line-height: 1.6;
+    white-space: pre-wrap;
+}
+
+.memory-entry-empty {
+    padding: var(--spacing-6);
+    text-align: center;
     color: var(--color-text-muted);
     font-size: var(--font-size-sm);
 }

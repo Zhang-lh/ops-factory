@@ -110,16 +110,15 @@ extensions:
     display_name: Analyze
     bundled: true
     available_tools: []
-  test-mcp-integration:
+  e2e-mcp-1773649396484:
     enabled: true
     type: stdio
-    name: test-mcp-integration
-    description: test
-    cmd: echo
-    args:
-    - hi
+    name: e2e-mcp-1773649396484
+    description: ''
+    cmd: cat
+    args: []
     envs: {}
     env_keys: []
-    timeout: null
+    timeout: 300
     bundled: null
     available_tools: []

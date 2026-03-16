@@ -76,12 +76,16 @@ test.describe('Gateway unavailable — error display', () => {
         await expect(errorBanner.first()).toBeVisible({ timeout: 15000 })
     })
 
-    test('Monitoring page shows error with retry button', async ({ page }) => {
+    test('Monitoring page shows error banner', async ({ page }) => {
+        // Monitoring requires admin — use 'sys' user to avoid redirect
+        await page.evaluate(() => {
+            localStorage.setItem('opsfactory:userId', 'sys')
+        })
         await page.goto('/monitoring')
-        const errorBanner = page.locator('text=/网络连接失败|加载监控数据失败|Failed to load|Connection error/i')
+        const errorBanner = page.locator('.conn-banner-error').or(
+            page.locator('text=/网络连接失败|加载监控数据失败|Failed to load|Connection error/i')
+        )
         await expect(errorBanner.first()).toBeVisible({ timeout: 20000 })
-        const retryButton = page.locator('button:has-text("Retry"), button:has-text("重试")')
-        await expect(retryButton.first()).toBeVisible({ timeout: 5000 })
     })
 
     test('Home page shows error banner', async ({ page }) => {

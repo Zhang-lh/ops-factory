@@ -2,20 +2,19 @@ import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAgentConfig } from '../hooks/useAgentConfig'
-import { useGoosed } from '../contexts/GoosedContext'
 import { useToast } from '../contexts/ToastContext'
 import { McpSection } from '../components/mcp'
 import { SkillSection } from '../components/skill'
 import { PromptsSection } from '../components/prompt'
+import { MemorySection } from '../components/memory'
 
-type ConfigTab = 'overview' | 'prompts' | 'mcp' | 'skills'
+type ConfigTab = 'overview' | 'prompts' | 'mcp' | 'skills' | 'memory'
 
 export default function AgentConfigure() {
     const { t } = useTranslation()
     const { agentId } = useParams<{ agentId: string }>()
     const navigate = useNavigate()
     const { config, isLoading, error, fetchConfig, updateConfig } = useAgentConfig()
-    const { agents } = useGoosed()
     const { showToast } = useToast()
 
     // Tab state
@@ -73,14 +72,12 @@ export default function AgentConfigure() {
         )
     }
 
-    const agentInfo = agents.find(a => a.id === agentId)
-    const hasSkills = agentInfo && agentInfo.skills && agentInfo.skills.length > 0
-
     const tabs: { key: ConfigTab; label: string }[] = [
         { key: 'overview', label: t('configTabs.overview') },
         { key: 'prompts', label: t('configTabs.prompts') },
         { key: 'mcp', label: t('configTabs.mcp') },
-        ...(hasSkills ? [{ key: 'skills' as ConfigTab, label: t('configTabs.skills') }] : []),
+        { key: 'skills', label: t('configTabs.skills') },
+        { key: 'memory', label: t('configTabs.memory') },
     ]
 
     return (
@@ -157,6 +154,12 @@ export default function AgentConfigure() {
                 {activeTab === 'skills' && (
                     <section className="agent-configure-section">
                         <SkillSection agentId={agentId || ''} />
+                    </section>
+                )}
+
+                {activeTab === 'memory' && (
+                    <section className="agent-configure-section">
+                        <MemorySection agentId={agentId || null} />
                     </section>
                 )}
             </div>
