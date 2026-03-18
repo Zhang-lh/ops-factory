@@ -5,9 +5,10 @@ import SkillCard from './SkillCard'
 
 interface SkillSectionProps {
     agentId: string
+    onBrowseMarket?: () => void
 }
 
-export default function SkillSection({ agentId }: SkillSectionProps) {
+export default function SkillSection({ agentId, onBrowseMarket }: SkillSectionProps) {
     const { t } = useTranslation()
     const { skills, isLoading, error, fetchSkills } = useSkills()
 
@@ -21,9 +22,20 @@ export default function SkillSection({ agentId }: SkillSectionProps) {
 
     return (
         <div className="skill-section">
-            <div className="skill-section-header">
-                <h3 className="skill-section-title">{t('skill.title')}</h3>
-                <span className="skill-section-count">{skills.length}</span>
+            <div className="skill-section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <h3 className="skill-section-title" style={{ margin: 0 }}>{t('skill.title')}</h3>
+                    <span className="skill-section-count" style={{ backgroundColor: '#f3f4f6', padding: '2px 8px', borderRadius: '12px', fontSize: '12px' }}>{skills.length}</span>
+                </div>
+            {onBrowseMarket && (
+                <button
+                    type="button"
+                    className="action-btn-secondary"
+                    onClick={onBrowseMarket}
+                >
+                    {t('market.browseMarket')}
+                </button>
+            )}
             </div>
 
             {error && (

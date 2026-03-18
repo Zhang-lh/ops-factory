@@ -591,5 +591,19 @@
     "mcp": "MCP",
     "skills": "Skills",
     "memory": "Memory"
+  },
+  "market": {
+    "title": "Capability Market",
+    "browseMarket": "Browse Market",
+    "searchPlaceholder": "Search capabilities...",
+    "tabs": {
+      "all": "All",
+      "skills": "Skills",
+      "mcps": "MCPs"
+    },
+    "install": "Install",
+    "installing": "Installing...",
+    "installed": "Installed",
+    "noResults": "No capabilities found matching your criteria."
   }
 }

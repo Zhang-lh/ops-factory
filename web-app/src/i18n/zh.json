@@ -590,5 +590,19 @@
     "mcp": "MCP",
     "skills": "技能",
     "memory": "记忆"
+  },
+  "market": {
+    "title": "能力市场",
+    "browseMarket": "浏览市场",
+    "searchPlaceholder": "搜索能力...",
+    "tabs": {
+      "all": "全部",
+      "skills": "技能",
+      "mcps": "MCP"
+    },
+    "install": "安装",
+    "installing": "安装中...",
+    "installed": "已安装",
+    "noResults": "未找到匹配的能力。"
   }
 }

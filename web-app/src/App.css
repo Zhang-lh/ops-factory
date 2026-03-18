@@ -3982,7 +3982,11 @@ textarea {
     margin: 0;
 }
 
-.mcp-add-btn {
+/* Actions */
+.action-btn-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-2);
     padding: var(--spacing-2) var(--spacing-3);
     font-size: var(--font-size-sm);
     font-weight: 500;
@@ -3994,9 +3998,27 @@ textarea {
     transition: all var(--transition-fast);
 }
 
-.mcp-add-btn:hover {
+.action-btn-primary:hover {
     background: var(--color-accent);
     color: white;
+}
+
+.action-btn-secondary {
+    padding: var(--spacing-2) var(--spacing-3);
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    color: var(--color-text-secondary);
+    background: transparent;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.action-btn-secondary:hover {
+    color: var(--color-text-primary);
+    border-color: var(--color-border-hover);
+    background: var(--surface-2);
 }
 
 .mcp-category {

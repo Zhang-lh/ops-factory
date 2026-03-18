@@ -7,9 +7,10 @@ import type { McpEntry } from '../../types/mcp'
 
 interface McpSectionProps {
   agentId: string | null
+  onBrowseMarket?: () => void
 }
 
-export default function McpSection({ agentId }: McpSectionProps) {
+export default function McpSection({ agentId, onBrowseMarket }: McpSectionProps) {
   const { t } = useTranslation()
   const {
     categorized,
@@ -63,15 +64,26 @@ export default function McpSection({ agentId }: McpSectionProps) {
 
   return (
     <div className="mcp-section">
-      <div className="mcp-section-header">
+      <div className="mcp-section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h3 className="mcp-section-title">{t('mcp.title')}</h3>
-        <button
-          type="button"
-          className="mcp-add-btn"
-          onClick={handleOpenAddModal}
-        >
-          {t('mcp.addServer')}
-        </button>
+        <div className="mcp-header-actions" style={{ display: 'flex', gap: '8px' }}>
+          {onBrowseMarket && (
+            <button
+              type="button"
+              className="action-btn-secondary"
+              onClick={onBrowseMarket}
+            >
+              {t('market.browseMarket')}
+            </button>
+          )}
+          <button
+            type="button"
+            className="action-btn-primary"
+            onClick={handleOpenAddModal}
+          >
+            {t('mcp.addServer')}
+          </button>
+        </div>
       </div>
 
       {error && (

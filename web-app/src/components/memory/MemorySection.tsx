@@ -97,7 +97,7 @@ export default function MemorySection({ agentId }: MemorySectionProps) {
                 </div>
                 <button
                     type="button"
-                    className="btn btn-secondary"
+                    className="action-btn-primary"
                     onClick={() => { setShowNewModal(true); setNewCategory(''); setNewCategoryError('') }}
                 >
                     {t('memory.newFile')}

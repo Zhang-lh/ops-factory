@@ -7,6 +7,7 @@ import { McpSection } from '../components/mcp'
 import { SkillSection } from '../components/skill'
 import { PromptsSection } from '../components/prompt'
 import { MemorySection } from '../components/memory'
+import CapabilityMarketPanel from '../components/market/CapabilityMarketPanel'
 
 type ConfigTab = 'overview' | 'prompts' | 'mcp' | 'skills' | 'memory'
 
@@ -19,6 +20,15 @@ export default function AgentConfigure() {
 
     // Tab state
     const [activeTab, setActiveTab] = useState<ConfigTab>('overview')
+
+    // Market State
+    const [isMarketOpen, setIsMarketOpen] = useState(false)
+    const [marketActiveTab, setMarketActiveTab] = useState<'all' | 'mcp' | 'skill'>('all')
+
+    const handleBrowseMarket = (tab: 'all' | 'mcp' | 'skill' = 'all') => {
+        setMarketActiveTab(tab)
+        setIsMarketOpen(true)
+    }
 
     // Form state
     const [agentsMd, setAgentsMd] = useState('')
@@ -81,8 +91,19 @@ export default function AgentConfigure() {
     ]
 
     return (
-        <div className="page-container agent-configure-page">
-            <div className="agent-configure-header">
+        <div style={{ display: 'flex', width: '100%', height: '100%', overflow: 'hidden', position: 'relative' }}>
+            <div 
+                className="agent-configure-scroll-area"
+                style={{ 
+                    flex: isMarketOpen ? '0 0 45%' : '1', 
+                    maxWidth: isMarketOpen ? '45%' : '100%',
+                    transition: 'all 0.3s ease',
+                    overflowY: 'auto',
+                    overflowX: 'hidden'
+                }}
+            >
+                <div className="page-container agent-configure-page" style={{ margin: isMarketOpen ? '0' : '0 auto', maxWidth: isMarketOpen ? '100%' : '800px', transition: 'max-width 0.3s ease' }}>
+                    <div className="agent-configure-header">
                 <button
                     type="button"
                     className="agent-configure-back"
@@ -147,13 +168,13 @@ export default function AgentConfigure() {
 
                 {activeTab === 'mcp' && (
                     <section className="agent-configure-section">
-                        <McpSection agentId={agentId || null} />
+                        <McpSection agentId={agentId || null} onBrowseMarket={() => handleBrowseMarket('mcp')} />
                     </section>
                 )}
 
                 {activeTab === 'skills' && (
                     <section className="agent-configure-section">
-                        <SkillSection agentId={agentId || ''} />
+                        <SkillSection agentId={agentId || ''} onBrowseMarket={() => handleBrowseMarket('skill')} />
                     </section>
                 )}
 
@@ -162,6 +183,32 @@ export default function AgentConfigure() {
                         <MemorySection agentId={agentId || null} />
                     </section>
                 )}
+            </div>
+            </div>
+            </div>
+
+            {/* Capability Market Panel Drawer */}
+            <div 
+                className="market-drawer-wrapper"
+                style={{
+                    width: isMarketOpen ? '55%' : '0',
+                    flex: isMarketOpen ? '1' : 'none',
+                    backgroundColor: '#fff',
+                    borderLeft: isMarketOpen ? '1px solid var(--color-border)' : 'none',
+                    boxShadow: isMarketOpen ? '-10px 0 30px rgba(0,0,0,0.03)' : 'none',
+                    overflowY: 'auto',
+                    overflowX: 'hidden',
+                    transition: 'all 0.3s ease',
+                    opacity: isMarketOpen ? 1 : 0,
+                    minWidth: 0
+                }}
+            >
+                <CapabilityMarketPanel 
+                    isOpen={isMarketOpen}
+                    activeTab={marketActiveTab} 
+                    onClose={() => setIsMarketOpen(false)} 
+                    onTabChange={setMarketActiveTab}
+                />
             </div>
         </div>
     )
