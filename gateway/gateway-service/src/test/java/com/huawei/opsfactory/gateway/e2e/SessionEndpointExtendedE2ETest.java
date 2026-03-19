@@ -27,7 +27,7 @@ public class SessionEndpointExtendedE2ETest extends BaseE2ETest {
 
     @Before
     public void setUp() {
-        runningInstance = new ManagedInstance("test-agent", "alice", 9999, 12345L, null);
+        runningInstance = new ManagedInstance("test-agent", "alice", 9999, 12345L, null, "test-secret");
         runningInstance.setStatus(ManagedInstance.Status.RUNNING);
         when(agentConfigService.getUserAgentDir(any(String.class), any(String.class)))
                 .thenAnswer(inv -> Path.of("/tmp/test-users")
@@ -41,7 +41,7 @@ public class SessionEndpointExtendedE2ETest extends BaseE2ETest {
     public void getSessionGlobal_authenticated_returnsSessionWithAgentId() {
         when(instanceManager.getOrSpawn("test-agent", "alice"))
                 .thenReturn(Mono.just(runningInstance));
-        when(goosedProxy.fetchJson(eq(9999), eq("/sessions/session-abc")))
+        when(goosedProxy.fetchJson(eq(9999), eq("/sessions/session-abc"), anyString()))
                 .thenReturn(Mono.just("{\"id\":\"session-abc\",\"conversation\":[]}"));
 
         webClient.get().uri("/sessions/session-abc?agentId=test-agent")
@@ -67,7 +67,7 @@ public class SessionEndpointExtendedE2ETest extends BaseE2ETest {
     public void deleteSessionGlobal_authenticated_removesOwnerAndProxies() {
         when(instanceManager.getOrSpawn("test-agent", "alice"))
                 .thenReturn(Mono.just(runningInstance));
-        when(goosedProxy.proxy(any(), any(), eq(9999), eq("/sessions/session-xyz")))
+        when(goosedProxy.proxy(any(), any(), eq(9999), eq("/sessions/session-xyz"), any()))
                 .thenReturn(Mono.empty());
 
         webClient.delete().uri("/sessions/session-xyz?agentId=test-agent")
@@ -76,7 +76,7 @@ public class SessionEndpointExtendedE2ETest extends BaseE2ETest {
                 .exchange()
                 .expectStatus().isOk();
 
-        verify(goosedProxy).proxy(any(), any(), eq(9999), eq("/sessions/session-xyz"));
+        verify(goosedProxy).proxy(any(), any(), eq(9999), eq("/sessions/session-xyz"), any());
     }
 
     @Test
@@ -93,7 +93,7 @@ public class SessionEndpointExtendedE2ETest extends BaseE2ETest {
         when(instanceManager.getOrSpawn("test-agent", "alice"))
                 .thenReturn(Mono.just(runningInstance));
         when(goosedProxy.proxyWithBody(any(), eq(9999), eq("/sessions/session-123/name"),
-                eq(HttpMethod.PUT), anyString()))
+                eq(HttpMethod.PUT), anyString(), anyString()))
                 .thenReturn(Mono.empty());
 
         webClient.put().uri("/agents/test-agent/sessions/session-123/name")
@@ -105,7 +105,7 @@ public class SessionEndpointExtendedE2ETest extends BaseE2ETest {
                 .expectStatus().isOk();
 
         verify(goosedProxy).proxyWithBody(any(), eq(9999), eq("/sessions/session-123/name"),
-                eq(HttpMethod.PUT), anyString());
+                eq(HttpMethod.PUT), anyString(), anyString());
     }
 
     @Test
@@ -123,7 +123,7 @@ public class SessionEndpointExtendedE2ETest extends BaseE2ETest {
     public void getSession_notFoundFromGoosed_returns404() {
         when(instanceManager.getOrSpawn("test-agent", "alice"))
                 .thenReturn(Mono.just(runningInstance));
-        when(goosedProxy.fetchJson(eq(9999), eq("/sessions/nonexistent")))
+        when(goosedProxy.fetchJson(eq(9999), eq("/sessions/nonexistent"), anyString()))
                 .thenReturn(Mono.error(org.springframework.web.reactive.function.client.WebClientResponseException
                         .create(404, "Not Found", org.springframework.http.HttpHeaders.EMPTY, new byte[0], null)));
 

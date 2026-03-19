@@ -34,7 +34,7 @@ public class McpController {
         return instanceManager.getOrSpawn(agentId, GatewayConstants.SYS_USER)
                 .flatMap(instance -> goosedProxy.proxy(
                         exchange.getRequest(), exchange.getResponse(),
-                        instance.getPort(), "/config/extensions"));
+                        instance.getPort(), "/config/extensions", instance.getSecretKey()));
     }
 
     @PostMapping
@@ -52,7 +52,7 @@ public class McpController {
 
                     return wc.post()
                             .uri(sysTarget + "/config/extensions")
-                            .header(GatewayConstants.HEADER_SECRET_KEY, goosedProxy.getSecretKey())
+                            .header(GatewayConstants.HEADER_SECRET_KEY, sysInstance.getSecretKey())
                             .header("Content-Type", "application/json")
                             .bodyValue(body)
                             .retrieve()
@@ -78,7 +78,7 @@ public class McpController {
 
                     return wc.delete()
                             .uri(sysTarget + path)
-                            .header(GatewayConstants.HEADER_SECRET_KEY, goosedProxy.getSecretKey())
+                            .header(GatewayConstants.HEADER_SECRET_KEY, sysInstance.getSecretKey())
                             .retrieve()
                             .bodyToMono(String.class)
                             .map(sysResult -> {

@@ -63,7 +63,7 @@ public class MonitoringEndpointE2ETest extends BaseE2ETest {
 
     @Test
     public void instances_admin_returnsInstanceList() {
-        ManagedInstance inst = new ManagedInstance("agent-a", "alice", 9001, 54321L, null);
+        ManagedInstance inst = new ManagedInstance("agent-a", "alice", 9001, 54321L, null, "test-secret");
         inst.setStatus(ManagedInstance.Status.RUNNING);
         when(instanceManager.getAllInstances()).thenReturn(List.of(inst));
         when(agentConfigService.findAgent("agent-a")).thenReturn(
@@ -114,11 +114,11 @@ public class MonitoringEndpointE2ETest extends BaseE2ETest {
 
     @Test
     public void instances_multipleInstances_groupedByAgent() {
-        ManagedInstance inst1 = new ManagedInstance("agent-a", "alice", 9001, 111L, null);
+        ManagedInstance inst1 = new ManagedInstance("agent-a", "alice", 9001, 111L, null, "test-secret");
         inst1.setStatus(ManagedInstance.Status.RUNNING);
-        ManagedInstance inst2 = new ManagedInstance("agent-b", "bob", 9002, 222L, null);
+        ManagedInstance inst2 = new ManagedInstance("agent-b", "bob", 9002, 222L, null, "test-secret");
         inst2.setStatus(ManagedInstance.Status.STOPPED);
-        ManagedInstance inst3 = new ManagedInstance("agent-a", "sys", 9003, 333L, null);
+        ManagedInstance inst3 = new ManagedInstance("agent-a", "sys", 9003, 333L, null, "test-secret");
         inst3.setStatus(ManagedInstance.Status.STARTING);
 
         when(instanceManager.getAllInstances()).thenReturn(List.of(inst1, inst2, inst3));

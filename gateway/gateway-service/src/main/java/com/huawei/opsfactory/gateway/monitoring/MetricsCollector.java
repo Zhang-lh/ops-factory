@@ -59,7 +59,7 @@ public class MetricsCollector {
 
         // Collect insights from all running instances concurrently
         List<Mono<long[]>> fetches = running.stream()
-                .map(inst -> goosedProxy.fetchJson(inst.getPort(), "/sessions/insights")
+                .map(inst -> goosedProxy.fetchJson(inst.getPort(), "/sessions/insights", inst.getSecretKey())
                         .timeout(Duration.ofSeconds(5))
                         .map(json -> {
                             try {

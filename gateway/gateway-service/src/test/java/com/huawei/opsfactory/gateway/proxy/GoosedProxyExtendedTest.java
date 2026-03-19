@@ -39,9 +39,9 @@ public class GoosedProxyExtendedTest {
 
         HttpHeaders target = new HttpHeaders();
 
-        Method copyHeaders = GoosedProxy.class.getDeclaredMethod("copyHeaders", HttpHeaders.class, HttpHeaders.class);
+        Method copyHeaders = GoosedProxy.class.getDeclaredMethod("copyHeaders", HttpHeaders.class, HttpHeaders.class, String.class);
         copyHeaders.setAccessible(true);
-        copyHeaders.invoke(proxy, source, target);
+        copyHeaders.invoke(proxy, source, target, "my-secret");
 
         assertEquals("application/json", target.getFirst("Content-Type"));
         assertEquals("value", target.getFirst("X-Custom"));
@@ -55,9 +55,9 @@ public class GoosedProxyExtendedTest {
 
         HttpHeaders target = new HttpHeaders();
 
-        Method copyHeaders = GoosedProxy.class.getDeclaredMethod("copyHeaders", HttpHeaders.class, HttpHeaders.class);
+        Method copyHeaders = GoosedProxy.class.getDeclaredMethod("copyHeaders", HttpHeaders.class, HttpHeaders.class, String.class);
         copyHeaders.setAccessible(true);
-        copyHeaders.invoke(proxy, source, target);
+        copyHeaders.invoke(proxy, source, target, "my-secret");
 
         // Should be overridden by gateway's secret key
         assertEquals("my-secret", target.getFirst("x-secret-key"));
@@ -113,7 +113,7 @@ public class GoosedProxyExtendedTest {
     @Test
     public void testFetchJson_returnsNonNullMono() {
         // Construction-level test: verifies Mono is created without errors
-        assertNotNull(proxy.fetchJson(99999, "/test"));
+        assertNotNull(proxy.fetchJson(99999, "/test", "test-secret"));
     }
 
     // ====================== proxyWithBody ======================
@@ -122,6 +122,6 @@ public class GoosedProxyExtendedTest {
     public void testProxyWithBody_returnsNonNullMono() {
         // Construction-level test: verifies Mono is created
         assertNotNull(proxy.proxyWithBody(null, 99999, "/test",
-                org.springframework.http.HttpMethod.POST, "{}"));
+                org.springframework.http.HttpMethod.POST, "{}", "test-secret"));
     }
 }

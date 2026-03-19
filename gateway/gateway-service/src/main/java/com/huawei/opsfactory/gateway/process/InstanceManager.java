@@ -33,6 +33,7 @@ import java.security.cert.X509Certificate;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.security.SecureRandom;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -47,6 +48,7 @@ public class InstanceManager {
 
     private static final Logger log = LogManager.getLogger(InstanceManager.class);
     private static final ObjectMapper MAPPER = new ObjectMapper();
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
     private final GatewayProperties properties;
     private final PortAllocator portAllocator;
@@ -107,7 +109,7 @@ public class InstanceManager {
                     try {
                         log.info("Auto-starting sys instance for sysOnly agent: {}", entry.id());
                         ManagedInstance instance = doSpawn(entry.id(), GatewayConstants.SYS_USER);
-                        registerDefaultSchedules(entry.id(), instance.getPort());
+                        registerDefaultSchedules(entry.id(), instance.getPort(), instance.getSecretKey());
                     } catch (Exception e) {
                         log.error("Failed to auto-start sys instance for {}: {}", entry.id(), e.getMessage());
                     }
@@ -117,7 +119,7 @@ public class InstanceManager {
     /**
      * Scan agent's config/recipes/ directory and register each recipe as a paused schedule.
      */
-    private void registerDefaultSchedules(String agentId, int port) {
+    private void registerDefaultSchedules(String agentId, int port, String secretKey) {
         Path recipesDir = agentConfigService.getAgentsDir()
                 .resolve(agentId).resolve("config").resolve("recipes");
         if (!Files.isDirectory(recipesDir)) return;
@@ -126,7 +128,7 @@ public class InstanceManager {
             // Fetch existing schedules
             Set<String> existingIds = new HashSet<>();
             try {
-                String listJson = httpGet(port, "/schedule/list");
+                String listJson = httpGet(port, "/schedule/list", secretKey);
                 // Simple parsing: extract "id" values from jobs array
                 if (listJson != null && listJson.contains("\"jobs\"")) {
                     Map<String, Object> parsed = MAPPER.readValue(listJson,
@@ -173,14 +175,14 @@ public class InstanceManager {
                         body.put("cron", "0 9 * * *");
                         String bodyJson = MAPPER.writeValueAsString(body);
 
-                        boolean created = httpPost(port, "/schedule/create", bodyJson);
+                        boolean created = httpPost(port, "/schedule/create", bodyJson, secretKey);
                         if (!created) {
                             log.warn("Failed to create schedule {} for {}", scheduleId, agentId);
                             continue;
                         }
 
                         // Pause immediately
-                        httpPost(port, "/schedule/" + scheduleId + "/pause", "{}");
+                        httpPost(port, "/schedule/" + scheduleId + "/pause", "{}", secretKey);
                         log.info("Registered schedule \"{}\" for {} (paused)", scheduleId, agentId);
                     } catch (Exception e) {
                         log.warn("Error registering schedule {} for {}: {}", scheduleId, agentId, e.getMessage());
@@ -224,13 +226,13 @@ public class InstanceManager {
         }
     }
 
-    private String httpGet(int port, String path) throws IOException {
+    private String httpGet(int port, String path, String secretKey) throws IOException {
         URL url = new URL(goosedBaseUrl(port) + path);
         HttpURLConnection conn = openConnection(url);
         conn.setConnectTimeout(5000);
         conn.setReadTimeout(5000);
         conn.setRequestMethod("GET");
-        conn.setRequestProperty("x-secret-key", properties.getSecretKey());
+        conn.setRequestProperty("x-secret-key", secretKey);
         try {
             int code = conn.getResponseCode();
             if (code == 200) {
@@ -242,13 +244,13 @@ public class InstanceManager {
         }
     }
 
-    private boolean httpPost(int port, String path, String body) throws IOException {
+    private boolean httpPost(int port, String path, String body, String secretKey) throws IOException {
         URL url = new URL(goosedBaseUrl(port) + path);
         HttpURLConnection conn = openConnection(url);
         conn.setConnectTimeout(5000);
         conn.setReadTimeout(5000);
         conn.setRequestMethod("POST");
-        conn.setRequestProperty("x-secret-key", properties.getSecretKey());
+        conn.setRequestProperty("x-secret-key", secretKey);
         conn.setRequestProperty("Content-Type", "application/json");
         conn.setDoOutput(true);
         try (OutputStream os = conn.getOutputStream()) {
@@ -330,6 +332,7 @@ public class InstanceManager {
             int port = portAllocator.allocate();
 
             Map<String, String> env = buildEnvironment(agentId, userId, port, runtimeRoot);
+            String instanceSecret = env.get("GOOSE_SERVER__SECRET_KEY");
 
             ProcessBuilder pb = new ProcessBuilder(properties.getGoosedBin(), "agent");
             pb.directory(new File(runtimeRoot.toString()));
@@ -356,7 +359,7 @@ public class InstanceManager {
             drainThread.setDaemon(true);
             drainThread.start();
 
-            ManagedInstance instance = new ManagedInstance(agentId, userId, port, pid, process);
+            ManagedInstance instance = new ManagedInstance(agentId, userId, port, pid, process, instanceSecret);
             instances.put(key, instance);
 
             waitForReady(port, process);
@@ -428,7 +431,14 @@ public class InstanceManager {
         // Core goosed env
         env.put("GOOSE_PORT", String.valueOf(port));
         env.put("GOOSE_HOST", "127.0.0.1");
-        env.put("GOOSE_SERVER__SECRET_KEY", properties.getSecretKey());
+        // Per-instance random secret key (32 bytes hex)
+        byte[] secretBytes = new byte[32];
+        SECURE_RANDOM.nextBytes(secretBytes);
+        StringBuilder hexSecret = new StringBuilder(64);
+        for (byte b : secretBytes) {
+            hexSecret.append(String.format("%02x", b));
+        }
+        env.put("GOOSE_SERVER__SECRET_KEY", hexSecret.toString());
         env.put("GOOSE_PATH_ROOT", runtimeRoot.toString());
         env.put("GOOSE_DISABLE_KEYRING", "1");
         env.put("GOOSE_TLS", String.valueOf(properties.isGoosedTls()));

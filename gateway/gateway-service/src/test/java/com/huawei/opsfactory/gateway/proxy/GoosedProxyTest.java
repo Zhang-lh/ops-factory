@@ -30,10 +30,8 @@ public class GoosedProxyTest {
         assertNotNull(proxy.getWebClient());
     }
 
-    @Test
-    public void testSecretKey() {
-        assertEquals("test-key", proxy.getSecretKey());
-    }
+
+
 
     // ====================== TLS tests ======================
 

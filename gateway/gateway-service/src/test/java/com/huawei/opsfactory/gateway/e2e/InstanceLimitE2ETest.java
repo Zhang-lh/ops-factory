@@ -61,7 +61,7 @@ public class InstanceLimitE2ETest extends BaseE2ETest {
 
     @Test
     public void reply_normalSpawn_returns200() {
-        ManagedInstance mockInstance = new ManagedInstance("test-agent", "alice", 9999, 12345L, null);
+        ManagedInstance mockInstance = new ManagedInstance("test-agent", "alice", 9999, 12345L, null, "test-secret");
         mockInstance.setStatus(ManagedInstance.Status.RUNNING);
 
         when(instanceManager.getOrSpawn("test-agent", "alice"))
@@ -69,7 +69,7 @@ public class InstanceLimitE2ETest extends BaseE2ETest {
 
         DataBuffer buffer = new DefaultDataBufferFactory()
                 .wrap("data: {\"type\":\"Finish\"}\n\n".getBytes(StandardCharsets.UTF_8));
-        when(sseRelayService.relay(eq(9999), eq("/reply"), anyString(), eq("test-agent"), eq("alice")))
+        when(sseRelayService.relay(eq(9999), eq("/reply"), anyString(), eq("test-agent"), eq("alice"), any()))
                 .thenReturn(Flux.just(buffer));
 
         webClient.post().uri("/agents/test-agent/reply")

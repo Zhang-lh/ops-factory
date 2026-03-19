@@ -19,10 +19,10 @@ public class CatchAllProxyEndpointE2ETest extends BaseE2ETest {
 
     @Test
     public void adminAccessToSchedules_proxiesToGoosed() {
-        ManagedInstance instance = new ManagedInstance("test-agent", "sys", 9000, 123L, null);
+        ManagedInstance instance = new ManagedInstance("test-agent", "sys", 9000, 123L, null, "test-secret");
         instance.setStatus(ManagedInstance.Status.RUNNING);
         when(instanceManager.getOrSpawn("test-agent", "sys")).thenReturn(Mono.just(instance));
-        when(goosedProxy.proxy(any(), any(), eq(9000), eq("/schedules/list"))).thenReturn(Mono.empty());
+        when(goosedProxy.proxy(any(), any(), eq(9000), eq("/schedules/list"), any())).thenReturn(Mono.empty());
 
         webClient.get().uri("/agents/test-agent/schedules/list")
                 .header(HEADER_SECRET_KEY, SECRET_KEY)
@@ -30,17 +30,17 @@ public class CatchAllProxyEndpointE2ETest extends BaseE2ETest {
                 .exchange()
                 .expectStatus().isOk();
 
-        verify(goosedProxy).proxy(any(), any(), eq(9000), eq("/schedules/list"));
+        verify(goosedProxy).proxy(any(), any(), eq(9000), eq("/schedules/list"), any());
     }
 
     // ====================== User-accessible routes ======================
 
     @Test
     public void userAccessToSystemInfo_allowed() {
-        ManagedInstance instance = new ManagedInstance("test-agent", "alice", 9000, 123L, null);
+        ManagedInstance instance = new ManagedInstance("test-agent", "alice", 9000, 123L, null, "test-secret");
         instance.setStatus(ManagedInstance.Status.RUNNING);
         when(instanceManager.getOrSpawn("test-agent", "alice")).thenReturn(Mono.just(instance));
-        when(goosedProxy.proxy(any(), any(), eq(9000), eq("/system_info"))).thenReturn(Mono.empty());
+        when(goosedProxy.proxy(any(), any(), eq(9000), eq("/system_info"), any())).thenReturn(Mono.empty());
 
         webClient.get().uri("/agents/test-agent/system_info")
                 .header(HEADER_SECRET_KEY, SECRET_KEY)
@@ -51,10 +51,10 @@ public class CatchAllProxyEndpointE2ETest extends BaseE2ETest {
 
     @Test
     public void userAccessToStatus_allowed() {
-        ManagedInstance instance = new ManagedInstance("test-agent", "alice", 9000, 123L, null);
+        ManagedInstance instance = new ManagedInstance("test-agent", "alice", 9000, 123L, null, "test-secret");
         instance.setStatus(ManagedInstance.Status.RUNNING);
         when(instanceManager.getOrSpawn("test-agent", "alice")).thenReturn(Mono.just(instance));
-        when(goosedProxy.proxy(any(), any(), eq(9000), eq("/status"))).thenReturn(Mono.empty());
+        when(goosedProxy.proxy(any(), any(), eq(9000), eq("/status"), any())).thenReturn(Mono.empty());
 
         webClient.get().uri("/agents/test-agent/status")
                 .header(HEADER_SECRET_KEY, SECRET_KEY)
@@ -96,10 +96,10 @@ public class CatchAllProxyEndpointE2ETest extends BaseE2ETest {
 
     @Test
     public void queryStringForwarded_toGoosed() {
-        ManagedInstance instance = new ManagedInstance("test-agent", "sys", 9000, 123L, null);
+        ManagedInstance instance = new ManagedInstance("test-agent", "sys", 9000, 123L, null, "test-secret");
         instance.setStatus(ManagedInstance.Status.RUNNING);
         when(instanceManager.getOrSpawn("test-agent", "sys")).thenReturn(Mono.just(instance));
-        when(goosedProxy.proxy(any(), any(), eq(9000), eq("/schedules/list?limit=5"))).thenReturn(Mono.empty());
+        when(goosedProxy.proxy(any(), any(), eq(9000), eq("/schedules/list?limit=5"), any())).thenReturn(Mono.empty());
 
         webClient.get().uri("/agents/test-agent/schedules/list?limit=5")
                 .header(HEADER_SECRET_KEY, SECRET_KEY)
@@ -107,6 +107,6 @@ public class CatchAllProxyEndpointE2ETest extends BaseE2ETest {
                 .exchange()
                 .expectStatus().isOk();
 
-        verify(goosedProxy).proxy(any(), any(), eq(9000), eq("/schedules/list?limit=5"));
+        verify(goosedProxy).proxy(any(), any(), eq(9000), eq("/schedules/list?limit=5"), any());
     }
 }

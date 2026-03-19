@@ -56,9 +56,9 @@ public class MetricsCollectorTest {
         ManagedInstance inst2 = createRunningInstance(8002);
         when(instanceManager.getAllInstances()).thenReturn(Arrays.asList(inst1, inst2));
 
-        when(goosedProxy.fetchJson(eq(8001), eq("/sessions/insights")))
+        when(goosedProxy.fetchJson(eq(8001), eq("/sessions/insights"), anyString()))
                 .thenReturn(Mono.just("{\"total_tokens\": 100, \"total_sessions\": 2}"));
-        when(goosedProxy.fetchJson(eq(8002), eq("/sessions/insights")))
+        when(goosedProxy.fetchJson(eq(8002), eq("/sessions/insights"), anyString()))
                 .thenReturn(Mono.just("{\"total_tokens\": 200, \"total_sessions\": 3}"));
 
         collector.collect();
@@ -76,7 +76,7 @@ public class MetricsCollectorTest {
         ManagedInstance inst = createRunningInstance(8001);
         when(instanceManager.getAllInstances()).thenReturn(Collections.singletonList(inst));
 
-        when(goosedProxy.fetchJson(eq(8001), eq("/sessions/insights")))
+        when(goosedProxy.fetchJson(eq(8001), eq("/sessions/insights"), anyString()))
                 .thenReturn(Mono.error(new RuntimeException("connection refused")));
 
         collector.collect();
@@ -93,12 +93,12 @@ public class MetricsCollectorTest {
         when(instanceManager.getAllInstances()).thenReturn(Collections.singletonList(inst));
 
         // First call: 100 tokens
-        when(goosedProxy.fetchJson(eq(8001), eq("/sessions/insights")))
+        when(goosedProxy.fetchJson(eq(8001), eq("/sessions/insights"), anyString()))
                 .thenReturn(Mono.just("{\"total_tokens\": 100, \"total_sessions\": 1}"));
         collector.collect();
 
         // Second call: 400 tokens (delta = 300, interval = 30s, so 10 tok/s)
-        when(goosedProxy.fetchJson(eq(8001), eq("/sessions/insights")))
+        when(goosedProxy.fetchJson(eq(8001), eq("/sessions/insights"), anyString()))
                 .thenReturn(Mono.just("{\"total_tokens\": 400, \"total_sessions\": 2}"));
         collector.collect();
 
@@ -168,11 +168,11 @@ public class MetricsCollectorTest {
     @Test
     public void testCollect_filtersNonRunningInstances() {
         ManagedInstance running = createRunningInstance(8001);
-        ManagedInstance stopped = new ManagedInstance("agent2", "user2", 8002, 0L, null);
+        ManagedInstance stopped = new ManagedInstance("agent2", "user2", 8002, 0L, null, "test-secret");
         stopped.setStatus(ManagedInstance.Status.STOPPED);
 
         when(instanceManager.getAllInstances()).thenReturn(Arrays.asList(running, stopped));
-        when(goosedProxy.fetchJson(eq(8001), eq("/sessions/insights")))
+        when(goosedProxy.fetchJson(eq(8001), eq("/sessions/insights"), anyString()))
                 .thenReturn(Mono.just("{\"total_tokens\": 50, \"total_sessions\": 1}"));
 
         collector.collect();
@@ -189,7 +189,7 @@ public class MetricsCollectorTest {
         ManagedInstance inst = createRunningInstance(8001);
         when(instanceManager.getAllInstances()).thenReturn(Collections.singletonList(inst));
 
-        when(goosedProxy.fetchJson(eq(8001), eq("/sessions/insights")))
+        when(goosedProxy.fetchJson(eq(8001), eq("/sessions/insights"), anyString()))
                 .thenReturn(Mono.just("not json at all"));
 
         collector.collect();
@@ -201,7 +201,7 @@ public class MetricsCollectorTest {
     }
 
     private ManagedInstance createRunningInstance(int port) {
-        ManagedInstance inst = new ManagedInstance("agent1", "user1", port, 0L, null);
+        ManagedInstance inst = new ManagedInstance("agent1", "user1", port, 0L, null, "test-secret");
         inst.setStatus(ManagedInstance.Status.RUNNING);
         return inst;
     }

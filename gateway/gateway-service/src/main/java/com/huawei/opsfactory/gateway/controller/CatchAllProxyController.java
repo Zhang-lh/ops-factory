@@ -68,7 +68,7 @@ public class CatchAllProxyController {
         return instanceManager.getOrSpawn(agentId, userId)
                 .flatMap(instance -> goosedProxy.proxy(
                         exchange.getRequest(), exchange.getResponse(),
-                        instance.getPort(), target));
+                        instance.getPort(), target, instance.getSecretKey()));
     }
 
     private boolean isUserAccessible(String remainder) {

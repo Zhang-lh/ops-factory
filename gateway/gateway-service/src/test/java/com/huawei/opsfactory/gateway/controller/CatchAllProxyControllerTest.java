@@ -41,14 +41,14 @@ public class CatchAllProxyControllerTest {
         exchange.getAttributes().put(UserContextFilter.USER_ROLE_ATTR, UserRole.ADMIN);
         exchange.getAttributes().put(UserContextFilter.USER_ID_ATTR, "sys");
 
-        ManagedInstance instance = new ManagedInstance("test-agent", "sys", 9000, 123L, null);
+        ManagedInstance instance = new ManagedInstance("test-agent", "sys", 9000, 123L, null, "test-secret");
         when(instanceManager.getOrSpawn("test-agent", "sys")).thenReturn(Mono.just(instance));
-        when(goosedProxy.proxy(any(), any(), eq(9000), eq("/schedules/list"))).thenReturn(Mono.empty());
+        when(goosedProxy.proxy(any(), any(), eq(9000), eq("/schedules/list"), any())).thenReturn(Mono.empty());
 
         controller.catchAll(exchange).block();
 
         verify(instanceManager).getOrSpawn("test-agent", "sys");
-        verify(goosedProxy).proxy(any(), any(), eq(9000), eq("/schedules/list"));
+        verify(goosedProxy).proxy(any(), any(), eq(9000), eq("/schedules/list"), any());
     }
 
     @Test
@@ -58,9 +58,9 @@ public class CatchAllProxyControllerTest {
         exchange.getAttributes().put(UserContextFilter.USER_ROLE_ATTR, UserRole.USER);
         exchange.getAttributes().put(UserContextFilter.USER_ID_ATTR, "alice");
 
-        ManagedInstance instance = new ManagedInstance("test-agent", "alice", 9000, 123L, null);
+        ManagedInstance instance = new ManagedInstance("test-agent", "alice", 9000, 123L, null, "test-secret");
         when(instanceManager.getOrSpawn("test-agent", "alice")).thenReturn(Mono.just(instance));
-        when(goosedProxy.proxy(any(), any(), eq(9000), eq("/system_info"))).thenReturn(Mono.empty());
+        when(goosedProxy.proxy(any(), any(), eq(9000), eq("/system_info"), any())).thenReturn(Mono.empty());
 
         controller.catchAll(exchange).block();
 
@@ -74,9 +74,9 @@ public class CatchAllProxyControllerTest {
         exchange.getAttributes().put(UserContextFilter.USER_ROLE_ATTR, UserRole.USER);
         exchange.getAttributes().put(UserContextFilter.USER_ID_ATTR, "alice");
 
-        ManagedInstance instance = new ManagedInstance("test-agent", "alice", 9000, 123L, null);
+        ManagedInstance instance = new ManagedInstance("test-agent", "alice", 9000, 123L, null, "test-secret");
         when(instanceManager.getOrSpawn("test-agent", "alice")).thenReturn(Mono.just(instance));
-        when(goosedProxy.proxy(any(), any(), eq(9000), eq("/status"))).thenReturn(Mono.empty());
+        when(goosedProxy.proxy(any(), any(), eq(9000), eq("/status"), any())).thenReturn(Mono.empty());
 
         controller.catchAll(exchange).block();
 
@@ -120,13 +120,13 @@ public class CatchAllProxyControllerTest {
         exchange.getAttributes().put(UserContextFilter.USER_ROLE_ATTR, UserRole.ADMIN);
         exchange.getAttributes().put(UserContextFilter.USER_ID_ATTR, "sys");
 
-        ManagedInstance instance = new ManagedInstance("test-agent", "sys", 9000, 123L, null);
+        ManagedInstance instance = new ManagedInstance("test-agent", "sys", 9000, 123L, null, "test-secret");
         when(instanceManager.getOrSpawn("test-agent", "sys")).thenReturn(Mono.just(instance));
-        when(goosedProxy.proxy(any(), any(), eq(9000), eq("/schedules/list?limit=5"))).thenReturn(Mono.empty());
+        when(goosedProxy.proxy(any(), any(), eq(9000), eq("/schedules/list?limit=5"), any())).thenReturn(Mono.empty());
 
         controller.catchAll(exchange).block();
 
-        verify(goosedProxy).proxy(any(), any(), eq(9000), eq("/schedules/list?limit=5"));
+        verify(goosedProxy).proxy(any(), any(), eq(9000), eq("/schedules/list?limit=5"), any());
     }
 
     @Test
@@ -136,9 +136,9 @@ public class CatchAllProxyControllerTest {
         exchange.getAttributes().put(UserContextFilter.USER_ROLE_ATTR, UserRole.ADMIN);
         exchange.getAttributes().put(UserContextFilter.USER_ID_ATTR, "admin-user");
 
-        ManagedInstance instance = new ManagedInstance("test-agent", "admin-user", 9000, 123L, null);
+        ManagedInstance instance = new ManagedInstance("test-agent", "admin-user", 9000, 123L, null, "test-secret");
         when(instanceManager.getOrSpawn("test-agent", "admin-user")).thenReturn(Mono.just(instance));
-        when(goosedProxy.proxy(any(), any(), eq(9000), eq("/config/prompts"))).thenReturn(Mono.empty());
+        when(goosedProxy.proxy(any(), any(), eq(9000), eq("/config/prompts"), any())).thenReturn(Mono.empty());
 
         controller.catchAll(exchange).block();
 
@@ -152,9 +152,9 @@ public class CatchAllProxyControllerTest {
         exchange.getAttributes().put(UserContextFilter.USER_ROLE_ATTR, UserRole.USER);
         exchange.getAttributes().put(UserContextFilter.USER_ID_ATTR, "alice");
 
-        ManagedInstance instance = new ManagedInstance("test-agent", "alice", 9000, 123L, null);
+        ManagedInstance instance = new ManagedInstance("test-agent", "alice", 9000, 123L, null, "test-secret");
         when(instanceManager.getOrSpawn("test-agent", "alice")).thenReturn(Mono.just(instance));
-        when(goosedProxy.proxy(any(), any(), eq(9000), eq("/system_info/details"))).thenReturn(Mono.empty());
+        when(goosedProxy.proxy(any(), any(), eq(9000), eq("/system_info/details"), any())).thenReturn(Mono.empty());
 
         controller.catchAll(exchange).block();
 

@@ -78,7 +78,7 @@ public class SessionController {
         String finalBody = modifiedBody;
         return instanceManager.getOrSpawn(agentId, userId)
                 .flatMap(instance -> goosedProxy.fetchJson(
-                        instance.getPort(), HttpMethod.POST, "/agent/start", finalBody, 120)
+                        instance.getPort(), HttpMethod.POST, "/agent/start", finalBody, 120, instance.getSecretKey())
                         .flatMap(startResponse -> {
                             // Follow goosed canonical flow: start → resume(load_model_and_extensions=true)
                             // Extensions must be loaded before the session is returned to the client.
@@ -87,7 +87,7 @@ public class SessionController {
                             String resumeBody = "{\"session_id\":\"" + sessionId
                                     + "\",\"load_model_and_extensions\":true}";
                             return goosedProxy.fetchJson(
-                                    instance.getPort(), HttpMethod.POST, "/agent/resume", resumeBody, 120)
+                                    instance.getPort(), HttpMethod.POST, "/agent/resume", resumeBody, 120, instance.getSecretKey())
                                     .doOnNext(r -> {
                                         instance.markSessionResumed(sessionId);
                                         log.info("Extensions loaded for session {}", sessionId);
@@ -170,7 +170,7 @@ public class SessionController {
         return instanceManager.getOrSpawn(agentId, userId)
                 .flatMap(instance -> goosedProxy.proxy(
                         exchange.getRequest(), exchange.getResponse(),
-                        instance.getPort(), "/sessions"));
+                        instance.getPort(), "/sessions", instance.getSecretKey()));
     }
 
     @GetMapping(value = "/agents/{agentId}/sessions/{sessionId}", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -179,7 +179,7 @@ public class SessionController {
                                     ServerWebExchange exchange) {
         String userId = exchange.getAttribute(UserContextFilter.USER_ID_ATTR);
         return instanceManager.getOrSpawn(agentId, userId)
-                .flatMap(instance -> goosedProxy.fetchJson(instance.getPort(), "/sessions/" + sessionId))
+                .flatMap(instance -> goosedProxy.fetchJson(instance.getPort(), "/sessions/" + sessionId, instance.getSecretKey()))
                 .map(json -> injectAgentId(json, agentId))
                 .onErrorResume(WebClientResponseException.class, e -> {
                     if (e.getStatusCode() == HttpStatus.NOT_FOUND) {
@@ -198,7 +198,7 @@ public class SessionController {
                                           ServerWebExchange exchange) {
         String userId = exchange.getAttribute(UserContextFilter.USER_ID_ATTR);
         return instanceManager.getOrSpawn(agentId, userId)
-                .flatMap(instance -> goosedProxy.fetchJson(instance.getPort(), "/sessions/" + sessionId))
+                .flatMap(instance -> goosedProxy.fetchJson(instance.getPort(), "/sessions/" + sessionId, instance.getSecretKey()))
                 .map(json -> injectAgentId(json, agentId))
                 .onErrorResume(WebClientResponseException.class, e -> {
                     if (e.getStatusCode() == HttpStatus.NOT_FOUND) {
@@ -218,7 +218,7 @@ public class SessionController {
         return instanceManager.getOrSpawn(agentId, userId)
                 .flatMap(instance -> goosedProxy.proxy(
                         exchange.getRequest(), exchange.getResponse(),
-                        instance.getPort(), "/sessions/" + sessionId));
+                        instance.getPort(), "/sessions/" + sessionId, instance.getSecretKey()));
     }
 
     /**
@@ -234,7 +234,7 @@ public class SessionController {
         return instanceManager.getOrSpawn(agentId, userId)
                 .flatMap(instance -> goosedProxy.proxy(
                         exchange.getRequest(), exchange.getResponse(),
-                        instance.getPort(), "/sessions/" + sessionId));
+                        instance.getPort(), "/sessions/" + sessionId, instance.getSecretKey()));
     }
 
     /**
@@ -280,6 +280,6 @@ public class SessionController {
                 .flatMap(instance -> goosedProxy.proxyWithBody(
                         exchange.getResponse(), instance.getPort(),
                         "/sessions/" + sessionId + "/name",
-                        HttpMethod.PUT, body));
+                        HttpMethod.PUT, body, instance.getSecretKey()));
     }
 }

@@ -75,7 +75,9 @@ public class InstanceManagerExtendedTest {
 
         assertEquals("9000", env.get("GOOSE_PORT"));
         assertEquals("127.0.0.1", env.get("GOOSE_HOST"));
-        assertEquals("test-secret", env.get("GOOSE_SERVER__SECRET_KEY"));
+        String secretKey = env.get("GOOSE_SERVER__SECRET_KEY");
+        assertNotNull("Secret key should be set", secretKey);
+        assertTrue("Secret key should be a 64-char hex string", secretKey.matches("[0-9a-f]{64}"));
         assertEquals(runtimeRoot.toString(), env.get("GOOSE_PATH_ROOT"));
         assertEquals("1", env.get("GOOSE_DISABLE_KEYRING"));
     }
@@ -207,7 +209,7 @@ public class InstanceManagerExtendedTest {
         Process deadProcess = mock(Process.class);
         when(deadProcess.isAlive()).thenReturn(false);
 
-        ManagedInstance staleInstance = new ManagedInstance("agent1", "user1", 8080, 1234L, deadProcess);
+        ManagedInstance staleInstance = new ManagedInstance("agent1", "user1", 8080, 1234L, deadProcess, "test-secret");
         staleInstance.setStatus(ManagedInstance.Status.RUNNING);
         addInstanceDirectly(staleInstance);
 
@@ -287,9 +289,9 @@ public class InstanceManagerExtendedTest {
         when(aliveProcess.isAlive()).thenReturn(true);
 
         // Add 2 running instances for user1
-        ManagedInstance inst1 = new ManagedInstance("agent1", "user1", 8080, 1L, aliveProcess);
+        ManagedInstance inst1 = new ManagedInstance("agent1", "user1", 8080, 1L, aliveProcess, "test-secret");
         inst1.setStatus(ManagedInstance.Status.RUNNING);
-        ManagedInstance inst2 = new ManagedInstance("agent2", "user1", 8081, 2L, aliveProcess);
+        ManagedInstance inst2 = new ManagedInstance("agent2", "user1", 8081, 2L, aliveProcess, "test-secret");
         inst2.setStatus(ManagedInstance.Status.RUNNING);
         addInstanceDirectly(inst1);
         addInstanceDirectly(inst2);
@@ -311,9 +313,9 @@ public class InstanceManagerExtendedTest {
         Process aliveProcess = mock(Process.class);
         when(aliveProcess.isAlive()).thenReturn(true);
 
-        ManagedInstance inst1 = new ManagedInstance("agent1", "user1", 8080, 1L, aliveProcess);
+        ManagedInstance inst1 = new ManagedInstance("agent1", "user1", 8080, 1L, aliveProcess, "test-secret");
         inst1.setStatus(ManagedInstance.Status.RUNNING);
-        ManagedInstance inst2 = new ManagedInstance("agent1", "user2", 8081, 2L, aliveProcess);
+        ManagedInstance inst2 = new ManagedInstance("agent1", "user2", 8081, 2L, aliveProcess, "test-secret");
         inst2.setStatus(ManagedInstance.Status.RUNNING);
         addInstanceDirectly(inst1);
         addInstanceDirectly(inst2);
@@ -336,7 +338,7 @@ public class InstanceManagerExtendedTest {
         when(deadProcess.isAlive()).thenReturn(false);
 
         // Add 1 stopped instance for user1
-        ManagedInstance stoppedInst = new ManagedInstance("agent1", "user1", 8080, 1L, deadProcess);
+        ManagedInstance stoppedInst = new ManagedInstance("agent1", "user1", 8080, 1L, deadProcess, "test-secret");
         stoppedInst.setStatus(ManagedInstance.Status.STOPPED);
         addInstanceDirectly(stoppedInst);
 

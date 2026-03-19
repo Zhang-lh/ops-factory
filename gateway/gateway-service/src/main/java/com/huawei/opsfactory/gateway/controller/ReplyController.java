@@ -96,7 +96,7 @@ public class ReplyController {
 
                                 Flux<DataBuffer> upstream = ensureSessionResumed(instance, sessionId)
                                         .thenMany(sseRelayService.relay(instance.getPort(), "/reply",
-                                                processedBody, agentId, userId));
+                                                processedBody, agentId, userId, instance.getSecretKey()));
 
                                 // After stream completes: diff files → inject OutputFiles SSE event
                                 return upstream.concatWith(
@@ -162,7 +162,7 @@ public class ReplyController {
         log.info("[REPLY] session {} not yet resumed on instance {}:{} (port={}), calling /agent/resume",
                 sessionId, instance.getAgentId(), instance.getUserId(), instance.getPort());
         String resumeBody = "{\"session_id\":\"" + sessionId + "\",\"load_model_and_extensions\":true}";
-        return goosedProxy.fetchJson(instance.getPort(), HttpMethod.POST, "/agent/resume", resumeBody, 120)
+        return goosedProxy.fetchJson(instance.getPort(), HttpMethod.POST, "/agent/resume", resumeBody, 120, instance.getSecretKey())
                 .doOnNext(r -> {
                     long resumeMs = System.currentTimeMillis() - resumeStart;
                     instance.markSessionResumed(sessionId);
@@ -185,7 +185,7 @@ public class ReplyController {
         String userId = exchange.getAttribute(UserContextFilter.USER_ID_ATTR);
         return instanceManager.getOrSpawn(agentId, userId)
                 .flatMap(instance -> goosedProxy.fetchJson(
-                        instance.getPort(), HttpMethod.POST, "/agent/resume", body, 120))
+                        instance.getPort(), HttpMethod.POST, "/agent/resume", body, 120, instance.getSecretKey()))
                 .onErrorResume(WebClientResponseException.class, e -> {
                     if (e.getStatusCode() == HttpStatus.NOT_FOUND) {
                         return Mono.error(new ResponseStatusException(
@@ -203,7 +203,7 @@ public class ReplyController {
         return instanceManager.getOrSpawn(agentId, userId)
                 .flatMap(instance -> goosedProxy.proxyWithBody(
                         exchange.getResponse(), instance.getPort(), "/agent/restart",
-                        HttpMethod.POST, body));
+                        HttpMethod.POST, body, instance.getSecretKey()));
     }
 
     @PostMapping({"/stop", "/agent/stop"})
@@ -214,6 +214,6 @@ public class ReplyController {
         return instanceManager.getOrSpawn(agentId, userId)
                 .flatMap(instance -> goosedProxy.proxyWithBody(
                         exchange.getResponse(), instance.getPort(), "/agent/stop",
-                        HttpMethod.POST, body));
+                        HttpMethod.POST, body, instance.getSecretKey()));
     }
 }

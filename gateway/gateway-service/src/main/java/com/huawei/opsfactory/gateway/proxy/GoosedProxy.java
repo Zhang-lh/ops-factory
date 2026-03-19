@@ -71,13 +71,13 @@ public class GoosedProxy {
     /**
      * Proxy an arbitrary request to a goosed instance.
      */
-    public Mono<Void> proxy(ServerHttpRequest request, ServerHttpResponse response, int port, String path) {
+    public Mono<Void> proxy(ServerHttpRequest request, ServerHttpResponse response, int port, String path, String secretKey) {
         String target = goosedBaseUrl(port) + path;
         HttpMethod method = request.getMethod();
 
         WebClient.RequestBodySpec spec = webClient.method(method != null ? method : HttpMethod.GET)
                 .uri(target)
-                .headers(h -> copyHeaders(request.getHeaders(), h));
+                .headers(h -> copyHeaders(request.getHeaders(), h, secretKey));
 
         WebClient.RequestHeadersSpec<?> ready;
         if (method == HttpMethod.POST || method == HttpMethod.PUT || method == HttpMethod.PATCH) {
@@ -98,12 +98,12 @@ public class GoosedProxy {
      * Proxy with a pre-read JSON body string (for routes that need body inspection).
      */
     public Mono<Void> proxyWithBody(ServerHttpResponse response, int port, String path,
-                                     HttpMethod method, String body) {
+                                     HttpMethod method, String body, String secretKey) {
         String target = goosedBaseUrl(port) + path;
 
         return webClient.method(method)
                 .uri(target)
-                .header(GatewayConstants.HEADER_SECRET_KEY, properties.getSecretKey())
+                .header(GatewayConstants.HEADER_SECRET_KEY, secretKey)
                 .header(HttpHeaders.CONTENT_TYPE, "application/json")
                 .bodyValue(body)
                 .exchangeToMono(upstream -> {
@@ -117,25 +117,25 @@ public class GoosedProxy {
     /**
      * Fetch JSON from a goosed instance and return the raw body string.
      */
-    public Mono<String> fetchJson(int port, String path) {
+    public Mono<String> fetchJson(int port, String path, String secretKey) {
         String target = goosedBaseUrl(port) + path;
         return webClient.get()
                 .uri(target)
-                .header(GatewayConstants.HEADER_SECRET_KEY, properties.getSecretKey())
+                .header(GatewayConstants.HEADER_SECRET_KEY, secretKey)
                 .retrieve()
                 .bodyToMono(String.class)
                 .timeout(Duration.ofSeconds(30));
     }
 
-    public Mono<String> fetchJson(int port, HttpMethod method, String path, String body) {
-        return fetchJson(port, method, path, body, 30);
+    public Mono<String> fetchJson(int port, HttpMethod method, String path, String body, String secretKey) {
+        return fetchJson(port, method, path, body, 30, secretKey);
     }
 
-    public Mono<String> fetchJson(int port, HttpMethod method, String path, String body, int timeoutSec) {
+    public Mono<String> fetchJson(int port, HttpMethod method, String path, String body, int timeoutSec, String secretKey) {
         String target = goosedBaseUrl(port) + path;
         WebClient.RequestBodySpec spec = webClient.method(method)
                 .uri(target)
-                .header(GatewayConstants.HEADER_SECRET_KEY, properties.getSecretKey())
+                .header(GatewayConstants.HEADER_SECRET_KEY, secretKey)
                 .header(HttpHeaders.CONTENT_TYPE, "application/json");
 
         WebClient.RequestHeadersSpec<?> ready = body != null ? spec.bodyValue(body) : spec;
@@ -150,9 +150,6 @@ public class GoosedProxy {
         return webClient;
     }
 
-    public String getSecretKey() {
-        return properties.getSecretKey();
-    }
 
     private boolean isProxyError(Throwable e) {
         return e instanceof WebClientRequestException || e instanceof TimeoutException;
@@ -173,10 +170,9 @@ public class GoosedProxy {
                 "Agent temporarily unavailable: " + e.getMessage());
     }
 
-    private void copyHeaders(HttpHeaders source, HttpHeaders target) {
+    private void copyHeaders(HttpHeaders source, HttpHeaders target, String secretKey) {
         target.addAll(source);
-        // Inject secret key for goosed auth
-        target.set(GatewayConstants.HEADER_SECRET_KEY, properties.getSecretKey());
+        target.set(GatewayConstants.HEADER_SECRET_KEY, secretKey);
     }
 
     private void copyUpstreamHeaders(HttpHeaders source, HttpHeaders target) {

@@ -27,7 +27,7 @@ public class McpEndpointE2ETest extends BaseE2ETest {
 
     @Before
     public void setUp() {
-        sysInstance = new ManagedInstance("test-agent", "sys", 9999, 12345L, null);
+        sysInstance = new ManagedInstance("test-agent", "sys", 9999, 12345L, null, "test-secret");
         sysInstance.setStatus(ManagedInstance.Status.RUNNING);
 
         // McpController always spawns sys instance
@@ -42,7 +42,7 @@ public class McpEndpointE2ETest extends BaseE2ETest {
 
     @Test
     public void getMcpExtensions_admin_proxiesToSysInstance() {
-        when(goosedProxy.proxy(any(), any(), eq(9999), eq("/config/extensions")))
+        when(goosedProxy.proxy(any(), any(), eq(9999), eq("/config/extensions"), any()))
                 .thenReturn(Mono.empty());
 
         webClient.get().uri("/agents/test-agent/mcp")
@@ -52,7 +52,7 @@ public class McpEndpointE2ETest extends BaseE2ETest {
                 .expectStatus().isOk();
 
         verify(instanceManager).getOrSpawn("test-agent", "sys");
-        verify(goosedProxy).proxy(any(), any(), eq(9999), eq("/config/extensions"));
+        verify(goosedProxy).proxy(any(), any(), eq(9999), eq("/config/extensions"), any());
     }
 
     @Test
@@ -78,7 +78,6 @@ public class McpEndpointE2ETest extends BaseE2ETest {
         // Mock WebClient for McpController's direct WebClient usage
         WebClient mockWebClient = WebClient.builder().build();
         when(goosedProxy.getWebClient()).thenReturn(mockWebClient);
-        when(goosedProxy.getSecretKey()).thenReturn(SECRET_KEY);
 
         // McpController creates its own WebClient request; we can't easily mock that
         // chain end-to-end without a real HTTP server. Instead, test the admin guard.
@@ -125,7 +124,6 @@ public class McpEndpointE2ETest extends BaseE2ETest {
     public void deleteMcpExtension_admin_attemptsProxyToSys() {
         WebClient mockWebClient = WebClient.builder().build();
         when(goosedProxy.getWebClient()).thenReturn(mockWebClient);
-        when(goosedProxy.getSecretKey()).thenReturn(SECRET_KEY);
 
         // Will fail with 500 because there's no real goosed to proxy to.
         // The test verifies the admin guard passes and the instance manager is called.

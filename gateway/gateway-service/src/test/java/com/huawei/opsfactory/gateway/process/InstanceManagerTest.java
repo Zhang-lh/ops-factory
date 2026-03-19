@@ -59,7 +59,7 @@ public class InstanceManagerTest {
         // Create a mock instance manually with a mock process
         Process mockProcess = mock(Process.class);
         when(mockProcess.isAlive()).thenReturn(false);
-        ManagedInstance instance = new ManagedInstance("agent1", "user1", 8080, 1234L, mockProcess);
+        ManagedInstance instance = new ManagedInstance("agent1", "user1", 8080, 1234L, mockProcess, "test-secret");
         instance.setStatus(ManagedInstance.Status.RUNNING);
 
         // Use reflection to add instance to internal map for testing
@@ -78,11 +78,11 @@ public class InstanceManagerTest {
         Process mockProcess = mock(Process.class);
         when(mockProcess.isAlive()).thenReturn(false);
 
-        ManagedInstance inst1 = new ManagedInstance("agent1", "user1", 8080, 1234L, mockProcess);
+        ManagedInstance inst1 = new ManagedInstance("agent1", "user1", 8080, 1234L, mockProcess, "test-secret");
         inst1.setStatus(ManagedInstance.Status.RUNNING);
-        ManagedInstance inst2 = new ManagedInstance("agent1", "user2", 8081, 1235L, mockProcess);
+        ManagedInstance inst2 = new ManagedInstance("agent1", "user2", 8081, 1235L, mockProcess, "test-secret");
         inst2.setStatus(ManagedInstance.Status.RUNNING);
-        ManagedInstance inst3 = new ManagedInstance("agent2", "user1", 8082, 1236L, mockProcess);
+        ManagedInstance inst3 = new ManagedInstance("agent2", "user1", 8082, 1236L, mockProcess, "test-secret");
         inst3.setStatus(ManagedInstance.Status.RUNNING);
 
         addInstanceDirectly(inst1);
@@ -103,9 +103,9 @@ public class InstanceManagerTest {
     public void testTouchAllForUser() throws InterruptedException {
         Process mockProcess = mock(Process.class);
 
-        ManagedInstance inst1 = new ManagedInstance("agent1", "user1", 8080, 1234L, mockProcess);
-        ManagedInstance inst2 = new ManagedInstance("agent2", "user1", 8081, 1235L, mockProcess);
-        ManagedInstance inst3 = new ManagedInstance("agent1", "user2", 8082, 1236L, mockProcess);
+        ManagedInstance inst1 = new ManagedInstance("agent1", "user1", 8080, 1234L, mockProcess, "test-secret");
+        ManagedInstance inst2 = new ManagedInstance("agent2", "user1", 8081, 1235L, mockProcess, "test-secret");
+        ManagedInstance inst3 = new ManagedInstance("agent1", "user2", 8082, 1236L, mockProcess, "test-secret");
 
         addInstanceDirectly(inst1);
         addInstanceDirectly(inst2);
@@ -127,9 +127,9 @@ public class InstanceManagerTest {
         Process mockProcess = mock(Process.class);
         when(mockProcess.isAlive()).thenReturn(false);
 
-        ManagedInstance inst1 = new ManagedInstance("agent1", "user1", 8080, 1234L, mockProcess);
+        ManagedInstance inst1 = new ManagedInstance("agent1", "user1", 8080, 1234L, mockProcess, "test-secret");
         inst1.setStatus(ManagedInstance.Status.RUNNING);
-        ManagedInstance inst2 = new ManagedInstance("agent2", "user2", 8081, 1235L, mockProcess);
+        ManagedInstance inst2 = new ManagedInstance("agent2", "user2", 8081, 1235L, mockProcess, "test-secret");
         inst2.setStatus(ManagedInstance.Status.RUNNING);
 
         addInstanceDirectly(inst1);
@@ -146,7 +146,7 @@ public class InstanceManagerTest {
         // destroyForcibly throws exception
         when(mockProcess.isAlive()).thenThrow(new RuntimeException("Process error"));
 
-        ManagedInstance inst = new ManagedInstance("agent1", "user1", 8080, 1234L, mockProcess);
+        ManagedInstance inst = new ManagedInstance("agent1", "user1", 8080, 1234L, mockProcess, "test-secret");
         inst.setStatus(ManagedInstance.Status.RUNNING);
         addInstanceDirectly(inst);
 
@@ -158,7 +158,7 @@ public class InstanceManagerTest {
     public void testGetOrSpawn_removesInstanceWhenProcessDied() {
         Process mockProcess = mock(Process.class);
         when(mockProcess.isAlive()).thenReturn(false);
-        ManagedInstance existing = new ManagedInstance("agent1", "user1", 8080, 1234L, mockProcess);
+        ManagedInstance existing = new ManagedInstance("agent1", "user1", 8080, 1234L, mockProcess, "test-secret");
         existing.setStatus(ManagedInstance.Status.RUNNING);
         addInstanceDirectly(existing);
 

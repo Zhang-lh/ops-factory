@@ -32,7 +32,7 @@ public class HookPipelineE2ETest extends BaseE2ETest {
 
     @Before
     public void setUp() {
-        mockInstance = new ManagedInstance("test-agent", "alice", 9999, 12345L, null);
+        mockInstance = new ManagedInstance("test-agent", "alice", 9999, 12345L, null, "test-secret");
         mockInstance.setStatus(ManagedInstance.Status.RUNNING);
     }
 
@@ -45,7 +45,7 @@ public class HookPipelineE2ETest extends BaseE2ETest {
 
         DataBuffer buffer = new DefaultDataBufferFactory()
                 .wrap("data: {\"type\":\"Finish\"}\n\n".getBytes(StandardCharsets.UTF_8));
-        when(sseRelayService.relay(eq(9999), eq("/reply"), anyString(), eq("test-agent"), eq("alice")))
+        when(sseRelayService.relay(eq(9999), eq("/reply"), anyString(), eq("test-agent"), eq("alice"), any()))
                 .thenReturn(Flux.just(buffer));
 
         webClient.post().uri("/agents/test-agent/reply")
@@ -74,7 +74,7 @@ public class HookPipelineE2ETest extends BaseE2ETest {
 
         // SseRelayService should NOT have been called
         verify(sseRelayService, never()).relay(
-                any(int.class), anyString(), anyString(), anyString(), anyString());
+                any(int.class), anyString(), anyString(), anyString(), anyString(), anyString());
     }
 
     @Test
@@ -92,7 +92,7 @@ public class HookPipelineE2ETest extends BaseE2ETest {
                 .expectStatus().isForbidden();
 
         verify(sseRelayService, never()).relay(
-                any(int.class), anyString(), anyString(), anyString(), anyString());
+                any(int.class), anyString(), anyString(), anyString(), anyString(), anyString());
     }
 
     @Test
@@ -109,7 +109,7 @@ public class HookPipelineE2ETest extends BaseE2ETest {
                 .expectStatus().is5xxServerError();
 
         verify(sseRelayService, never()).relay(
-                any(int.class), anyString(), anyString(), anyString(), anyString());
+                any(int.class), anyString(), anyString(), anyString(), anyString(), anyString());
     }
 
     @Test
@@ -123,7 +123,7 @@ public class HookPipelineE2ETest extends BaseE2ETest {
         DataBuffer buffer = new DefaultDataBufferFactory()
                 .wrap("data: {\"type\":\"Finish\"}\n\n".getBytes(StandardCharsets.UTF_8));
         when(sseRelayService.relay(eq(9999), eq("/reply"), eq("{\"modified\":true}"),
-                eq("test-agent"), eq("alice")))
+                eq("test-agent"), eq("alice"), anyString()))
                 .thenReturn(Flux.just(buffer));
 
         webClient.post().uri("/agents/test-agent/reply")
@@ -137,6 +137,6 @@ public class HookPipelineE2ETest extends BaseE2ETest {
 
         // Verify relay received the modified body, not the original
         verify(sseRelayService).relay(eq(9999), eq("/reply"), eq("{\"modified\":true}"),
-                eq("test-agent"), eq("alice"));
+                eq("test-agent"), eq("alice"), anyString());
     }
 }

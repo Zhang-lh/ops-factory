@@ -30,7 +30,7 @@ public class ReplyEndpointE2ETest extends BaseE2ETest {
 
     @Before
     public void setUp() {
-        mockInstance = new ManagedInstance("test-agent", "alice", 9999, 12345L, null);
+        mockInstance = new ManagedInstance("test-agent", "alice", 9999, 12345L, null, "test-secret");
         mockInstance.setStatus(ManagedInstance.Status.RUNNING);
         // HookPipeline passes body through unchanged
         when(hookPipeline.executeRequest(any(HookContext.class)))
@@ -46,7 +46,7 @@ public class ReplyEndpointE2ETest extends BaseE2ETest {
 
         DataBuffer buffer = new DefaultDataBufferFactory()
                 .wrap("data: {\"content\":\"hello\"}\n\n".getBytes(StandardCharsets.UTF_8));
-        when(sseRelayService.relay(eq(9999), eq("/reply"), anyString(), eq("test-agent"), eq("alice")))
+        when(sseRelayService.relay(eq(9999), eq("/reply"), anyString(), eq("test-agent"), eq("alice"), any()))
                 .thenReturn(Flux.just(buffer));
 
         webClient.post().uri("/agents/test-agent/reply")
@@ -87,7 +87,7 @@ public class ReplyEndpointE2ETest extends BaseE2ETest {
     public void resume_authenticatedUser_proxiesToGoosed() {
         when(instanceManager.getOrSpawn("test-agent", "alice"))
                 .thenReturn(Mono.just(mockInstance));
-        when(goosedProxy.fetchJson(eq(9999), eq(HttpMethod.POST), eq("/agent/resume"), anyString(), anyInt()))
+        when(goosedProxy.fetchJson(eq(9999), eq(HttpMethod.POST), eq("/agent/resume"), anyString(), anyInt(), anyString()))
                 .thenReturn(Mono.just("{\"session\":{\"id\":\"session-123\"},\"extension_results\":[]}"));
 
         webClient.post().uri("/agents/test-agent/resume")
@@ -100,7 +100,7 @@ public class ReplyEndpointE2ETest extends BaseE2ETest {
                 .expectBody()
                 .jsonPath("$.session.id").isEqualTo("session-123");
 
-        verify(goosedProxy).fetchJson(eq(9999), eq(HttpMethod.POST), eq("/agent/resume"), anyString(), anyInt());
+        verify(goosedProxy).fetchJson(eq(9999), eq(HttpMethod.POST), eq("/agent/resume"), anyString(), anyInt(), anyString());
     }
 
     @Test
@@ -119,7 +119,7 @@ public class ReplyEndpointE2ETest extends BaseE2ETest {
         when(instanceManager.getOrSpawn("test-agent", "alice"))
                 .thenReturn(Mono.just(mockInstance));
         when(goosedProxy.proxyWithBody(any(), eq(9999), eq("/agent/restart"),
-                eq(HttpMethod.POST), anyString()))
+                eq(HttpMethod.POST), anyString(), anyString()))
                 .thenReturn(Mono.empty());
 
         webClient.post().uri("/agents/test-agent/restart")
@@ -138,7 +138,7 @@ public class ReplyEndpointE2ETest extends BaseE2ETest {
         when(instanceManager.getOrSpawn("test-agent", "bob"))
                 .thenReturn(Mono.just(mockInstance));
         when(goosedProxy.proxyWithBody(any(), eq(9999), eq("/agent/stop"),
-                eq(HttpMethod.POST), anyString()))
+                eq(HttpMethod.POST), anyString(), anyString()))
                 .thenReturn(Mono.empty());
 
         webClient.post().uri("/agents/test-agent/stop")

@@ -25,6 +25,6 @@ public class SseRelayServiceTest {
 
     @Test
     public void testRelayReturnsFlux() {
-        assertNotNull(sseRelayService.relay(99999, "/reply", "{\"test\": true}", "test-agent", "sys"));
+        assertNotNull(sseRelayService.relay(99999, "/reply", "{\"test\": true}", "test-agent", "sys", "test-secret"));
     }
 }

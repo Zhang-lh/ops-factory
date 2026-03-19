@@ -156,7 +156,7 @@ public class InstanceWatchdogTest {
 
     private ManagedInstance createInstance(String agentId, String userId,
                                           ManagedInstance.Status status, Process process) {
-        ManagedInstance instance = new ManagedInstance(agentId, userId, 8080, 1234L, process);
+        ManagedInstance instance = new ManagedInstance(agentId, userId, 8080, 1234L, process, "test-secret");
         instance.setStatus(status);
         return instance;
     }

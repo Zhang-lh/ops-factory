@@ -78,7 +78,7 @@ public class MonitoringControllerTest {
 
     @Test
     public void testInstances() {
-        ManagedInstance inst = new ManagedInstance("agent1", "user1", 9090, 5678L, null);
+        ManagedInstance inst = new ManagedInstance("agent1", "user1", 9090, 5678L, null, "test-secret");
         inst.setStatus(ManagedInstance.Status.RUNNING);
         when(instanceManager.getAllInstances()).thenReturn(List.of(inst));
         when(agentConfigService.findAgent("agent1")).thenReturn(
@@ -151,9 +151,9 @@ public class MonitoringControllerTest {
 
     @Test
     public void testInstances_multipleInstances() {
-        ManagedInstance inst1 = new ManagedInstance("agent1", "user1", 9090, 5678L, null);
+        ManagedInstance inst1 = new ManagedInstance("agent1", "user1", 9090, 5678L, null, "test-secret");
         inst1.setStatus(ManagedInstance.Status.RUNNING);
-        ManagedInstance inst2 = new ManagedInstance("agent2", "user2", 9091, 5679L, null);
+        ManagedInstance inst2 = new ManagedInstance("agent2", "user2", 9091, 5679L, null, "test-secret");
         inst2.setStatus(ManagedInstance.Status.STOPPED);
         when(instanceManager.getAllInstances()).thenReturn(List.of(inst1, inst2));
 
@@ -219,7 +219,7 @@ public class MonitoringControllerTest {
                 new com.huawei.opsfactory.gateway.common.model.AgentRegistryEntry("a1", "Agent1", false),
                 new com.huawei.opsfactory.gateway.common.model.AgentRegistryEntry("a2", "Agent2", true)
         ));
-        ManagedInstance inst = new ManagedInstance("a1", "u1", 8080, 1234L, null);
+        ManagedInstance inst = new ManagedInstance("a1", "u1", 8080, 1234L, null, "test-secret");
         when(instanceManager.getAllInstances()).thenReturn(List.of(inst));
 
         webTestClient.get().uri("/monitoring/system")

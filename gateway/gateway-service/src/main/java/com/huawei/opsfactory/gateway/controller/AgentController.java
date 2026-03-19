@@ -172,7 +172,7 @@ public class AgentController {
         if (!isValidCategory(category)) {
             return badCategory();
         }
-        return Mono.fromCallable(() -> {
+        return Mono.<ResponseEntity<Map<String, Object>>>fromCallable(() -> {
             String content = agentConfigService.readMemoryFile(id, category);
             if (content == null) {
                 return ResponseEntity.<Map<String, Object>>notFound().build();

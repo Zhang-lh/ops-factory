@@ -13,6 +13,7 @@ public class ManagedInstance {
     private final String userId;
     private final int port;
     private final long pid;
+    private final String secretKey;
     private volatile Status status;
     private volatile long lastActivity;
     private volatile int restartCount = 0;
@@ -21,11 +22,12 @@ public class ManagedInstance {
     /** Sessions that have been resumed (provider+extensions loaded) on this instance. */
     private final Set<String> resumedSessions = ConcurrentHashMap.newKeySet();
 
-    public ManagedInstance(String agentId, String userId, int port, long pid, Process process) {
+    public ManagedInstance(String agentId, String userId, int port, long pid, Process process, String secretKey) {
         this.agentId = agentId;
         this.userId = userId;
         this.port = port;
         this.pid = pid;
+        this.secretKey = secretKey;
         this.process = process;
         this.status = Status.STARTING;
         this.lastActivity = System.currentTimeMillis();
@@ -45,6 +47,10 @@ public class ManagedInstance {
 
     public long getPid() {
         return pid;
+    }
+
+    public String getSecretKey() {
+        return secretKey;
     }
 
     public Status getStatus() {

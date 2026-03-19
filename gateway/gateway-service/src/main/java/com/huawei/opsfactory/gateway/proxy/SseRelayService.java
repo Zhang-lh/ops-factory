@@ -57,7 +57,7 @@ public class SseRelayService {
      * 3. maxDuration — hard ceiling on any single reply
      */
     public Flux<DataBuffer> relay(int port, String path, String body,
-                                   String agentId, String userId) {
+                                   String agentId, String userId, String secretKey) {
         String target = goosedProxy.goosedBaseUrl(port) + path;
         long startTime = System.currentTimeMillis();
         AtomicInteger chunkCount = new AtomicInteger(0);
@@ -81,7 +81,7 @@ public class SseRelayService {
 
         Flux<DataBuffer> upstream = webClient.post()
                 .uri(target)
-                .header(GatewayConstants.HEADER_SECRET_KEY, properties.getSecretKey())
+                .header(GatewayConstants.HEADER_SECRET_KEY, secretKey)
                 .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
                 .bodyValue(body)
                 .retrieve()
@@ -138,7 +138,7 @@ public class SseRelayService {
                     log.warn("[SSE-DIAG] relay CANCELLED after {}ms, chunks={}, bytes={}",
                             elapsed, chunkCount.get(), totalBytes.get());
                     // Client disconnected — tell goosed to stop processing the reply
-                    stopAgentAsync(port, body);
+                    stopAgentAsync(port, body, secretKey);
                 });
 
         // Layer 1: First-byte timeout — abort if no data at all (goosed hung).
@@ -221,7 +221,7 @@ public class SseRelayService {
      * Send POST /agent/stop to goosed so it aborts the current reply.
      * Extracts session_id from the original request body.
      */
-    private void stopAgentAsync(int port, String body) {
+    private void stopAgentAsync(int port, String body, String secretKey) {
         Mono.fromRunnable(() -> {
             try {
                 // Extract session_id from the reply body (JSON: {"session_id":"...","user_message":...})
@@ -234,7 +234,7 @@ public class SseRelayService {
                 String target = goosedProxy.goosedBaseUrl(port) + "/agent/stop";
                 webClient.post()
                         .uri(target)
-                        .header(GatewayConstants.HEADER_SECRET_KEY, properties.getSecretKey())
+                        .header(GatewayConstants.HEADER_SECRET_KEY, secretKey)
                         .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
                         .bodyValue(stopBody)
                         .retrieve()

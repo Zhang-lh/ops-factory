@@ -20,14 +20,12 @@ public class SessionService {
     private final InstanceManager instanceManager;
     private final com.huawei.opsfactory.gateway.proxy.GoosedProxy goosedProxy;
     private final WebClient webClient;
-    private final String secretKey;
 
     public SessionService(InstanceManager instanceManager,
                           com.huawei.opsfactory.gateway.proxy.GoosedProxy goosedProxy) {
         this.instanceManager = instanceManager;
         this.goosedProxy = goosedProxy;
         this.webClient = goosedProxy.getWebClient();
-        this.secretKey = goosedProxy.getSecretKey();
     }
 
     /**
@@ -37,10 +35,11 @@ public class SessionService {
         String url = goosedProxy.goosedBaseUrl(instance.getPort()) + "/sessions";
         return webClient.get()
                 .uri(url)
-                .header(GatewayConstants.HEADER_SECRET_KEY, secretKey)
+                .header(GatewayConstants.HEADER_SECRET_KEY, instance.getSecretKey())
                 .retrieve()
                 .bodyToMono(String.class)
                 .timeout(Duration.ofSeconds(10))
                 .onErrorReturn("[]");
     }
 }
+

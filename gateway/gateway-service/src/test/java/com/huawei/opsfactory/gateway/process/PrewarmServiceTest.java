@@ -43,7 +43,7 @@ public class PrewarmServiceTest {
 
     @Test
     public void testOnUserActivity_newUser_triggersSpawn() {
-        ManagedInstance instance = new ManagedInstance("universal-agent", "alice", 9000, 123L, null);
+        ManagedInstance instance = new ManagedInstance("universal-agent", "alice", 9000, 123L, null, "test-secret");
         when(instanceManager.getOrSpawn("universal-agent", "alice")).thenReturn(Mono.just(instance));
 
         prewarmService.onUserActivity("alice");
@@ -53,7 +53,7 @@ public class PrewarmServiceTest {
 
     @Test
     public void testOnUserActivity_alreadyWarmedUser_doesNotSpawnAgain() {
-        ManagedInstance instance = new ManagedInstance("universal-agent", "alice", 9000, 123L, null);
+        ManagedInstance instance = new ManagedInstance("universal-agent", "alice", 9000, 123L, null, "test-secret");
         when(instanceManager.getOrSpawn("universal-agent", "alice")).thenReturn(Mono.just(instance));
 
         prewarmService.onUserActivity("alice");
@@ -65,7 +65,7 @@ public class PrewarmServiceTest {
 
     @Test
     public void testClearUser_allowsRewarm() {
-        ManagedInstance instance = new ManagedInstance("universal-agent", "alice", 9000, 123L, null);
+        ManagedInstance instance = new ManagedInstance("universal-agent", "alice", 9000, 123L, null, "test-secret");
         when(instanceManager.getOrSpawn("universal-agent", "alice")).thenReturn(Mono.just(instance));
 
         prewarmService.onUserActivity("alice");
@@ -82,7 +82,7 @@ public class PrewarmServiceTest {
         // Recreate service with updated properties
         prewarmService = new PrewarmService(instanceManager, properties);
 
-        ManagedInstance instance = new ManagedInstance("kb-agent", "bob", 9000, 123L, null);
+        ManagedInstance instance = new ManagedInstance("kb-agent", "bob", 9000, 123L, null, "test-secret");
         when(instanceManager.getOrSpawn("kb-agent", "bob")).thenReturn(Mono.just(instance));
 
         prewarmService.onUserActivity("bob");

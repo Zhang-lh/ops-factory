@@ -32,7 +32,7 @@ public class SessionEndpointE2ETest extends BaseE2ETest {
 
     @Before
     public void setUp() {
-        runningInstance = new ManagedInstance("test-agent", "alice", 9999, 12345L, null);
+        runningInstance = new ManagedInstance("test-agent", "alice", 9999, 12345L, null, "test-secret");
         runningInstance.setStatus(ManagedInstance.Status.RUNNING);
         // Mock getUserAgentDir for startSession working_dir injection
         when(agentConfigService.getUserAgentDir(any(String.class), any(String.class)))
@@ -47,9 +47,9 @@ public class SessionEndpointE2ETest extends BaseE2ETest {
     public void startSession_authenticated_callsStartThenResume() {
         when(instanceManager.getOrSpawn("test-agent", "alice"))
                 .thenReturn(Mono.just(runningInstance));
-        when(goosedProxy.fetchJson(eq(9999), eq(HttpMethod.POST), eq("/agent/start"), anyString(), anyInt()))
+        when(goosedProxy.fetchJson(eq(9999), eq(HttpMethod.POST), eq("/agent/start"), anyString(), anyInt(), anyString()))
                 .thenReturn(Mono.just("{\"id\":\"session-123\"}"));
-        when(goosedProxy.fetchJson(eq(9999), eq(HttpMethod.POST), eq("/agent/resume"), anyString(), anyInt()))
+        when(goosedProxy.fetchJson(eq(9999), eq(HttpMethod.POST), eq("/agent/resume"), anyString(), anyInt(), anyString()))
                 .thenReturn(Mono.just("{\"session\":{\"id\":\"session-123\"},\"extension_results\":[]}"));
 
         webClient.post().uri("/agents/test-agent/agent/start")
@@ -63,18 +63,18 @@ public class SessionEndpointE2ETest extends BaseE2ETest {
                 .jsonPath("$.id").isEqualTo("session-123");
 
         // Verify canonical flow: start → resume(load_model_and_extensions=true)
-        verify(goosedProxy).fetchJson(eq(9999), eq(HttpMethod.POST), eq("/agent/start"), anyString(), anyInt());
+        verify(goosedProxy).fetchJson(eq(9999), eq(HttpMethod.POST), eq("/agent/start"), anyString(), anyInt(), anyString());
         verify(goosedProxy).fetchJson(eq(9999), eq(HttpMethod.POST), eq("/agent/resume"),
-                org.mockito.ArgumentMatchers.contains("\"load_model_and_extensions\":true"), anyInt());
+                org.mockito.ArgumentMatchers.contains("\"load_model_and_extensions\":true"), anyInt(), anyString());
     }
 
     @Test
     public void startSession_resumeFails_propagatesError() {
         when(instanceManager.getOrSpawn("test-agent", "alice"))
                 .thenReturn(Mono.just(runningInstance));
-        when(goosedProxy.fetchJson(eq(9999), eq(HttpMethod.POST), eq("/agent/start"), anyString(), anyInt()))
+        when(goosedProxy.fetchJson(eq(9999), eq(HttpMethod.POST), eq("/agent/start"), anyString(), anyInt(), anyString()))
                 .thenReturn(Mono.just("{\"id\":\"session-123\"}"));
-        when(goosedProxy.fetchJson(eq(9999), eq(HttpMethod.POST), eq("/agent/resume"), anyString(), anyInt()))
+        when(goosedProxy.fetchJson(eq(9999), eq(HttpMethod.POST), eq("/agent/resume"), anyString(), anyInt(), anyString()))
                 .thenReturn(Mono.error(new RuntimeException("Extension loading failed")));
 
         webClient.post().uri("/agents/test-agent/agent/start")
@@ -90,9 +90,9 @@ public class SessionEndpointE2ETest extends BaseE2ETest {
     public void startSession_resumeReceivesCorrectSessionId() {
         when(instanceManager.getOrSpawn("test-agent", "alice"))
                 .thenReturn(Mono.just(runningInstance));
-        when(goosedProxy.fetchJson(eq(9999), eq(HttpMethod.POST), eq("/agent/start"), anyString(), anyInt()))
+        when(goosedProxy.fetchJson(eq(9999), eq(HttpMethod.POST), eq("/agent/start"), anyString(), anyInt(), anyString()))
                 .thenReturn(Mono.just("{\"id\":\"abc-def-456\",\"name\":\"New Chat\"}"));
-        when(goosedProxy.fetchJson(eq(9999), eq(HttpMethod.POST), eq("/agent/resume"), anyString(), anyInt()))
+        when(goosedProxy.fetchJson(eq(9999), eq(HttpMethod.POST), eq("/agent/resume"), anyString(), anyInt(), anyString()))
                 .thenReturn(Mono.just("{\"session\":{\"id\":\"abc-def-456\"},\"extension_results\":[]}"));
 
         webClient.post().uri("/agents/test-agent/agent/start")
@@ -105,7 +105,7 @@ public class SessionEndpointE2ETest extends BaseE2ETest {
 
         // Verify resume is called with the correct session ID from start response
         verify(goosedProxy).fetchJson(eq(9999), eq(HttpMethod.POST), eq("/agent/resume"),
-                org.mockito.ArgumentMatchers.contains("\"session_id\":\"abc-def-456\""), anyInt());
+                org.mockito.ArgumentMatchers.contains("\"session_id\":\"abc-def-456\""), anyInt(), anyString());
     }
 
     @Test
@@ -113,9 +113,9 @@ public class SessionEndpointE2ETest extends BaseE2ETest {
         when(instanceManager.getOrSpawn("test-agent", "alice"))
                 .thenReturn(Mono.just(runningInstance));
         String startResponse = "{\"id\":\"session-123\",\"name\":\"New Chat\",\"working_dir\":\"/tmp\"}";
-        when(goosedProxy.fetchJson(eq(9999), eq(HttpMethod.POST), eq("/agent/start"), anyString(), anyInt()))
+        when(goosedProxy.fetchJson(eq(9999), eq(HttpMethod.POST), eq("/agent/start"), anyString(), anyInt(), anyString()))
                 .thenReturn(Mono.just(startResponse));
-        when(goosedProxy.fetchJson(eq(9999), eq(HttpMethod.POST), eq("/agent/resume"), anyString(), anyInt()))
+        when(goosedProxy.fetchJson(eq(9999), eq(HttpMethod.POST), eq("/agent/resume"), anyString(), anyInt(), anyString()))
                 .thenReturn(Mono.just("{\"session\":{\"id\":\"session-123\"},\"extension_results\":[{\"name\":\"developer\",\"success\":true}]}"));
 
         webClient.post().uri("/agents/test-agent/agent/start")
@@ -157,11 +157,11 @@ public class SessionEndpointE2ETest extends BaseE2ETest {
 
     @Test
     public void listAllSessions_withRunningInstances_aggregatesSessions() {
-        ManagedInstance userInstance = new ManagedInstance("agent-a", "alice", 8001, 111L, null);
+        ManagedInstance userInstance = new ManagedInstance("agent-a", "alice", 8001, 111L, null, "test-secret");
         userInstance.setStatus(ManagedInstance.Status.RUNNING);
-        ManagedInstance sysInstance = new ManagedInstance("agent-b", "sys", 8002, 222L, null);
+        ManagedInstance sysInstance = new ManagedInstance("agent-b", "sys", 8002, 222L, null, "test-secret");
         sysInstance.setStatus(ManagedInstance.Status.RUNNING);
-        ManagedInstance otherUserInstance = new ManagedInstance("agent-a", "bob", 8003, 333L, null);
+        ManagedInstance otherUserInstance = new ManagedInstance("agent-a", "bob", 8003, 333L, null, "test-secret");
         otherUserInstance.setStatus(ManagedInstance.Status.RUNNING);
 
         when(instanceManager.getAllInstances())
@@ -182,7 +182,7 @@ public class SessionEndpointE2ETest extends BaseE2ETest {
 
     @Test
     public void listAllSessions_stoppedInstancesExcluded() {
-        ManagedInstance stoppedInstance = new ManagedInstance("agent-a", "alice", 8001, 111L, null);
+        ManagedInstance stoppedInstance = new ManagedInstance("agent-a", "alice", 8001, 111L, null, "test-secret");
         stoppedInstance.setStatus(ManagedInstance.Status.STOPPED);
 
         when(instanceManager.getAllInstances())
@@ -209,7 +209,7 @@ public class SessionEndpointE2ETest extends BaseE2ETest {
     public void listAgentSessions_authenticated_proxiesToGoosed() {
         when(instanceManager.getOrSpawn("test-agent", "alice"))
                 .thenReturn(Mono.just(runningInstance));
-        when(goosedProxy.proxy(any(), any(), eq(9999), eq("/sessions")))
+        when(goosedProxy.proxy(any(), any(), eq(9999), eq("/sessions"), any()))
                 .thenReturn(Mono.empty());
 
         webClient.get().uri("/agents/test-agent/sessions")
@@ -218,7 +218,7 @@ public class SessionEndpointE2ETest extends BaseE2ETest {
                 .exchange()
                 .expectStatus().isOk();
 
-        verify(goosedProxy).proxy(any(), any(), eq(9999), eq("/sessions"));
+        verify(goosedProxy).proxy(any(), any(), eq(9999), eq("/sessions"), any());
     }
 
     // ====================== GET /agents/{agentId}/sessions/{sessionId} ======================
@@ -227,7 +227,7 @@ public class SessionEndpointE2ETest extends BaseE2ETest {
     public void getSession_authenticated_proxiesToGoosed() {
         when(instanceManager.getOrSpawn("test-agent", "alice"))
                 .thenReturn(Mono.just(runningInstance));
-        when(goosedProxy.fetchJson(eq(9999), eq("/sessions/session-123")))
+        when(goosedProxy.fetchJson(eq(9999), eq("/sessions/session-123"), anyString()))
                 .thenReturn(Mono.just("{\"id\":\"session-123\",\"conversation\":[]}"));
 
         webClient.get().uri("/agents/test-agent/sessions/session-123")
@@ -253,7 +253,7 @@ public class SessionEndpointE2ETest extends BaseE2ETest {
     public void deleteSession_authenticated_removesOwnerAndProxies() {
         when(instanceManager.getOrSpawn("test-agent", "alice"))
                 .thenReturn(Mono.just(runningInstance));
-        when(goosedProxy.proxy(any(), any(), eq(9999), eq("/sessions/session-456")))
+        when(goosedProxy.proxy(any(), any(), eq(9999), eq("/sessions/session-456"), any()))
                 .thenReturn(Mono.empty());
 
         webClient.delete().uri("/agents/test-agent/sessions/session-456")
@@ -262,7 +262,7 @@ public class SessionEndpointE2ETest extends BaseE2ETest {
                 .exchange()
                 .expectStatus().isOk();
 
-        verify(goosedProxy).proxy(any(), any(), eq(9999), eq("/sessions/session-456"));
+        verify(goosedProxy).proxy(any(), any(), eq(9999), eq("/sessions/session-456"), any());
     }
 
     @Test

@@ -77,7 +77,7 @@ export class GoosedClient {
     constructor(options: GoosedClientOptions = {}) {
         const env = typeof process !== 'undefined' ? process.env : {} as Record<string, string | undefined>;
         const defaultBaseUrl = env.GOOSED_BASE_URL || 'https://127.0.0.1:3000';
-        const defaultSecretKey = env.GOOSED_SECRET_KEY || 'test';
+        const defaultSecretKey = env.GOOSED_SECRET_KEY || '';
 
         this.baseUrl = (options.baseUrl ?? defaultBaseUrl).replace(/\/$/, '');
         this.secretKey = options.secretKey ?? defaultSecretKey;
