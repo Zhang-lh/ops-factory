@@ -24,7 +24,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/agents")
+@RequestMapping("/ops-gateway/agents")
 public class AgentController {
 
     private final AgentConfigService agentConfigService;
@@ -175,7 +175,7 @@ public class AgentController {
         return Mono.<ResponseEntity<Map<String, Object>>>fromCallable(() -> {
             String content = agentConfigService.readMemoryFile(id, category);
             if (content == null) {
-                return ResponseEntity.<Map<String, Object>>notFound().build();
+                return ResponseEntity.notFound().<Map<String, Object>>build();
             }
             return ResponseEntity.ok(Map.<String, Object>of("category", category, "content", content));
         }).subscribeOn(Schedulers.boundedElastic());

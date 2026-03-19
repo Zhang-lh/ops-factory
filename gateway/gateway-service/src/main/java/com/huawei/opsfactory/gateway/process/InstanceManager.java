@@ -57,6 +57,7 @@ public class InstanceManager {
     private final SSLSocketFactory trustAllSslFactory;
     private final int serverPort;
     private final boolean serverSslEnabled;
+    private final String gatewayApiPassword;
 
     /** key = "agentId:userId" -> ManagedInstance */
     private final ConcurrentHashMap<String, ManagedInstance> instances = new ConcurrentHashMap<>();
@@ -68,7 +69,8 @@ public class InstanceManager {
                            RuntimePreparer runtimePreparer,
                            AgentConfigService agentConfigService,
                            @Value("${server.port:3000}") int serverPort,
-                           @Value("${server.ssl.enabled:false}") boolean serverSslEnabled) {
+                           @Value("${server.ssl.enabled:false}") boolean serverSslEnabled,
+                           @Value("${gateway.api.password:}") String gatewayApiPassword) {
         this.properties = properties;
         this.portAllocator = portAllocator;
         this.runtimePreparer = runtimePreparer;
@@ -76,6 +78,7 @@ public class InstanceManager {
         this.trustAllSslFactory = createTrustAllSslFactory();
         this.serverPort = serverPort;
         this.serverSslEnabled = serverSslEnabled;
+        this.gatewayApiPassword = gatewayApiPassword;
     }
 
     private static SSLSocketFactory createTrustAllSslFactory() {
@@ -456,6 +459,11 @@ public class InstanceManager {
         env.put("GATEWAY_URL", gatewayScheme + "://127.0.0.1:" + serverPort);
         if (serverSslEnabled) {
             env.put("NODE_TLS_REJECT_UNAUTHORIZED", "0");
+        }
+
+        // Gateway API password for goosed process
+        if (gatewayApiPassword != null && !gatewayApiPassword.isEmpty()) {
+            env.put("GATEWAY_API_PASSWORD", gatewayApiPassword);
         }
 
         return env;
