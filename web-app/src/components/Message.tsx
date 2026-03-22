@@ -1,5 +1,4 @@
-import { memo, useEffect, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import ToolCallDisplay from './ToolCallDisplay'
@@ -9,11 +8,7 @@ import { usePreview } from '../contexts/PreviewContext'
 import { parseCitations, type Citation } from '../utils/citationParser'
 import { getDisplayTextContent, getFullTextContent, getReasoningContent, getThinkingContent } from '../utils/messageContent'
 import { GATEWAY_URL, GATEWAY_SECRET_KEY } from '../config/runtime'
-import type {
-    ChatMessage,
-    DetectedFile,
-    ToolResponseMap,
-} from '../types/message'
+import type { ChatMessage, DetectedFile, ToolResponseMap } from '../types/message'
 
 interface MessageProps {
     message: ChatMessage
@@ -27,7 +22,6 @@ interface MessageProps {
     showFileCapsules?: boolean
 }
 
-// Represents a paired tool call with its request and response
 interface ToolCallPair {
     id: string
     name: string
@@ -37,7 +31,19 @@ interface ToolCallPair {
     isError: boolean
 }
 
-// Parse todo markdown content into structured task items
+interface ProcessEntry {
+    key: string
+    kind: 'reasoning' | 'thinking' | 'tool'
+    label?: string
+    content?: string
+    toolCall?: ToolCallPair
+}
+
+interface ScrollFadeState {
+    hasTopFade: boolean
+    hasBottomFade: boolean
+}
+
 function parseTodoContent(content: string) {
     const lines = content.split('\n').map(line => line.trim()).filter(Boolean)
     const tasks: Array<{ done: boolean; text: string }> = []
@@ -51,7 +57,10 @@ function parseTodoContent(content: string) {
     return tasks
 }
 
-// File capsule component (hoisted to module scope for stable identity)
+function normalizeProcessText(text: string | undefined): string {
+    return (text || '').replace(/\s+/g, ' ').trim()
+}
+
 function FileCapsule({ filePath, fileName, fileExt, agentId, userId }: {
     filePath: string; fileName: string; fileExt: string; agentId?: string; userId?: string | null
 }) {
@@ -111,57 +120,190 @@ function MessageInner({
     onRetry,
     sourceDocuments,
     outputFiles = [],
-    showFileCapsules = true
+    showFileCapsules = true,
 }: MessageProps) {
-    const { t } = useTranslation()
     const isUser = message.role === 'user'
 
     const fullText = getFullTextContent(message)
-    const reasoningText = getReasoningContent(message)
-    const thinkingText = getThinkingContent(message)
     const displayTextFromContent = getDisplayTextContent(message)
 
-    const toolRequests: Map<string, { name: string; args?: Record<string, unknown>; status?: string }> = new Map()
+    const processEntries = useMemo<ProcessEntry[]>(() => {
+        if (isUser) return []
 
-    // Collect content from current message
-    for (const content of message.content) {
-        if (content.type === 'toolRequest' && content.id) {
-            // toolRequest contains toolCall.value.name and toolCall.value.arguments
-            const toolCall = content.toolCall
-            toolRequests.set(content.id, {
-                name: toolCall?.value?.name || 'unknown',
-                args: toolCall?.value?.arguments,
-                status: toolCall?.status
+        const items: ProcessEntry[] = []
+        let hasStructuredReasoning = false
+        let hasStructuredThinking = false
+        let textBufferKind: 'reasoning' | 'thinking' | null = null
+        let textBuffer = ''
+        const pushProcessTextEntry = (entry: ProcessEntry) => {
+            const previous = items[items.length - 1]
+            const currentText = normalizeProcessText(entry.content)
+            const previousText = normalizeProcessText(previous?.content)
+
+            if (
+                previous &&
+                (previous.kind === 'reasoning' || previous.kind === 'thinking') &&
+                (entry.kind === 'reasoning' || entry.kind === 'thinking') &&
+                currentText.length > 0 &&
+                currentText === previousText
+            ) {
+                return
+            }
+
+            items.push(entry)
+        }
+
+        const flushTextBuffer = () => {
+            if (!textBufferKind || !textBuffer.trim()) {
+                textBufferKind = null
+                textBuffer = ''
+                return
+            }
+
+            pushProcessTextEntry({
+                key: `${message.id || 'message'}-${textBufferKind}-${items.length}`,
+                kind: textBufferKind,
+                label: textBufferKind === 'reasoning' ? '推理过程' : '思考过程',
+                content: textBuffer,
             })
-        } else if (content.type === 'toolResponse' && content.id) {
-            // Also collect from current message
-            const toolResult = content.toolResult
-            toolResponses.set(content.id, {
-                result: toolResult?.status === 'success' ? toolResult.value : toolResult,
-                isError: toolResult?.status === 'error'
+
+            textBufferKind = null
+            textBuffer = ''
+        }
+
+        for (const content of message.content) {
+            if (content.type === 'reasoning' && typeof content.text === 'string' && content.text.trim()) {
+                hasStructuredReasoning = true
+                if (textBufferKind !== 'reasoning') {
+                    flushTextBuffer()
+                    textBufferKind = 'reasoning'
+                }
+                textBuffer += content.text
+                continue
+            }
+
+            if (content.type === 'thinking' && typeof content.thinking === 'string' && content.thinking.trim()) {
+                hasStructuredThinking = true
+                if (textBufferKind !== 'thinking') {
+                    flushTextBuffer()
+                    textBufferKind = 'thinking'
+                }
+                textBuffer += content.thinking
+                continue
+            }
+
+            if (content.type === 'toolRequest' && content.id) {
+                flushTextBuffer()
+                const toolCall = content.toolCall
+                const name = toolCall?.value?.name || 'unknown'
+                if (name === 'unknown' && toolCall?.status === 'error') {
+                    continue
+                }
+
+                const response = toolResponses.get(content.id)
+                items.push({
+                    key: content.id,
+                    kind: 'tool',
+                    toolCall: {
+                        id: content.id,
+                        name,
+                        args: toolCall?.value?.arguments,
+                        result: response?.result,
+                        isPending: !response && toolCall?.status === 'pending',
+                        isError: response?.isError || toolCall?.status === 'error',
+                    },
+                })
+            }
+        }
+
+        flushTextBuffer()
+
+        if (!hasStructuredReasoning) {
+            const reasoningText = getReasoningContent(message)
+            if (reasoningText) {
+                pushProcessTextEntry({
+                    key: `${message.id || 'message'}-reasoning-fallback`,
+                    kind: 'reasoning',
+                    label: '推理过程',
+                    content: reasoningText,
+                })
+            }
+        }
+
+        if (!hasStructuredThinking) {
+            const thinkingText = getThinkingContent(message)
+            if (thinkingText) {
+                pushProcessTextEntry({
+                    key: `${message.id || 'message'}-thinking-fallback`,
+                    kind: 'thinking',
+                    label: '思考过程',
+                    content: thinkingText,
+                })
+            }
+        }
+
+        return items
+    }, [isUser, message.content, message.id, toolResponses])
+
+    const [openState, setOpenState] = useState<Record<string, boolean>>({})
+    const [fadeState, setFadeState] = useState<Record<string, ScrollFadeState>>({})
+    const contentRefs = useRef<Record<string, HTMLDivElement | null>>({})
+
+    useEffect(() => {
+        setOpenState(current => {
+            const next = { ...current }
+            for (const entry of processEntries) {
+                if ((entry.kind === 'reasoning' || entry.kind === 'thinking') && !(entry.key in next)) {
+                    next[entry.key] = true
+                }
+            }
+            return next
+        })
+    }, [processEntries])
+
+    useEffect(() => {
+        const computeFadeState = (element: HTMLDivElement | null): ScrollFadeState => {
+            if (!element) return { hasTopFade: false, hasBottomFade: false }
+            const maxScrollTop = Math.max(element.scrollHeight - element.clientHeight, 0)
+            return {
+                hasTopFade: element.scrollTop > 2,
+                hasBottomFade: maxScrollTop - element.scrollTop > 2,
+            }
+        }
+
+        const syncFadeStates = () => {
+            setFadeState(current => {
+                const next = { ...current }
+                for (const entry of processEntries) {
+                    if (entry.kind !== 'reasoning' && entry.kind !== 'thinking') continue
+                    next[entry.key] = computeFadeState(contentRefs.current[entry.key] || null)
+                }
+                return next
             })
         }
+
+        syncFadeStates()
+        window.addEventListener('resize', syncFadeStates)
+        return () => window.removeEventListener('resize', syncFadeStates)
+    }, [processEntries, openState])
+
+    const toggleEntry = (key: string) => {
+        setOpenState(current => ({ ...current, [key]: !current[key] }))
     }
 
-    // Pair tool requests with their responses
-    // Skip tool calls that failed before execution (no name, error status) — they are
-    // pre-execution failures (MCP connection error, tool not found, etc.) and provide
-    // no useful information to the user.
-    const toolCalls: ToolCallPair[] = []
-    for (const [id, request] of toolRequests) {
-        if (request.name === 'unknown' && request.status === 'error') continue
-        const response = toolResponses.get(id)
-        toolCalls.push({
-            id,
-            name: request.name,
-            args: request.args,
-            result: response?.result,
-            isPending: !response && request.status === 'pending',
-            isError: response?.isError || request.status === 'error'
-        })
+    const handleScroll = (key: string) => {
+        const element = contentRefs.current[key]
+        if (!element) return
+        const maxScrollTop = Math.max(element.scrollHeight - element.clientHeight, 0)
+        setFadeState(current => ({
+            ...current,
+            [key]: {
+                hasTopFade: element.scrollTop > 2,
+                hasBottomFade: maxScrollTop - element.scrollTop > 2,
+            }
+        }))
     }
 
-    // Todo card: uses the standard tool-call outer shell, structured checkbox body
     const TodoToolCard = ({ toolCall }: { toolCall: ToolCallPair }) => {
         const raw = typeof toolCall.args?.content === 'string' ? toolCall.args.content : ''
         const tasks = parseTodoContent(raw)
@@ -173,11 +315,12 @@ function MessageInner({
             if (totalCount > 0 && doneCount === totalCount) return 'success'
             return 'active'
         })()
-        const displayName = toolCall.name.split('__').pop()?.replace(/_/g, ' ') || toolCall.name
-        const capitalized = displayName.charAt(0).toUpperCase() + displayName.slice(1)
+        const rawDisplayName = toolCall.name.split('__').pop()?.replace(/_/g, ' ') || toolCall.name
+        const cleanedDisplayName = rawDisplayName.replace(/^todo\s+/i, '').trim() || rawDisplayName
+        const capitalized = cleanedDisplayName.charAt(0).toUpperCase() + cleanedDisplayName.slice(1)
 
         return (
-            <div className="tool-call">
+            <div className="tool-call embedded todo-tool-call">
                 <div className="tool-call-header">
                     <span className={`tool-call-indicator ${indicatorTone}`} aria-hidden="true" />
                     <span className="tool-call-name">Todo {capitalized}</span>
@@ -206,113 +349,22 @@ function MessageInner({
         )
     }
 
-    // Detect empty assistant response (model truly returned nothing — empty content array)
     const isEmptyAssistantResponse = !isUser && message.content.length === 0 && !isStreaming
 
-    // Don't render empty user messages
     if (isUser && !fullText) {
         return null
     }
 
-    // Skip assistant messages with only non-renderable content (e.g. reasoning, redactedThinking).
-    // These are intermediate chain-of-thought messages that get accumulated during live streaming
-    // but appear as separate messages when loading from session history.
-    const hasThinking = !isUser && !!thinkingText
-    const hasReasoning = !isUser && !!reasoningText
-    const [isReasoningOpen, setIsReasoningOpen] = useState(isStreaming && hasReasoning)
-    const [isThinkingOpen, setIsThinkingOpen] = useState(isStreaming && hasThinking)
-    const [reasoningTouched, setReasoningTouched] = useState(false)
-    const [thinkingTouched, setThinkingTouched] = useState(false)
-    const [lastReasoningText, setLastReasoningText] = useState(reasoningText || '')
-    const [lastThinkingText, setLastThinkingText] = useState(thinkingText || '')
-    const [isReasoningActive, setIsReasoningActive] = useState(isStreaming && hasReasoning)
-    const [isThinkingActive, setIsThinkingActive] = useState(isStreaming && hasThinking)
+    const hasProcessEntries = !isUser && processEntries.length > 0
 
-    useEffect(() => {
-        if (!hasReasoning) {
-            setIsReasoningOpen(false)
-            setReasoningTouched(false)
-            setLastReasoningText('')
-            setIsReasoningActive(false)
-            return
-        }
-
-        const nextReasoning = reasoningText || ''
-        const reasoningChanged = nextReasoning !== lastReasoningText
-
-        if (reasoningChanged) {
-            setLastReasoningText(nextReasoning)
-            setIsReasoningActive(true)
-            if (!reasoningTouched) {
-                setIsReasoningOpen(true)
-            }
-            return
-        }
-
-        if (!reasoningTouched && isReasoningOpen) {
-            const timer = window.setTimeout(() => {
-                setIsReasoningActive(false)
-                setIsReasoningOpen(false)
-            }, 800)
-            return () => window.clearTimeout(timer)
-        }
-    }, [hasReasoning, isReasoningOpen, lastReasoningText, reasoningText, reasoningTouched])
-
-    useEffect(() => {
-        if (!hasThinking) {
-            setIsThinkingOpen(false)
-            setThinkingTouched(false)
-            setLastThinkingText('')
-            setIsThinkingActive(false)
-            return
-        }
-
-        const nextThinking = thinkingText || ''
-        const thinkingChanged = nextThinking !== lastThinkingText
-
-        if (thinkingChanged) {
-            setLastThinkingText(nextThinking)
-            setIsThinkingActive(true)
-            if (!thinkingTouched) {
-                setIsThinkingOpen(true)
-            }
-            return
-        }
-
-        if (!thinkingTouched && isThinkingOpen) {
-            const timer = window.setTimeout(() => {
-                setIsThinkingActive(false)
-                setIsThinkingOpen(false)
-            }, 800)
-            return () => window.clearTimeout(timer)
-        }
-    }, [hasThinking, isThinkingOpen, lastThinkingText, thinkingText, thinkingTouched])
-
-    if (!isUser && !fullText && toolCalls.length === 0 && !hasThinking && !hasReasoning && !isStreaming && !isEmptyAssistantResponse) {
+    if (!isUser && !fullText && !hasProcessEntries && !isStreaming && !isEmptyAssistantResponse) {
         return null
     }
 
-    const toggleReasoning = () => {
-        setReasoningTouched(true)
-        setIsReasoningOpen(prev => !prev)
-    }
-
-    const toggleThinking = () => {
-        setThinkingTouched(true)
-        setIsThinkingOpen(prev => !prev)
-    }
-
-    // Determine which text to display for assistant messages
     const rawDisplayText = !isUser ? (displayTextFromContent || fullText) : fullText
-
-    // Citation processing — only for assistant text content
     const citations: Citation[] = !isUser && rawDisplayText ? parseCitations(rawDisplayText) : []
     const citationMap = new Map(citations.map(c => [c.index, c]))
 
-    // Replace {{cite:N:TITLE:URL}} markers with Markdown links that the
-    // custom `a` component will intercept and render as <CitationMark />.
-    // Inline citations are best-effort — they only appear when the LLM
-    // follows the citation format instruction.
     const displayText = citations.length > 0
         ? rawDisplayText
             .replace(
@@ -328,7 +380,6 @@ function MessageInner({
                 {isUser ? 'U' : 'G'}
             </div>
             <div className="message-content">
-                {/* Empty assistant response — model error */}
                 {isEmptyAssistantResponse && (
                     <div className="message-error-banner">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
@@ -345,57 +396,75 @@ function MessageInner({
                     </div>
                 )}
 
-                {/* Thinking block (collapsible) */}
-                {hasReasoning && (
-                    <details
-                        className={`thinking-block ${isReasoningOpen ? 'open' : ''}`}
-                        open={isReasoningOpen}
-                    >
-                        <summary className="thinking-block-summary" onClick={(event) => {
-                            event.preventDefault()
-                            toggleReasoning()
-                        }}>
-                            <span className="thinking-block-label">
-                                {isReasoningActive ? t('chat.reasoningInProgress') : t('chat.reasoning')}
-                            </span>
-                        </summary>
-                        <div className="thinking-block-content">
-                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                {reasoningText || ''}
-                            </ReactMarkdown>
-                        </div>
-                    </details>
+                {!isUser && processEntries.length > 0 && (
+                    <div className="process-flow">
+                        {processEntries.map((entry, index) => {
+                            const stepClass = `${index === 0 ? ' process-step-first' : ''}${index === processEntries.length - 1 ? ' process-step-last' : ''}`
+
+                            if (entry.kind === 'reasoning' || entry.kind === 'thinking') {
+                                const isOpen = openState[entry.key] ?? true
+                                const state = fadeState[entry.key] || { hasTopFade: false, hasBottomFade: false }
+                                return (
+                                    <div key={entry.key} className={`process-step process-step-thinking${stepClass}`}>
+                                        <div className="process-step-rail" aria-hidden="true" />
+                                        <div className="process-step-content">
+                                            <button
+                                                type="button"
+                                                className={`process-thinking-header${isOpen ? ' open' : ''}`}
+                                                onClick={() => toggleEntry(entry.key)}
+                                            >
+                                                <span className="process-thinking-label">{entry.label}</span>
+                                            </button>
+                                            {isOpen && (
+                                                <div
+                                                    ref={element => { contentRefs.current[entry.key] = element }}
+                                                    className={`thinking-block-content process-thinking-content${state.hasTopFade ? ' has-top-fade' : ''}${state.hasBottomFade ? ' has-bottom-fade' : ''}`}
+                                                    onScroll={() => handleScroll(entry.key)}
+                                                >
+                                                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                                        {entry.content || ''}
+                                                    </ReactMarkdown>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                )
+                            }
+
+                            const toolCall = entry.toolCall!
+                            const indicatorTone = toolCall.isError ? 'error' : toolCall.isPending ? 'pending' : 'success'
+
+                            return (
+                                <div key={entry.key} className={`process-step process-step-tool process-step-tool-${indicatorTone}${stepClass}`}>
+                                    <div className="process-step-rail" aria-hidden="true">
+                                        <span className={`process-step-node ${indicatorTone}`} />
+                                    </div>
+                                    <div className="process-step-content">
+                                        {toolCall.name.startsWith('todo__')
+                                            ? <TodoToolCard toolCall={toolCall} />
+                                            : (
+                                                <ToolCallDisplay
+                                                    name={toolCall.name}
+                                                    args={toolCall.args}
+                                                    result={toolCall.result}
+                                                    isPending={toolCall.isPending}
+                                                    isError={toolCall.isError}
+                                                    embedded
+                                                />
+                                            )}
+                                    </div>
+                                </div>
+                            )
+                        })}
+                    </div>
                 )}
 
-                {hasThinking && (
-                    <details
-                        className={`thinking-block ${isThinkingOpen ? 'open' : ''}`}
-                        open={isThinkingOpen}
-                    >
-                        <summary className="thinking-block-summary" onClick={(event) => {
-                            event.preventDefault()
-                            toggleThinking()
-                        }}>
-                            <span className="thinking-block-label">
-                                {isThinkingActive ? t('chat.thinkingInProgress') : t('chat.thinkingLabel')}
-                            </span>
-                        </summary>
-                        <div className="thinking-block-content">
-                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                {thinkingText || ''}
-                            </ReactMarkdown>
-                        </div>
-                    </details>
-                )}
-
-                {/* Main text content (with thinking stripped) */}
                 {displayText && (
                     <div className="message-text">
                         <ReactMarkdown
                             remarkPlugins={[remarkGfm]}
                             components={{
                                 a: ({ href, children, ...props }) => {
-                                    // Citation markers rendered as #cite-N fragment links
                                     if (href?.startsWith('#cite-')) {
                                         const index = parseInt(href.replace('#cite-', ''), 10)
                                         const citation = citationMap.get(index)
@@ -403,7 +472,6 @@ function MessageInner({
                                         return <>{children}</>
                                     }
                                     if (href && !href.startsWith('http://') && !href.startsWith('https://') && !href.startsWith('mailto:') && agentId) {
-                                        // Render as a simple styled file name inline — the bottom capsule handles preview/download
                                         return (
                                             <span className="file-link-group">
                                                 <span className="file-link-name">{children}</span>
@@ -419,7 +487,6 @@ function MessageInner({
                     </div>
                 )}
 
-                {/* Attached file capsules for user messages */}
                 {isUser && message.metadata?.attachedFiles && message.metadata.attachedFiles.length > 0 && (
                     <div className="file-capsules-container">
                         {message.metadata.attachedFiles.map((file, idx) => (
@@ -435,7 +502,6 @@ function MessageInner({
                     </div>
                 )}
 
-                {/* File capsules — only show files confirmed by filesystem diff (outputFiles from MessageList) */}
                 {!isUser && showFileCapsules && outputFiles.length > 0 && (
                     <div className="file-capsules-container">
                         {outputFiles.map((file, idx) => (
@@ -451,30 +517,10 @@ function MessageInner({
                     </div>
                 )}
 
-                {/* Source references — always shown when available (extracted from tool call results) */}
                 {sourceDocuments && sourceDocuments.length > 0 && displayText && (
                     <ReferenceList citations={sourceDocuments} />
                 )}
 
-                {/* Tool calls */}
-                {toolCalls.map(toolCall => (
-                    toolCall.name.startsWith('todo__')
-                        ? (
-                            <TodoToolCard key={toolCall.id} toolCall={toolCall} />
-                        )
-                        : (
-                            <ToolCallDisplay
-                                key={toolCall.id}
-                                name={toolCall.name}
-                                args={toolCall.args}
-                                result={toolCall.result}
-                                isPending={toolCall.isPending}
-                                isError={toolCall.isError}
-                            />
-                        )
-                ))}
-
-                {/* Streaming indicator on last assistant message */}
                 {isStreaming && (
                     <div className="streaming-indicator">
                         <div className="loading-dots">

@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import Message from './Message'
 import { ChatState, type OutputFilesEvent } from '../hooks/useChat'
 import { extractSourceDocuments, type Citation } from '../utils/citationParser'
-import { getReasoningContent, getThinkingContent, hasTextContent, hasToolContent } from '../utils/messageContent'
+import { getReasoningContent, getThinkingContent, hasDisplayTextContent, hasTextContent, hasToolContent } from '../utils/messageContent'
 import { useUser } from '../contexts/UserContext'
 import { GATEWAY_URL, GATEWAY_SECRET_KEY } from '../config/runtime'
 import type { ChatMessage, DetectedFile, ToolResponseMap } from '../types/message'
@@ -47,7 +47,7 @@ export default function MessageList({ messages, isLoading = false, chatState = C
             }
 
             const hasReasoningOnly = !!getReasoningContent(msg) || !!getThinkingContent(msg)
-            if (!hasReasoningOnly) {
+            if (hasReasoningOnly) {
                 return true
             }
 
@@ -59,7 +59,7 @@ export default function MessageList({ messages, isLoading = false, chatState = C
     const finalAssistantTextMessageId = useMemo(() => {
         for (let i = visibleMessages.length - 1; i >= 0; i--) {
             const msg = visibleMessages[i]
-            if (msg.role === 'assistant' && msg.content.some(c => c.type === 'text' && typeof c.text === 'string' && c.text.trim().length > 0)) {
+            if (msg.role === 'assistant' && hasDisplayTextContent(msg)) {
                 return msg.id
             }
         }

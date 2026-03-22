@@ -110,7 +110,7 @@ function decodeFileName(name: string): string {
     }
 }
 
-export default function FilePreview() {
+export default function FilePreview({ embedded = false }: { embedded?: boolean }) {
     const { t } = useTranslation()
     const { showToast } = useToast()
     const { previewFile, isLoading, error, closePreview } = usePreview()
@@ -173,9 +173,7 @@ export default function FilePreview() {
     const canCopyContent = !!previewFile?.content
     const displayType = previewFile ? inferFileType(previewFile) : ''
 
-    return (
-        <div className={`file-preview-panel ${isOpen ? 'open' : ''}`}>
-            {isOpen && previewFile && (
+    const content = isOpen && previewFile ? (
                 <>
                     <div className="file-preview-header">
                         <div className="file-preview-title">
@@ -366,7 +364,13 @@ export default function FilePreview() {
                         )}
                     </div>
                 </>
-            )}
+    ) : null
+
+    if (embedded) return content
+
+    return (
+        <div className={`file-preview-panel ${isOpen ? 'open' : ''}`}>
+            {content}
         </div>
     )
 }

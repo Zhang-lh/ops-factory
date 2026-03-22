@@ -1,13 +1,13 @@
 {
-  "name": "custom_opsagentllm",
+  "name": "custom_qwen3-32b",
   "engine": "openai",
-  "display_name": "OpsAgentLLM",
+  "display_name": "qwen3-32b",
   "description": "Custom OpsAgentLLM provider",
   "api_key_env": "CUSTOM_OPSAGENTLLM_API_KEY",
-  "base_url": "https://api.moonshot.cn/v1",
+  "base_url": "https://openrouter.ai/api/v1/chat/completions",
   "models": [
     {
-      "name": "kimi-k2-turbo-preview",
+      "name": "",
       "context_limit": 128000
     }
   ],
