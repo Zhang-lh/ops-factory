@@ -57,6 +57,7 @@ com/huawei/opsfactory/knowledge/config/KnowledgeProperties$Indexing.class
 com/huawei/opsfactory/knowledge/api/document/DocumentController.class
 com/huawei/opsfactory/knowledge/service/ProfileBootstrapService.class
 com/huawei/opsfactory/knowledge/common/error/ApiExceptionHandler.class
+com/huawei/opsfactory/knowledge/api/document/DocumentController$OriginalDocumentResponse.class
 com/huawei/opsfactory/knowledge/api/document/DocumentController$DocumentPreviewResponse.class
 com/huawei/opsfactory/knowledge/service/StorageManager.class
 com/huawei/opsfactory/knowledge/service/KnowledgeServiceFacade.class

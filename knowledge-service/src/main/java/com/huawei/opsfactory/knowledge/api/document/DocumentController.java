@@ -5,7 +5,10 @@ import com.huawei.opsfactory.knowledge.service.KnowledgeServiceFacade;
 import jakarta.validation.constraints.NotNull;
 import java.time.Instant;
 import java.util.List;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -84,9 +87,16 @@ public class DocumentController {
         return facade.readArtifact(documentId, "content.md");
     }
 
-    @GetMapping("/documents/{documentId}/artifacts/text")
-    public String getTextArtifact(@PathVariable("documentId") String documentId) {
-        return facade.readArtifact(documentId, "content.txt");
+    @GetMapping("/documents/{documentId}/original")
+    public ResponseEntity<ByteArrayResource> downloadOriginal(@PathVariable("documentId") String documentId) {
+        OriginalDocumentResponse payload = facade.originalDocument(documentId);
+        String contentType = payload.contentType() != null && !payload.contentType().isBlank()
+            ? payload.contentType()
+            : MediaType.APPLICATION_OCTET_STREAM_VALUE;
+        return ResponseEntity.ok()
+            .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + payload.filename() + "\"")
+            .contentType(MediaType.parseMediaType(contentType))
+            .body(new ByteArrayResource(payload.content()));
     }
 
     @PostMapping("/documents/{documentId}:rebuild")
@@ -163,10 +173,13 @@ public class DocumentController {
     public record DeleteDocumentResponse(String documentId, boolean deleted) {
     }
 
-    public record DocumentPreviewResponse(String documentId, String title, String markdownPreview, String textPreview) {
+    public record DocumentPreviewResponse(String documentId, String title, String markdownPreview) {
     }
 
-    public record DocumentArtifactsResponse(String documentId, boolean markdown, boolean text, boolean xhtml) {
+    public record DocumentArtifactsResponse(String documentId, boolean markdown) {
+    }
+
+    public record OriginalDocumentResponse(String documentId, String filename, String contentType, byte[] content) {
     }
 
     public record JobCreationResponse(String jobId, String documentId, String jobType, String status) {

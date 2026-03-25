@@ -14,12 +14,13 @@ export interface PreviewFile {
     name: string
     path: string
     type: string
-    agentId: string
+    agentId?: string
     previewKind: PreviewKind
     content?: string
     tableData?: string[][]
     onlyofficeUrl?: string
     fileBaseUrl?: string
+    downloadUrl?: string
 }
 
 interface PreviewRequest {

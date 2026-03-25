@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useToast } from '../contexts/ToastContext'
 import { KNOWLEDGE_SERVICE_URL } from '../config/runtime'
+import ResourceCard, { type ResourceStatusTone } from '../components/ResourceCard'
 
 interface SourceSummary {
     id: string
@@ -41,6 +42,28 @@ function formatDate(value?: string | null): string {
         month: '2-digit',
         day: '2-digit',
     })
+}
+
+function getKnowledgeStatusTone(status?: string): ResourceStatusTone {
+    switch (status?.toUpperCase()) {
+    case 'ACTIVE':
+        return 'success'
+    case 'DISABLED':
+        return 'neutral'
+    default:
+        return 'neutral'
+    }
+}
+
+function getKnowledgeStatusLabel(status: string | undefined, t: (key: string) => string): string {
+    switch (status?.toUpperCase()) {
+    case 'ACTIVE':
+        return t('knowledge.statusActive')
+    case 'DISABLED':
+        return t('knowledge.statusDisabled')
+    default:
+        return status || t('knowledge.statusUnknown')
+    }
 }
 
 function CreateKnowledgeModal({
@@ -288,7 +311,7 @@ export default function Knowledge() {
     }, [searchTerm, sources, statusFilter])
 
     return (
-        <div className="page-container agents-page">
+        <div className="page-container sidebar-top-page resource-page">
             <div className="page-header">
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <div>
@@ -375,52 +398,51 @@ export default function Knowledge() {
                     <div className="empty-state-description">{t('knowledge.emptyHint')}</div>
                 </div>
             ) : (
-                <div className="agents-grid">
+                <div className="resource-grid">
                     {filteredSources.map(source => {
                         const sourceStats = stats[source.id]
+                        const descriptionText = source.description?.trim() || t('knowledge.noDescription')
                         return (
-                            <div key={source.id} className="agent-card knowledge-card">
-                                <div className="agent-card-header">
-                                    <div className="agent-card-title">
-                                        <div className="agent-name">{source.name}</div>
-                                    </div>
-                                    <span className={`status-pill status-${source.status.toLowerCase()}`}>{source.status}</span>
-                                </div>
-
-                                {source.description && (
-                                    <p className="knowledge-card-description">{source.description}</p>
+                            <ResourceCard
+                                key={source.id}
+                                title={source.name}
+                                statusLabel={getKnowledgeStatusLabel(source.status, t)}
+                                statusTone={getKnowledgeStatusTone(source.status)}
+                                summary={(
+                                    <p
+                                        className={[
+                                            'resource-card-summary-text',
+                                            !source.description ? 'resource-card-summary-placeholder' : '',
+                                        ].filter(Boolean).join(' ')}
+                                        title={descriptionText}
+                                    >
+                                        {descriptionText}
+                                    </p>
                                 )}
-
-                                <div className="agent-meta">
-                                    <div className="agent-meta-row">
-                                        <span className="agent-meta-label">{t('knowledge.documents')}</span>
-                                        <span className="agent-meta-value">{sourceStats?.documentCount ?? 0}</span>
-                                    </div>
-                                    <div className="agent-meta-row">
-                                        <span className="agent-meta-label">{t('knowledge.chunks')}</span>
-                                        <span className="agent-meta-value">{sourceStats?.chunkCount ?? 0}</span>
-                                    </div>
-                                    <div className="agent-meta-row">
-                                        <span className="agent-meta-label">{t('knowledge.updatedAt')}</span>
-                                        <span className="agent-meta-value">{formatDate(source.updatedAt)}</span>
-                                    </div>
-                                </div>
-
-                                <div className="agent-skill-cta">
-                                    <button
-                                        className="agent-skill-button"
-                                        onClick={() => navigate(`/knowledge/${source.id}`)}
-                                    >
-                                        {t('knowledge.configure')}
-                                    </button>
-                                    <button
-                                        className="agent-skill-button agent-delete-button"
-                                        onClick={() => setDeleteTarget(source)}
-                                    >
-                                        {t('common.delete')}
-                                    </button>
-                                </div>
-                            </div>
+                                metrics={[
+                                    { label: t('knowledge.documents'), value: sourceStats?.documentCount ?? 0 },
+                                    { label: t('knowledge.chunks'), value: sourceStats?.chunkCount ?? 0 },
+                                    { label: t('knowledge.updatedAt'), value: formatDate(source.updatedAt) },
+                                ]}
+                                footer={(
+                                    <>
+                                        <button
+                                            type="button"
+                                            className="resource-card-danger-action"
+                                            onClick={() => setDeleteTarget(source)}
+                                        >
+                                            {t('common.delete')}
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className="resource-card-primary-action"
+                                            onClick={() => navigate(`/knowledge/${source.id}`)}
+                                        >
+                                            {t('knowledge.configure')}
+                                        </button>
+                                    </>
+                                )}
+                            />
                         )
                     })}
                 </div>

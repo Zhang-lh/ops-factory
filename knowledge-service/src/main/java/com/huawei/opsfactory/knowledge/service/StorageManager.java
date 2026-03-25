@@ -3,6 +3,7 @@ package com.huawei.opsfactory.knowledge.service;
 import com.huawei.opsfactory.knowledge.config.KnowledgeRuntimeProperties;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
@@ -36,6 +37,17 @@ public class StorageManager {
 
     public Path uploadSourceDir(String sourceId) {
         return baseDir.resolve("upload").resolve(sourceId);
+    }
+
+    public byte[] readBytes(Path path) {
+        try {
+            if (!Files.exists(path)) {
+                throw new NoSuchFileException(path.toString());
+            }
+            return Files.readAllBytes(path);
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to read file " + path, e);
+        }
     }
 
     public Path save(InputStream inputStream, Path path) {

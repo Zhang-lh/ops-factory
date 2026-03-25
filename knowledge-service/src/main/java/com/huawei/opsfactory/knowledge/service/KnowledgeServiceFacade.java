@@ -234,8 +234,7 @@ public class KnowledgeServiceFacade {
         return new DocumentController.DocumentPreviewResponse(
             documentId,
             document.title(),
-            storageManager.readString(artifactDir.resolve("content.md")),
-            storageManager.readString(artifactDir.resolve("content.txt"))
+            storageManager.readString(artifactDir.resolve("content.md"))
         );
     }
 
@@ -245,9 +244,7 @@ public class KnowledgeServiceFacade {
         Path artifactDir = storageManager.artifactDir(document.sourceId(), document.id());
         return new DocumentController.DocumentArtifactsResponse(
             documentId,
-            java.nio.file.Files.exists(artifactDir.resolve("content.md")),
-            java.nio.file.Files.exists(artifactDir.resolve("content.txt")),
-            false
+            java.nio.file.Files.exists(artifactDir.resolve("content.md"))
         );
     }
 
@@ -255,6 +252,18 @@ public class KnowledgeServiceFacade {
         DocumentRepository.DocumentRecord document = documentRepository.findById(documentId)
             .orElseThrow(() -> new IllegalArgumentException("Document not found: " + documentId));
         return storageManager.readString(storageManager.artifactDir(document.sourceId(), document.id()).resolve(name));
+    }
+
+    public DocumentController.OriginalDocumentResponse originalDocument(String documentId) {
+        DocumentRepository.DocumentRecord document = documentRepository.findById(documentId)
+            .orElseThrow(() -> new IllegalArgumentException("Document not found: " + documentId));
+        Path originalPath = storageManager.originalFilePath(document.sourceId(), document.id(), document.originalFilename());
+        return new DocumentController.OriginalDocumentResponse(
+            document.id(),
+            document.originalFilename(),
+            document.contentType(),
+            storageManager.readBytes(originalPath)
+        );
     }
 
     public DocumentController.JobCreationResponse simpleDocumentJob(String documentId, String jobType) {
@@ -607,7 +616,6 @@ public class KnowledgeServiceFacade {
             );
             documentRepository.insert(doc);
             Path artifactDir = storageManager.artifactDir(sourceId, documentId);
-            storageManager.writeString(artifactDir.resolve("content.txt"), conversion.text());
             storageManager.writeString(artifactDir.resolve("content.md"), conversion.markdown());
             List<ChunkingService.ChunkDraft> chunks = chunkingService.chunk(conversion.title(), conversion.text(), conversion.markdown());
             for (ChunkingService.ChunkDraft draft : chunks) {

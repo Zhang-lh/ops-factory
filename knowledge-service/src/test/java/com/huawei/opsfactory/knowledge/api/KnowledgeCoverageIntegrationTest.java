@@ -98,28 +98,25 @@ class KnowledgeCoverageIntegrationTest {
                 .andExpect(status().isOk())
                 .andReturn());
             assertThat(preview.path("markdownPreview").asText()).isNotBlank();
-            assertThat(preview.path("textPreview").asText()).isNotBlank();
 
             JsonNode artifacts = readJson(mockMvc.perform(get("/ops-knowledge/documents/{documentId}/artifacts", documentId))
                 .andExpect(status().isOk())
                 .andReturn());
             assertThat(artifacts.path("markdown").asBoolean()).isTrue();
-            assertThat(artifacts.path("text").asBoolean()).isTrue();
 
             String markdown = mockMvc.perform(get("/ops-knowledge/documents/{documentId}/artifacts/markdown", documentId))
                 .andExpect(status().isOk())
                 .andReturn()
                 .getResponse()
                 .getContentAsString();
-            String text = mockMvc.perform(get("/ops-knowledge/documents/{documentId}/artifacts/text", documentId))
+            byte[] original = mockMvc.perform(get("/ops-knowledge/documents/{documentId}/original", documentId))
                 .andExpect(status().isOk())
                 .andReturn()
                 .getResponse()
-                .getContentAsString();
+                .getContentAsByteArray();
             assertThat(markdown).isNotBlank();
-            assertThat(text).isNotBlank();
             assertThat(markdown).containsIgnoringCase(expectedMarkers.get(item.path("name").asText()));
-            assertThat(text).containsIgnoringCase(expectedMarkers.get(item.path("name").asText()));
+            assertThat(original).isNotEmpty();
 
             JsonNode documentStats = readJson(mockMvc.perform(get("/ops-knowledge/documents/{documentId}/stats", documentId))
                 .andExpect(status().isOk())

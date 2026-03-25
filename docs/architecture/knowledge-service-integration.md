@@ -58,7 +58,7 @@ java -jar target/knowledge-service.jar
 `knowledge.runtime.base-dir` 默认是 `./data`，服务会在该目录下维护：
 
 - `upload/<sourceId>/<documentId>/original/`：上传原始文件
-- `artifacts/<sourceId>/<documentId>/`：转换产物，当前主要是 `content.md` 和 `content.txt`
+- `artifacts/<sourceId>/<documentId>/`：转换产物，当前为 `content.md`
 - `indexes/`：索引目录
 
 建议：
@@ -355,6 +355,26 @@ knowledge:
 - 用户编辑 chunk 数
 - 最近一次成功导入时间
 
+#### `POST /ops-knowledge/sources/{sourceId}:rebuild`
+
+用途：按当前 source 绑定的索引配置与系统默认值，重新触发该知识源下文档的处理与索引构建。
+
+返回示例：
+
+```json
+{
+  "jobId": "job_xxx",
+  "sourceId": "src_xxx",
+  "status": "SUCCEEDED"
+}
+```
+
+行为说明：
+
+- 当前可以同步返回成功结果，后续可平滑扩展为异步 job
+- 前端只需要根据返回状态给出提交成功提示，不依赖立即完成
+- 该接口应继续走 gateway 暴露给浏览器
+
 ### 6.3 文档导入与文档管理
 
 #### `POST /ops-knowledge/sources/{sourceId}/documents:ingest`
@@ -429,7 +449,6 @@ knowledge:
 返回：
 
 - `markdownPreview`
-- `textPreview`
 
 适合管理台预览，不适合直接作为检索证据接口。
 
@@ -438,18 +457,14 @@ knowledge:
 返回该文档是否存在以下产物：
 
 - markdown
-- text
-- xhtml
-
-当前实现中 `xhtml` 固定为 `false`。
 
 #### `GET /ops-knowledge/documents/{documentId}/artifacts/markdown`
 
 直接返回转换后的 markdown 文本。
 
-#### `GET /ops-knowledge/documents/{documentId}/artifacts/text`
+#### `GET /ops-knowledge/documents/{documentId}/original`
 
-直接返回转换后的纯文本。
+下载导入时保存的原始文件。
 
 #### `POST /ops-knowledge/documents/{documentId}:rebuild`
 #### `POST /ops-knowledge/documents/{documentId}:reindex`

@@ -301,7 +301,7 @@ export default function FilePreview({ embedded = false }: { embedded?: boolean }
                                     <OnlyOfficePreview
                                         name={previewFile.name}
                                         path={previewFile.path}
-                                        agentId={previewFile.agentId}
+                                        agentId={previewFile.agentId || ''}
                                         type={previewFile.type}
                                         onlyofficeUrl={previewFile.onlyofficeUrl}
                                         fileBaseUrl={previewFile.fileBaseUrl}
