@@ -1,5 +1,4 @@
 import { Routes, Route } from 'react-router-dom'
-import Sidebar from './components/Sidebar'
 import Home from './pages/Home'
 import Chat from './pages/Chat'
 import History from './pages/History'
@@ -9,14 +8,13 @@ import AgentConfigure from './pages/AgentConfigure'
 import ScheduledActions from './pages/ScheduledActions'
 import Monitoring from './pages/Monitoring'
 import Inbox from './pages/Inbox'
-import Login from './pages/Login'
 import Knowledge from './pages/Knowledge'
 import KnowledgeConfigure from './pages/KnowledgeConfigure'
 import FilePreview from './components/FilePreview'
 import { PreviewProvider, usePreview } from './contexts/PreviewContext'
 import { InboxProvider } from './contexts/InboxContext'
 import { SidebarProvider, useSidebar } from './contexts/SidebarContext'
-import { ProtectedRoute, AdminRoute } from './contexts/UserContext'
+import { AdminRoute } from './contexts/UserContext'
 import { RightPanelProvider, useRightPanel } from './contexts/RightPanelContext'
 import CapabilityMarketPanel from './components/market/CapabilityMarketPanel'
 
@@ -41,7 +39,6 @@ function AppContent() {
 
     return (
         <div className="app-container">
-            {!isEmbed && <Sidebar />}
             <div className={mainWrapperClass}>
                 <main className="main-content">
                     <Routes>
@@ -80,9 +77,7 @@ function AppContent() {
 export default function App() {
     return (
         <Routes>
-            <Route path="/login" element={<Login />} />
             <Route path="/*" element={
-                <ProtectedRoute>
                     <SidebarProvider>
                         <InboxProvider>
                             <PreviewProvider>
@@ -92,7 +87,6 @@ export default function App() {
                             </PreviewProvider>
                         </InboxProvider>
                     </SidebarProvider>
-                </ProtectedRoute>
             } />
         </Routes>
     )

@@ -57,13 +57,6 @@ gateway/users/
 # Gateway runtime
 gateway/data/
 
-# Knowledge service runtime
-knowledge-service/config.yaml
-knowledge-service/data/
-knowledge-service/data/**
-knowledge-service/logs/
-knowledge-service/target/
-
 # Agents runtime artifacts
 gateway/agents/*/artifacts/
 gateway/agents/*/state/logs/
