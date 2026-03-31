@@ -44,7 +44,7 @@ export default function SettingsModal({ isOpen, onClose }: { isOpen: boolean; on
     const handleLogout = () => {
         onClose()
         logout()
-        navigate('/login', { replace: true })
+        navigate('/', { replace: true })
     }
 
     const handleLanguageChange = (lng: string) => {

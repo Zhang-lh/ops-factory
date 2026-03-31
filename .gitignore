@@ -10,6 +10,7 @@ yarn-error.log*
 pnpm-debug.log*
 
 # Environment & secrets
+.class
 .env
 .env.*
 !.env.example
@@ -63,7 +64,6 @@ knowledge-service/config.yaml
 knowledge-service/data/
 knowledge-service/data/**
 knowledge-service/logs/
-
 # Agents runtime artifacts
 gateway/agents/*/artifacts/
 gateway/agents/*/state/logs/

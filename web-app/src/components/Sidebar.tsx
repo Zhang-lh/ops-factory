@@ -26,7 +26,7 @@ export default function Sidebar() {
 
     const handleLogout = () => {
         logout()
-        navigate('/login', { replace: true })
+        navigate('/', { replace: true })
     }
 
     const handleNewChat = async () => {

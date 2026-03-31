@@ -37,13 +37,13 @@ describe('Embed mode — URL param auth', () => {
         localStorage.clear()
     })
 
-    it('reads userId from URL param and sets it in context', () => {
-        renderWithProviders('/chat?embed=true&userId=embed-alice')
+    it('reads uid from URL param and sets it in context', () => {
+        renderWithProviders('/chat?embed=true&uid=embed-alice')
         expect(screen.getByTestId('user-id')).toHaveTextContent('embed-alice')
     })
 
-    it('persists URL userId to localStorage', () => {
-        renderWithProviders('/chat?embed=true&userId=embed-bob')
+    it('persists uid from URL to localStorage', () => {
+        renderWithProviders('/chat?embed=true&uid=embed-bob')
         expect(localStorage.getItem(STORAGE_KEY)).toBe('embed-bob')
     })
 
@@ -53,15 +53,15 @@ describe('Embed mode — URL param auth', () => {
         expect(screen.getByTestId('user-id')).toHaveTextContent('stored-user')
     })
 
-    it('URL userId overrides localStorage value', () => {
+    it('URL uid overrides localStorage value', () => {
         localStorage.setItem(STORAGE_KEY, 'old-user')
-        renderWithProviders('/chat?embed=true&userId=new-user')
+        renderWithProviders('/chat?embed=true&uid=new-user')
         expect(screen.getByTestId('user-id')).toHaveTextContent('new-user')
         expect(localStorage.getItem(STORAGE_KEY)).toBe('new-user')
     })
 
-    it('shows "none" when no userId in URL or localStorage', () => {
+    it('falls back to admin when no uid or localStorage exists', () => {
         renderWithProviders('/chat')
-        expect(screen.getByTestId('user-id')).toHaveTextContent('none')
+        expect(screen.getByTestId('user-id')).toHaveTextContent('admin')
     })
 })

@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@goosed/sdk": "file:../typescript-sdk",
+    "archiver": "^7.0.1",
     "highlight.js": "^11.11.1",
     "i18next": "^25.8.13",
     "i18next-browser-languagedetector": "^8.2.1",
