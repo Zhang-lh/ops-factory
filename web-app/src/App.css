@@ -2846,15 +2846,6 @@ textarea {
     user-select: none;
 }
 
-.citation-mark.clickable {
-    cursor: pointer;
-}
-
-.citation-mark.clickable:hover {
-    background: rgba(79, 110, 210, 0.18);
-    color: rgba(59, 86, 178, 0.92);
-}
-
 /* ========================================
    Citation — Hover Card
    ======================================== */
@@ -3059,6 +3050,13 @@ textarea {
     line-height: 1;
 }
 
+.reference-capsule-indices {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
 .reference-capsule-title {
     flex: 1;
     overflow: hidden;
@@ -3072,6 +3070,17 @@ textarea {
     color: var(--text-soft);
     font-size: 11px;
     white-space: nowrap;
+}
+
+.reference-list-note {
+    margin-top: var(--spacing-3);
+    padding: var(--spacing-3);
+    border-radius: var(--radius-lg);
+    background: var(--surface-2);
+    border: 1px solid var(--border-soft);
+    color: var(--text-soft);
+    font-size: var(--font-size-xs);
+    line-height: 1.55;
 }
 
 /* ========================================

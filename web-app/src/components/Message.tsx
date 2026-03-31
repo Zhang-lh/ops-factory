@@ -434,7 +434,7 @@ function MessageInner({
     const parsedCitations: Citation[] = !isUser && rawDisplayText ? parseCitations(rawDisplayText) : []
     const citations = mergeCitationMetadata(parsedCitations, sourceDocuments || [])
     const citationMap = new Map(citations.map(c => [c.index, c]))
-    const retrievedDocuments = sourceDocuments || fetchedDocuments || []
+    const retrievedDocuments = sourceDocuments?.length ? sourceDocuments : (fetchedDocuments || [])
 
     const displayText = citations.length > 0
         ? replaceCitationsWithPlaceholders(rawDisplayText)
@@ -591,11 +591,17 @@ function MessageInner({
                     )}
 
                     {shouldShowCitedReferences && displayText && (
-                        <ReferenceList citations={citations} label="本轮引用过的资料" />
+                        <ReferenceList citations={citations} label="回答中引用的资料" variant="cited" />
+                    )}
+
+                    {!shouldShowCitedReferences && shouldShowRetrievedReferences && displayText && (
+                        <div className="reference-list-note">
+                            本回答未直接引用资料，但基于本轮检索结果生成。
+                        </div>
                     )}
 
                     {shouldShowRetrievedReferences && displayText && (
-                        <ReferenceList citations={retrievedDocuments} label="本轮检索过的资料" />
+                        <ReferenceList citations={retrievedDocuments} label="本轮检索过的资料" variant="retrieved" />
                     )}
 
                     {isStreaming && (
