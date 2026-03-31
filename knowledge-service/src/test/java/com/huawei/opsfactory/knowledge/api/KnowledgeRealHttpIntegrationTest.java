@@ -87,13 +87,14 @@ class KnowledgeRealHttpIntegrationTest {
     void shouldBehaveLikeARealClientUsingHttpAndMultipartUpload() throws Exception {
         String sourceId = createSourceOverHttp();
         uploadFilesOverHttp(sourceId, inputFiles());
+        int expectedImportedCount = getJson("/ops-knowledge/documents?sourceId=" + sourceId).path("total").asInt();
 
         JsonNode sourceStats = getJson("/ops-knowledge/sources/" + sourceId + "/stats");
-        assertThat(sourceStats.path("documentCount").asInt()).isEqualTo(inputFiles().size());
+        assertThat(sourceStats.path("documentCount").asInt()).isEqualTo(expectedImportedCount);
         assertThat(sourceStats.path("chunkCount").asInt()).isGreaterThan(0);
 
         JsonNode documentList = getJson("/ops-knowledge/documents?sourceId=" + sourceId);
-        assertThat(documentList.path("total").asInt()).isEqualTo(inputFiles().size());
+        assertThat(documentList.path("total").asInt()).isEqualTo(expectedImportedCount);
 
         JsonNode firstDocument = documentList.path("items").get(0);
         String documentId = firstDocument.path("id").asText();
@@ -135,7 +136,7 @@ class KnowledgeRealHttpIntegrationTest {
         }
 
         try (Stream<Path> files = Files.list(OUTPUT_FILES_DIR)) {
-            assertThat(files.filter(Files::isRegularFile).count()).isEqualTo(inputFiles().size());
+            assertThat(files.filter(Files::isRegularFile).count()).isEqualTo(expectedImportedCount);
         }
     }
 

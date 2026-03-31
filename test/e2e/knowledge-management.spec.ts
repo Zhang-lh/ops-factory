@@ -2,19 +2,38 @@ import { test, expect, type APIRequestContext, type Page } from '@playwright/tes
 
 const KNOWLEDGE_URL = process.env.KNOWLEDGE_SERVICE_URL || 'http://127.0.0.1:8092'
 
-async function loginAsAdmin(page: Page, username = 'admin') {
-  await page.goto('/login')
-  await page.fill('input[placeholder="Your name"]', username)
-  await page.click('button:has-text("Enter")')
-  await page.waitForURL('/')
+test.describe.configure({ mode: 'serial' })
+
+async function sleep(ms: number) {
+  await new Promise(resolve => setTimeout(resolve, ms))
+}
+
+async function openKnowledgeList(page: Page) {
+  await page.goto('/#/knowledge')
+  await expect(page.locator('.page-title')).toBeVisible({ timeout: 15_000 })
+}
+
+async function openKnowledgeTab(page: Page, sourceId: string, tab: string) {
+  await page.goto(`/#/knowledge/${sourceId}?tab=${tab}`)
 }
 
 async function createSource(request: APIRequestContext, name: string, description: string) {
-  const response = await request.post(`${KNOWLEDGE_URL}/ops-knowledge/sources`, {
-    data: { name, description },
-  })
-  expect(response.ok()).toBeTruthy()
-  return await response.json() as { id: string; name: string }
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const response = await request.post(`${KNOWLEDGE_URL}/ops-knowledge/sources`, {
+      data: { name, description },
+    })
+
+    if (response.ok()) {
+      return await response.json() as { id: string; name: string }
+    }
+
+    if (attempt < 2) {
+      await sleep(500 * (attempt + 1))
+      continue
+    }
+  }
+
+  throw new Error(`Failed to create source ${name} after retries`)
 }
 
 async function patchSource(
@@ -36,12 +55,19 @@ async function getSource(request: APIRequestContext, sourceId: string) {
 }
 
 async function findSourceByName(request: APIRequestContext, name: string) {
-  const response = await request.get(`${KNOWLEDGE_URL}/ops-knowledge/sources?page=1&pageSize=100`)
-  expect(response.ok()).toBeTruthy()
-  const data = await response.json() as { items: Array<{ id: string; name: string }> }
-  const item = data.items.find(entry => entry.name === name)
-  expect(item, `source ${name} should exist`).toBeDefined()
-  return item!
+  const deadline = Date.now() + 10_000
+  while (Date.now() < deadline) {
+    const response = await request.get(`${KNOWLEDGE_URL}/ops-knowledge/sources?page=1&pageSize=100`)
+    expect(response.ok()).toBeTruthy()
+    const data = await response.json() as { items: Array<{ id: string; name: string }> }
+    const item = data.items.find(entry => entry.name === name)
+    if (item) {
+      return item
+    }
+    await sleep(300)
+  }
+
+  throw new Error(`source ${name} should exist`)
 }
 
 async function uploadFile(
@@ -105,9 +131,7 @@ test.describe('Knowledge management', () => {
       cleanup.push(disabled.id)
       await patchSource(request, disabled.id, { status: 'DISABLED' })
 
-      await loginAsAdmin(page)
-      await page.goto('/knowledge')
-      await expect(page.locator('.page-title')).toBeVisible()
+      await openKnowledgeList(page)
 
       await page.locator('.action-btn-primary.btn.btn-primary').click()
       await page.locator('.modal input.form-input').first().fill(createdName)
@@ -164,8 +188,7 @@ test.describe('Knowledge management', () => {
         body: 'Beta notes for document workflow validation.',
       })
 
-      await loginAsAdmin(page)
-      await page.goto(`/knowledge/${source.id}?tab=documents`)
+      await openKnowledgeTab(page, source.id, 'documents')
       await expect(page.locator('.knowledge-doc-row')).toHaveCount(2, { timeout: 15_000 })
 
       const alphaRow = documentRow(page, 'alpha-runbook.md')
@@ -192,10 +215,10 @@ test.describe('Knowledge management', () => {
       const gammaRow = documentRow(page, 'gamma-checklist.md')
       await expect(gammaRow).toBeVisible()
       await gammaRow.locator('.knowledge-doc-actions-text .knowledge-doc-action-link').first().click()
-      await expect(page).toHaveURL(new RegExp(`/knowledge/${source.id}\\?tab=chunks&documentId=`))
+      await expect(page).toHaveURL(new RegExp(`/#/knowledge/${source.id}\\?tab=chunks&documentId=`))
       await expect(page.locator('.knowledge-section-title').filter({ hasText: /Chunk|分块|Chunks/ }).first()).toBeVisible()
 
-      await page.goto(`/knowledge/${source.id}?tab=documents`)
+      await openKnowledgeTab(page, source.id, 'documents')
       await expect(page.locator('.knowledge-doc-row')).toHaveCount(3, { timeout: 15_000 })
       await gammaRow.locator('.knowledge-doc-actions-icons .knowledge-doc-action-btn.danger').click()
       await page.locator('.modal-footer .btn.btn-danger').click()
@@ -231,8 +254,7 @@ test.describe('Knowledge management', () => {
         ].join('\n'),
       })
 
-      await loginAsAdmin(page)
-      await page.goto(`/knowledge/${source.id}?tab=chunks`)
+      await openKnowledgeTab(page, source.id, 'chunks')
       await expect(page.locator('.knowledge-chunk-card').first()).toBeVisible({ timeout: 15_000 })
 
       await page.locator('.knowledge-section-header .btn.btn-primary').click()
@@ -291,15 +313,14 @@ test.describe('Knowledge management', () => {
         ].join('\n'),
       })
 
-      await loginAsAdmin(page)
-      await page.goto(`/knowledge/${source.id}?tab=config`)
+      await openKnowledgeTab(page, source.id, 'config')
       await expect(page.locator('.knowledge-section-action').filter({ hasText: 'Edit Parameters' }).first()).toBeVisible({ timeout: 15_000 })
 
       await page.locator('.knowledge-section-card .knowledge-section-action').nth(0).click()
       await page.locator('.knowledge-profile-config-modal input.form-input').nth(3).fill('5.5')
       await page.locator('.knowledge-profile-config-modal .modal-footer .btn.btn-primary').click()
 
-      await page.goto(`/knowledge/${source.id}?tab=maintenance`)
+      await openKnowledgeTab(page, source.id, 'maintenance')
       await expect(page.locator('.conn-banner.conn-banner-warning').first()).toBeVisible({ timeout: 15_000 })
 
       await page.locator('.knowledge-config-stack .knowledge-section-card .knowledge-section-action').last().click()
@@ -336,8 +357,7 @@ test.describe('Knowledge management', () => {
         ].join('\n'),
       })
 
-      await loginAsAdmin(page)
-      await page.goto(`/knowledge/${source.id}?tab=retrieval`)
+      await openKnowledgeTab(page, source.id, 'retrieval')
       await page.fill('#knowledge-retrieval-query', 'EulerOS')
       await page.locator('.knowledge-retrieval-actions .btn.btn-primary').click()
 

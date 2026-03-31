@@ -2,23 +2,38 @@ import { test, expect, type APIRequestContext, type Page } from '@playwright/tes
 
 const KNOWLEDGE_URL = process.env.KNOWLEDGE_SERVICE_URL || 'http://127.0.0.1:8092'
 
-async function loginAsAdmin(page: Page) {
-  await page.goto('/login')
-  await page.fill('input[placeholder="Your name"]', 'admin')
-  await page.click('button:has-text("Enter")')
-  await page.waitForURL('/')
+test.describe.configure({ mode: 'serial' })
+
+async function sleep(ms: number) {
+  await new Promise(resolve => setTimeout(resolve, ms))
+}
+
+async function openKnowledgePage(page: Page, sourceId: string) {
+  await page.goto(`/#/knowledge/${sourceId}?tab=retrieval`)
+  await expect(page.locator('#knowledge-retrieval-query')).toBeVisible({ timeout: 15_000 })
 }
 
 async function createSource(request: APIRequestContext): Promise<string> {
-  const response = await request.post(`${KNOWLEDGE_URL}/ops-knowledge/sources`, {
-    data: {
-      name: `e2e-knowledge-${Date.now()}`,
-      description: 'retrieval e2e',
-    },
-  })
-  expect(response.ok()).toBeTruthy()
-  const json = await response.json()
-  return json.id as string
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const response = await request.post(`${KNOWLEDGE_URL}/ops-knowledge/sources`, {
+      data: {
+        name: `e2e-knowledge-${Date.now()}-${attempt}`,
+        description: 'retrieval e2e',
+      },
+    })
+
+    if (response.ok()) {
+      const json = await response.json()
+      return json.id as string
+    }
+
+    if (attempt < 2) {
+      await sleep(500 * (attempt + 1))
+      continue
+    }
+  }
+
+  throw new Error('Failed to create knowledge source after retries')
 }
 
 async function uploadMarkdown(request: APIRequestContext, sourceId: string) {
@@ -57,9 +72,7 @@ test.describe('Knowledge retrieval compare', () => {
 
     try {
       await uploadMarkdown(request, sourceId)
-      await loginAsAdmin(page)
-      await page.goto(`/knowledge/${sourceId}?tab=retrieval`)
-      await page.waitForLoadState('networkidle')
+      await openKnowledgePage(page, sourceId)
 
       await page.fill('#knowledge-retrieval-query', 'ITSM')
       await page.getByRole('button', { name: /Run Test|测试/ }).click()

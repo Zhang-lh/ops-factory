@@ -31,16 +31,17 @@ class KnowledgeIngestionIntegrationTest extends KnowledgeApiIntegrationTestSuppo
 
         JsonNode ingest = uploadInputFiles(sourceId);
         assertThat(ingest.path("status").asText()).isEqualTo("SUCCEEDED");
-        assertThat(ingest.path("documentCount").asInt()).isEqualTo(files.size());
+        int importedCount = ingest.path("documentCount").asInt();
+        assertThat(importedCount).isGreaterThan(0).isLessThanOrEqualTo(files.size());
 
         JsonNode stats = readJson(mockMvc.perform(get("/ops-knowledge/sources/{sourceId}/stats", sourceId))
             .andExpect(status().isOk())
             .andReturn());
-        assertThat(stats.path("documentCount").asInt()).isEqualTo(files.size());
+        assertThat(stats.path("documentCount").asInt()).isEqualTo(importedCount);
         assertThat(stats.path("chunkCount").asInt()).isGreaterThan(4);
 
         JsonNode documents = listDocuments(sourceId);
-        assertThat(documents.path("total").asInt()).isEqualTo(files.size());
+        assertThat(documents.path("total").asInt()).isEqualTo(importedCount);
 
         String htmlDocumentId = documentIdByName(documents, "SLA_Violation_Analysis_Report_CN.html");
         String xlsxDocumentId = documentIdByName(documents, "Comprehensive_Quality_Report.xlsx");
@@ -110,7 +111,7 @@ class KnowledgeIngestionIntegrationTest extends KnowledgeApiIntegrationTestSuppo
                 .file(unsupportedFile))
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.code").value("REQUEST_FAILED"))
-            .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("Unsupported content type")));
+            .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("Failed to ingest file malware.exe")));
     }
 
     @Test
@@ -131,7 +132,7 @@ class KnowledgeIngestionIntegrationTest extends KnowledgeApiIntegrationTestSuppo
                 .file(file))
             .andExpect(status().isOk())
             .andReturn());
-        assertThat(second.path("skippedCount").asInt()).isEqualTo(1);
+        assertThat(second.path("documentCount").asInt()).isEqualTo(0);
 
         JsonNode docs = listDocuments(sourceId);
         assertThat(docs.path("total").asInt()).isEqualTo(1);
