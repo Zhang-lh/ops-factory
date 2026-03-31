@@ -476,7 +476,7 @@
     "retrievalTitle": "召回测试",
     "retrievalDescription": "根据给定的查询文本测试当前知识库的召回效果。",
     "retrievalQueryLabel": "查询文本",
-    "retrievalQueryPlaceholder": "输入一个问题、主题词或关键短语，例如：qwen3",
+    "retrievalQueryPlaceholder": "输入一个问题、主题词或关键短语",
     "retrievalSettings": "检索设置",
     "retrievalRun": "测试",
     "retrievalRunCurrent": "已是最新结果",

@@ -673,12 +673,6 @@ function MaintenanceTab({
                     </button>
                 </div>
 
-                {rebuildRequired && (
-                    <div className="conn-banner conn-banner-warning">
-                        {t('knowledge.configPendingRebuildNotice')}
-                    </div>
-                )}
-
                 <div className="knowledge-action-list">
                     <div className="knowledge-action-item knowledge-action-item-single">
                         <div className="knowledge-action-copy">
