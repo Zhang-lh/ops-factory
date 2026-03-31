@@ -38,7 +38,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 @RestController
-@RequestMapping("/ops-gateway/agents/{agentId}")
+@RequestMapping("/gateway/agents/{agentId}")
 public class ReplyController {
 
     private static final Logger log = LogManager.getLogger(ReplyController.class);

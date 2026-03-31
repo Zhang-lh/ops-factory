@@ -594,12 +594,6 @@ function MessageInner({
                         <ReferenceList citations={citations} label="回答中引用的资料" variant="cited" />
                     )}
 
-                    {!shouldShowCitedReferences && shouldShowRetrievedReferences && displayText && (
-                        <div className="reference-list-note">
-                            本回答未直接引用资料，但基于本轮检索结果生成。
-                        </div>
-                    )}
-
                     {shouldShowRetrievedReferences && displayText && (
                         <ReferenceList citations={retrievedDocuments} label="本轮检索过的资料" variant="retrieved" />
                     )}

@@ -23,7 +23,7 @@ function buildReferenceKey(citation: Citation): string {
 }
 
 async function loadDocumentPreview(documentId: string) {
-    const response = await fetch(`${KNOWLEDGE_SERVICE_URL}/ops-knowledge/documents/${documentId}/preview`)
+    const response = await fetch(`${KNOWLEDGE_SERVICE_URL}/documents/${documentId}/preview`)
     const data = await response.json().catch(() => null) as { title?: string; markdownPreview?: string; message?: string } | null
 
     if (!response.ok || !data?.markdownPreview) {

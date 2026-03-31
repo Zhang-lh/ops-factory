@@ -174,7 +174,6 @@ describe('MessageList tool chain rendering', () => {
         render(<MessageList messages={messages} />)
 
         expect(screen.getByText('记录系统是企业中的权威数据来源。')).toBeInTheDocument()
-        expect(screen.getByText('本回答未直接引用资料，但基于本轮检索结果生成。')).toBeInTheDocument()
         expect(screen.getByText('本轮检索过的资料 (1)')).toBeInTheDocument()
         expect(screen.getByText('系统定义.pdf')).toBeInTheDocument()
         expect(screen.getByText('1 chunks · p.2')).toBeInTheDocument()

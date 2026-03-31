@@ -3072,17 +3072,6 @@ textarea {
     white-space: nowrap;
 }
 
-.reference-list-note {
-    margin-top: var(--spacing-3);
-    padding: var(--spacing-3);
-    border-radius: var(--radius-lg);
-    background: var(--surface-2);
-    border: 1px solid var(--border-soft);
-    color: var(--text-soft);
-    font-size: var(--font-size-xs);
-    line-height: 1.55;
-}
-
 /* ========================================
    Main Wrapper with Preview Support
    ======================================== */
