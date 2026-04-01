@@ -56,7 +56,7 @@ export function GoosedProvider({ children }: { children: ReactNode }) {
             if (userId) headers['x-user-id'] = userId
             const res = await fetch(`${GATEWAY_URL}/agents`, {
                 headers,
-                signal: AbortSignal.timeout(5000),
+                signal: AbortSignal.timeout(30000),
             })
             if (!res.ok) throw new Error(`HTTP ${res.status}`)
             const data = await res.json()

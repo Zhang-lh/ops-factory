@@ -36,6 +36,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 
 @RestController
 @RequestMapping("/gateway/agents/{agentId}")
@@ -76,10 +78,22 @@ public class ReplyController {
     public Flux<DataBuffer> reply(@PathVariable String agentId,
                                    @RequestBody String body,
                                    ServerWebExchange exchange) {
+        long requestStart = System.currentTimeMillis();
         String userId = exchange.getAttribute(UserContextFilter.USER_ID_ATTR);
         HookContext ctx = new HookContext(body, agentId, userId);
+        AtomicLong hooksDoneAt = new AtomicLong(requestStart);
         log.debug("[REPLY] agentId={} userId={} bodyLen={}", agentId, userId, body.length());
         return hookPipeline.executeRequest(ctx)
+                .doOnSuccess(processedBody -> {
+                    long now = System.currentTimeMillis();
+                    hooksDoneAt.set(now);
+                    String sessionId = processedBody != null ? JsonUtil.extractSessionId(processedBody) : null;
+                    log.info("[REPLY-PERF] stage=hooks agentId={} userId={} sessionId={} elapsed={}ms bodyLen={}",
+                            agentId, userId, sessionId, now - requestStart,
+                            processedBody != null ? processedBody.length() : 0);
+                })
+                .doOnError(e -> log.warn("[REPLY-PERF] stage=hooks agentId={} userId={} elapsed={}ms error={}",
+                        agentId, userId, System.currentTimeMillis() - requestStart, e.getMessage()))
                 .flatMapMany(processedBody -> {
                     log.debug("[REPLY] hooks done, getting instance for {}:{}", agentId, userId);
                     String sessionId = JsonUtil.extractSessionId(processedBody);
@@ -87,22 +101,61 @@ public class ReplyController {
 
                     // Snapshot files before relay (best-effort, empty list on error)
                     List<Map<String, Object>> beforeFiles = snapshotFiles(workingDir);
+                    long spawnStart = System.currentTimeMillis();
 
                     return instanceManager.getOrSpawn(agentId, userId)
+                            .doOnError(e -> log.warn("[REPLY-PERF] stage=getOrSpawn agentId={} userId={} sessionId={} elapsed={}ms error={}",
+                                    agentId, userId, sessionId, System.currentTimeMillis() - requestStart, e.getMessage()))
                             .flatMapMany(instance -> {
+                                long instanceReadyAt = System.currentTimeMillis();
                                 log.info("[REPLY] instance ready {}:{} port={} pid={} sessionResumed={}",
                                         agentId, userId, instance.getPort(), instance.getPid(),
                                         instance.isSessionResumed(sessionId));
+                                log.info("[REPLY-PERF] stage=getOrSpawn agentId={} userId={} sessionId={} port={} stageMs={} totalMs={}",
+                                        agentId, userId, sessionId, instance.getPort(),
+                                        instanceReadyAt - spawnStart, instanceReadyAt - requestStart);
                                 instance.touch();
                                 instanceManager.touchAllForUser(userId);
+                                boolean resumeRequired = sessionId != null && !instance.isSessionResumed(sessionId);
+                                AtomicLong relayReadyAt = new AtomicLong(instanceReadyAt);
+                                AtomicBoolean firstChunkSeen = new AtomicBoolean(false);
 
                                 Flux<DataBuffer> upstream = ensureSessionResumed(instance, sessionId)
+                                        .doOnSuccess(ignored -> {
+                                            long now = System.currentTimeMillis();
+                                            relayReadyAt.set(now);
+                                            log.info("[REPLY-PERF] stage=resume agentId={} userId={} sessionId={} required={} stageMs={} totalMs={}",
+                                                    agentId, userId, sessionId, resumeRequired,
+                                                    now - instanceReadyAt, now - requestStart);
+                                        })
                                         .thenMany(sseRelayService.relay(instance.getPort(), "/reply",
-                                                processedBody, agentId, userId, instance.getSecretKey()));
+                                                processedBody, agentId, userId, instance.getSecretKey()))
+                                        .doOnNext(buf -> {
+                                            if (firstChunkSeen.compareAndSet(false, true)) {
+                                                long now = System.currentTimeMillis();
+                                                log.info("[REPLY-PERF] stage=firstChunk agentId={} userId={} sessionId={} totalMs={} postRelayReadyMs={} bytes={}",
+                                                        agentId, userId, sessionId,
+                                                        now - requestStart, now - relayReadyAt.get(), buf.readableByteCount());
+                                            }
+                                        })
+                                        .doOnComplete(() -> log.info("[REPLY-PERF] stage=relayComplete agentId={} userId={} sessionId={} totalMs={}",
+                                                agentId, userId, sessionId, System.currentTimeMillis() - requestStart))
+                                        .doOnError(e -> log.warn("[REPLY-PERF] stage=relayError agentId={} userId={} sessionId={} totalMs={} error={}",
+                                                agentId, userId, sessionId, System.currentTimeMillis() - requestStart, e.getMessage()));
 
                                 // After stream completes: diff files → inject OutputFiles SSE event
                                 return upstream.concatWith(
-                                        Mono.defer(() -> buildOutputFilesEvent(workingDir, sessionId, beforeFiles))
+                                        Mono.defer(() -> {
+                                                    long outputFilesStart = System.currentTimeMillis();
+                                                    return buildOutputFilesEvent(workingDir, sessionId, beforeFiles)
+                                                            .doOnSuccess(buf -> log.info("[REPLY-PERF] stage=outputFiles agentId={} userId={} sessionId={} generated={} stageMs={} totalMs={}",
+                                                                    agentId, userId, sessionId, buf != null,
+                                                                    System.currentTimeMillis() - outputFilesStart,
+                                                                    System.currentTimeMillis() - requestStart))
+                                                            .doOnError(e -> log.warn("[REPLY-PERF] stage=outputFiles agentId={} userId={} sessionId={} totalMs={} error={}",
+                                                                    agentId, userId, sessionId,
+                                                                    System.currentTimeMillis() - requestStart, e.getMessage()));
+                                                })
                                                 .subscribeOn(Schedulers.boundedElastic()));
                             });
                 });

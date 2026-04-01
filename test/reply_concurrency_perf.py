@@ -73,7 +73,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--scenario", choices=["warm", "cold"], default="warm")
     parser.add_argument(
         "--preset",
-        choices=["multi-user-same-agent", "single-user-multi-session"],
+        choices=["multi-user-same-agent", "single-user-multi-session", "single-user-single-session"],
         default="multi-user-same-agent",
     )
     parser.add_argument("--reply-path", choices=["reply", "agent/reply"], default="reply")
@@ -441,11 +441,15 @@ def run_reply_once(
     started_at_epoch_ms = now_epoch_ms()
     request_label = build_request_label(worker, round_index, session_id)
     try:
-        # cold 模式下每次请求都新建 session；warm 模式复用 prepare_workers 中预建的 session。
-        if args.scenario == "cold" or not session_id:
+        # single-user-single-session：不做每次请求的 session 重建；若缺失则补建并复用。
+        # 其他情况下：cold 模式每次重建；warm 模式复用 prepare_workers 中预建的 session。
+        create_per_request = args.scenario == "cold" and args.preset != "single-user-single-session"
+        if create_per_request or not session_id:
             session_id = create_session(args, ssl_context, worker.user_id)
-            stop_after = args.scenario == "cold"
+            stop_after = create_per_request
             request_label = build_request_label(worker, round_index, session_id)
+            # 若是首次补建，将共享到当前 worker 以便后续复用
+            worker.session_id = session_id
         message = (
             f"{args.message} "
             f"[request={request_label} round={round_index} worker={worker.worker_id} slot={worker.slot_id}]"
@@ -527,16 +531,28 @@ def prepare_workers(args: argparse.Namespace, ssl_context: Optional[ssl.SSLConte
     ]
     if args.scenario == "warm":
         # warm 模式在压测前先把每个槽位的 session 建好，避免把建连成本混入每轮请求。
-        for worker in workers:
-            worker.session_id = create_session(args, ssl_context, worker.user_id)
+        if args.preset == "single-user-single-session":
+            # 单用户单会话：只创建一个共享 session，分配给所有槽位。
+            shared_session = create_session(args, ssl_context, workers[0].user_id)
+            for worker in workers:
+                worker.session_id = shared_session
+        else:
+            for worker in workers:
+                worker.session_id = create_session(args, ssl_context, worker.user_id)
     return workers
 
 
 def cleanup_workers(args: argparse.Namespace, ssl_context: Optional[ssl.SSLContext], workers: List[WorkerContext]) -> None:
     if args.scenario != "warm":
         return
+    # 去重停止，避免单用户单会话场景下重复 stop 同一 session
+    seen: set = set()
     for worker in workers:
         if worker.session_id:
+            key = (worker.user_id, worker.session_id)
+            if key in seen:
+                continue
+            seen.add(key)
             try:
                 stop_session(args, ssl_context, worker.user_id, worker.session_id)
             except Exception:
@@ -584,10 +600,26 @@ def tail_lines(file_path: Path, max_lines: int) -> List[str]:
 
 
 def parse_log_timestamp_ms(line: str) -> Optional[int]:
-    if len(line) < 23:
+    match = re.match(
+        r"^(?P<date>\d{4}-\d{2}-\d{2})[ T](?P<time>\d{2}:\d{2}:\d{2})(?P<frac>[.,]\d{1,6})?",
+        line,
+    )
+    if not match:
         return None
+    date_part = match.group("date")
+    time_part = match.group("time")
+    frac_part = match.group("frac")
+    if frac_part:
+        frac = frac_part[1:]
+        frac_padded = (frac + "000000")[:6]
+        try:
+            dt = datetime.strptime(f"{date_part} {time_part}.{frac_padded}", "%Y-%m-%d %H:%M:%S.%f")
+            return int(dt.timestamp() * 1000)
+        except ValueError:
+            return None
     try:
-        return int(datetime.strptime(line[:23], "%Y-%m-%d %H:%M:%S.%f").timestamp() * 1000)
+        dt = datetime.strptime(f"{date_part} {time_part}", "%Y-%m-%d %H:%M:%S")
+        return int(dt.timestamp() * 1000)
     except ValueError:
         return None
 
@@ -679,9 +711,25 @@ def align_reply_perf_logs(args: argparse.Namespace, results: List[ReplyResult]) 
     log_file = Path(args.gateway_log_file)
     events = load_reply_perf_events(log_file, args.log_tail_lines)
     if not events:
+        log_lines: List[str] = []
+        if log_file.exists():
+            log_lines = tail_lines(log_file, args.log_tail_lines)
+        perf_lines = [line.rstrip("\n") for line in log_lines if "[REPLY-PERF]" in line]
+        parsed_ts_count = sum(1 for line in perf_lines if parse_log_timestamp_ms(line) is not None)
+
         print("")
         print(f"=== REPLY-PERF 日志对齐 ===")
-        print(f"未找到可对齐日志，logFile={log_file}")
+        if not log_file.exists():
+            print(f"日志文件不存在，logFile={log_file}")
+        elif not perf_lines:
+            print(f"日志文件存在，但未找到 [REPLY-PERF] 行，logFile={log_file}")
+            print("建议检查：Gateway 是否已重启并加载包含 REPLY-PERF 的版本；以及日志是否输出到了其他文件/发生轮转。")
+        elif parsed_ts_count == 0:
+            print(f"找到 [REPLY-PERF] 行，但无法解析时间戳格式，logFile={log_file}")
+            print(f"示例日志: {perf_lines[-1][:220]}")
+        else:
+            print(f"找到 [REPLY-PERF] 行，但未能解析出可对齐事件，logFile={log_file}")
+            print(f"perfLines={len(perf_lines)} parsedTimestamp={parsed_ts_count}")
         return {
             "log_file": str(log_file),
             "events_loaded": 0,

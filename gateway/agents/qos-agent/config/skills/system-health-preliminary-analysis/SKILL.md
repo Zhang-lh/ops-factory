@@ -20,10 +20,27 @@ version: 1.0.0
 
 ## 分析流程
 
-### 步骤1：解析并校验时间范围
-#### 解析开始时间和结束时间
+### 步骤1：解析并校验环境编码与时间范围
+#### 解析环境编码、开始时间和结束时间
 
-从用户输入中提取开始时间`${statr_time}`和结束时间`${end_time}`。如果未指定时间范围，默认`${statr_time}`为15分钟前，`${end_time}`为当前时间。
+从用户输入文本中提取环境编码`${envCode}`、开始时间`${start_time}`和结束时间`${end_time}`。
+
+如果用户输入文本格式为：
+
+`对环境: {envCode}进行系统健康度初步分析, 时间区间为：[beginTimestamp, endTimesamp]`
+
+则：
+- `${envCode}`、`${start_time}`、`${end_time}`分别取用户输入的值（时间戳为毫秒级整数）
+
+如果用户输入文本格式为：
+
+`对环境: {envCode}进行系统健康度初步分析`
+
+则：
+- `${envCode}`取用户输入的值
+- `${start_time}`和`${end_time}`按当前逻辑从用户输入中提取；如果未指定时间范围，默认`${start_time}`为15分钟前，`${end_time}`为当前时间
+
+如果用户没有明确说明环境编码（无法从用户输入中确定`${envCode}`），则向用户确认环境编码后再继续。
 
 **解析格式要求**：
 - 用毫秒级时间戳格式
@@ -39,11 +56,12 @@ version: 1.0.0
 
 
 ### 步骤2：获取健康分数数据
-使用解析出来的`${statr_time}`和`${end_time}`，作为脚本输入参数，调用脚本，获取健康分数信息`${health_score}`。
+使用解析出来的`${envCode}`、`${start_time}`和`${end_time}`，作为脚本输入参数，调用脚本，获取健康分数信息`${health_score}`。
 
-执行`./scripts/get_health_score.py`脚本：
+- 进入到当前文件所在路径
+- 执行`./scripts/get_health_score.py`脚本：
 ```bash
-python "./scripts/get_health_score.py" --start_time=`${statr_time}` --end_time=`${end_time}`
+python "./scripts/get_health_score.py" --env_code=`${envCode}` --start_time=`${start_time}` --end_time=`${end_time}`
 ```
 
 - 响应字段说明：
