@@ -7,7 +7,7 @@ import { join } from 'node:path'
 
 const GATEWAY_URL = process.env.GATEWAY_URL || 'https://127.0.0.1:3000'
 const GATEWAY_SECRET_KEY = process.env.GATEWAY_SECRET_KEY || 'test'
-const API_PREFIX = '/ops-gateway'
+const API_PREFIX = '/gateway'
 const OUTPUT_DIR = process.env.OUTPUT_DIR || './output'
 const MAX_OUTPUT_SIZE = 1_000_000 // 1MB
 
@@ -98,7 +98,7 @@ interface SopNode {
   id?: string
   name: string
   type: string
-  transitions?: { condition: string; nextNodeId: string }[]
+  transitions?: { condition: string; nextNodeId: string; nextNodes?: string[] }[]
 }
 
 interface SopData {
@@ -127,16 +127,37 @@ export function sopToMermaid(sop: SopData): string {
     }
   })
 
-  // Edges with conditions
+  // Expand transitions: use nextNodes[] for all targets (fan-out support)
+  const allEdges: { srcIdx: number; cond: string; targetIdx: number }[] = []
   nodes.forEach((node, i) => {
     for (const t of node.transitions ?? []) {
-      const targetIdx = nameToIndex.get(t.nextNodeId)
-      if (targetIdx !== undefined) {
-        const cond = t.condition.replace(/"/g, "'")
-        lines.push(`    N${i} -->|"${cond}"| N${targetIdx}`)
+      // nextNodes may contain multiple targets; fall back to [nextNodeId]
+      const targets = (t.nextNodes?.length ? t.nextNodes : [t.nextNodeId])
+        .map(name => nameToIndex.get(name))
+        .filter((idx): idx is number => idx !== undefined)
+      const cond = t.condition.replace(/"/g, "'")
+      for (const targetIdx of targets) {
+        allEdges.push({ srcIdx: i, cond, targetIdx })
       }
     }
   })
+
+  // Detect duplicate (srcIdx, cond) pairs — append target name to disambiguate
+  const edgeKeyCount = new Map<string, number>()
+  for (const e of allEdges) {
+    const key = `${e.srcIdx}::${e.cond}`
+    edgeKeyCount.set(key, (edgeKeyCount.get(key) || 0) + 1)
+  }
+
+  for (const e of allEdges) {
+    const key = `${e.srcIdx}::${e.cond}`
+    if ((edgeKeyCount.get(key) || 0) > 1) {
+      const targetLabel = nodes[e.targetIdx].name.replace(/"/g, "'")
+      lines.push(`    N${e.srcIdx} -->|"${e.cond} → ${targetLabel}"| N${e.targetIdx}`)
+    } else {
+      lines.push(`    N${e.srcIdx} -->|"${e.cond}"| N${e.targetIdx}`)
+    }
+  }
 
   // Style start nodes (indigo)
   nodes.forEach((node, i) => {
