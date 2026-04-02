@@ -133,3 +133,17 @@ extensions:
     timeout: null
     bundled: null
     available_tools: []
+  browser-use:
+    enabled: true
+    type: stdio
+    name: browser-use
+    description: Browser automation via Puppeteer MCP - navigate, click, type, extract, and screenshot web pages
+    cmd: npx
+    args:
+    - tsx
+    - config/mcp/browser-use/src/index.ts
+    envs: {}
+    env_keys: []
+    timeout: 60
+    bundled: null
+    available_tools: []
