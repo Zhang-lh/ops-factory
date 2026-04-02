@@ -11,23 +11,26 @@ import type { Host, HostCreateRequest } from '../../types/host'
 function TagInput({
     tags,
     allTags,
+    draft,
+    onDraftChange,
     onChange,
 }: {
     tags: string[]
     allTags: string[]
+    draft: string
+    onDraftChange: (draft: string) => void
     onChange: (tags: string[]) => void
 }) {
     const { t } = useTranslation()
-    const [input, setInput] = useState('')
     const [showDropdown, setShowDropdown] = useState(false)
     const inputRef = useRef<HTMLInputElement>(null)
 
     const suggestions = useMemo(() => {
-        const term = input.trim().toLowerCase()
+        const term = draft.trim().toLowerCase()
         return allTags.filter(
             at => !tags.includes(at) && (term === '' || at.toLowerCase().includes(term)),
         )
-    }, [allTags, tags, input])
+    }, [allTags, tags, draft])
 
     const addTag = useCallback(
         (tag: string) => {
@@ -35,10 +38,10 @@ function TagInput({
             if (trimmed && !tags.some(t => t.toLowerCase() === trimmed.toLowerCase())) {
                 onChange([...tags, trimmed])
             }
-            setInput('')
+            onDraftChange('')
             setShowDropdown(false)
         },
-        [tags, onChange],
+        [tags, onChange, onDraftChange],
     )
 
     const removeTag = useCallback(
@@ -52,14 +55,14 @@ function TagInput({
         (e: React.KeyboardEvent<HTMLInputElement>) => {
             if (e.key === 'Enter') {
                 e.preventDefault()
-                if (input.trim()) {
-                    addTag(input)
+                if (draft.trim()) {
+                    addTag(draft)
                 }
-            } else if (e.key === 'Backspace' && input === '' && tags.length > 0) {
+            } else if (e.key === 'Backspace' && draft === '' && tags.length > 0) {
                 removeTag(tags[tags.length - 1])
             }
         },
-        [input, tags, addTag, removeTag],
+        [draft, tags, addTag, removeTag],
     )
 
     return (
@@ -122,9 +125,9 @@ function TagInput({
                     type="text"
                     className="form-input"
                     placeholder={tags.length === 0 ? t('remoteDiagnosis.hosts.addTag') : ''}
-                    value={input}
+                    value={draft}
                     onChange={e => {
-                        setInput(e.target.value)
+                        onDraftChange(e.target.value)
                         setShowDropdown(true)
                     }}
                     onFocus={() => setShowDropdown(true)}
@@ -221,12 +224,18 @@ function HostFormModal({
     const [authType, setAuthType] = useState<'password' | 'key'>(host?.authType ?? 'password')
     const [credential, setCredential] = useState(host?.credential ?? '')
     const [tags, setTags] = useState<string[]>(host?.tags ?? [])
+    const [tagDraft, setTagDraft] = useState('')
     const [description, setDescription] = useState(host?.description ?? '')
     const [saving, setSaving] = useState(false)
     const [error, setError] = useState<string | null>(null)
 
     const handleSave = useCallback(async () => {
         setError(null)
+
+        const trimmedDraft = tagDraft.trim()
+        const nextTags = trimmedDraft && !tags.some(t => t.toLowerCase() === trimmedDraft.toLowerCase())
+            ? [...tags, trimmedDraft]
+            : tags
 
         if (!name.trim()) {
             setError(t('remoteDiagnosis.hosts.nameRequired'))
@@ -249,6 +258,12 @@ function HostFormModal({
 
         setSaving(true)
         try {
+            if (nextTags !== tags) {
+                setTags(nextTags)
+            }
+            if (trimmedDraft) {
+                setTagDraft('')
+            }
             const payload: HostCreateRequest = {
                 name: name.trim(),
                 ip: ip.trim(),
@@ -256,7 +271,7 @@ function HostFormModal({
                 username: username.trim() || 'root',
                 authType,
                 credential: credential.trim(),
-                tags,
+                tags: nextTags,
                 description: description.trim(),
             }
             // When editing, exclude credential if user didn't change it (still the mask sentinel)
@@ -269,7 +284,7 @@ function HostFormModal({
         } finally {
             setSaving(false)
         }
-    }, [name, ip, port, username, authType, credential, tags, description, onSave, t])
+    }, [name, ip, port, username, authType, credential, tags, tagDraft, description, onSave, t])
 
     return (
         <div className="modal-overlay">
@@ -366,7 +381,7 @@ function HostFormModal({
 
                     <div className="form-group">
                         <label className="form-label">{t('remoteDiagnosis.hosts.tags')}</label>
-                        <TagInput tags={tags} allTags={allTags} onChange={setTags} />
+                        <TagInput tags={tags} allTags={allTags} draft={tagDraft} onDraftChange={setTagDraft} onChange={setTags} />
                     </div>
 
                     <div className="form-group">
@@ -535,7 +550,7 @@ export function HostsTab() {
                 const result = await testConnection(host.id)
                 if (result.success) {
                     const msg = t('remoteDiagnosis.hosts.testSuccess', {
-                        latency: `${result.latency}ms`,
+                        latency: result.latencyMs != null ? `${result.latencyMs}ms` : '—',
                     })
                     setTestResults(prev => ({ ...prev, [host.id]: { ok: true, msg } }))
                     showToast('success', msg)
@@ -582,7 +597,7 @@ export function HostsTab() {
 
             {error && (
                 <div className="conn-banner conn-banner-error">
-                    {typeof error === 'string' ? error : error.message}
+                    {error}
                 </div>
             )}
 
