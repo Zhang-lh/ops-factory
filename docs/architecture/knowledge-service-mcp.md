@@ -121,6 +121,15 @@ MCP 依赖以下环境变量：
 - QA Agent 默认绑定一个知识源，不要求每次检索都显式传 `sourceIds`
 - `fetch` 的邻居扩展被刻意限制在很小窗口内，避免 Agent 一次抓取过多上下文
 
+## 5.4 运行日志
+
+`knowledge-service` MCP 会将运行日志写入独立文件：
+
+- 标准路径：`${GOOSE_PATH_ROOT}/logs/mcp/knowledge_service.log`
+- 如果 `GOOSE_PATH_ROOT` 不可用，则回退到 Agent 运行目录下的 `./logs/mcp/knowledge_service.log`
+
+日志同时输出到 stderr，便于宿主进程接管与集中收集。
+
 ## 6. 工具设计
 
 ```text

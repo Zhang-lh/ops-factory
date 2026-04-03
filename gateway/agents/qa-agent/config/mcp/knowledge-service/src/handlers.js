@@ -4,6 +4,9 @@ const KNOWLEDGE_REQUEST_TIMEOUT_MS = parseInt(process.env.KNOWLEDGE_REQUEST_TIME
 const KNOWLEDGE_FETCH_MAX_NEIGHBOR_WINDOW = 2
 
 const API_PREFIX = '/knowledge'
+import { LOG_FILE_PATH, logError, logInfo } from './logger.js'
+
+export { LOG_FILE_PATH }
 
 export const tools = [
   {
@@ -74,6 +77,14 @@ function createTimeoutSignal() {
 }
 
 async function ks(path, init) {
+  const startedAt = Date.now()
+  const method = init?.method || 'GET'
+
+  logInfo('knowledge_request_started', {
+    method,
+    path,
+  })
+
   const response = await fetch(`${KNOWLEDGE_SERVICE_URL}${path}`, {
     ...init,
     headers: {
@@ -85,10 +96,26 @@ async function ks(path, init) {
 
   if (!response.ok) {
     const text = await response.text().catch(() => '')
-    throw new Error(`Knowledge service ${path} returned ${response.status}: ${text}`)
+    const error = new Error(`Knowledge service ${path} returned ${response.status}: ${text}`)
+    logError('knowledge_request_failed', {
+      method,
+      path,
+      status: response.status,
+      durationMs: Date.now() - startedAt,
+      responseText: text,
+      error,
+    })
+    throw error
   }
 
-  return response.json()
+  const data = await response.json()
+  logInfo('knowledge_request_succeeded', {
+    method,
+    path,
+    status: response.status,
+    durationMs: Date.now() - startedAt,
+  })
+  return data
 }
 
 export async function handleSearch(args) {
@@ -134,12 +161,37 @@ export async function handleFetch(args) {
 }
 
 export async function dispatch(name, args = {}) {
-  switch (name) {
-    case 'search':
-      return handleSearch(args)
-    case 'fetch':
-      return handleFetch(args)
-    default:
-      throw new Error(`Unknown tool: ${name}`)
+  const startedAt = Date.now()
+  logInfo('tool_dispatch_started', {
+    tool: name,
+    args,
+  })
+
+  try {
+    let result
+
+    switch (name) {
+      case 'search':
+        result = await handleSearch(args)
+        break
+      case 'fetch':
+        result = await handleFetch(args)
+        break
+      default:
+        throw new Error(`Unknown tool: ${name}`)
+    }
+
+    logInfo('tool_dispatch_succeeded', {
+      tool: name,
+      durationMs: Date.now() - startedAt,
+    })
+    return result
+  } catch (error) {
+    logError('tool_dispatch_failed', {
+      tool: name,
+      durationMs: Date.now() - startedAt,
+      error,
+    })
+    throw error
   }
 }

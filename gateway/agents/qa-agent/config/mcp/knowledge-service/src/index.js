@@ -5,20 +5,40 @@ import {
   ListToolsRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js'
 import { dispatch, tools } from './handlers.js'
+import { LOG_FILE_PATH, logError, logInfo } from './logger.js'
 
 const server = new Server(
   { name: 'knowledge-service', version: '1.0.0' },
   { capabilities: { tools: {} } },
 )
 
-server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools }))
+server.setRequestHandler(ListToolsRequestSchema, async () => {
+  logInfo('list_tools_requested', { toolCount: tools.length })
+  return { tools }
+})
 
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const { name, arguments: args } = request.params
-  const result = await dispatch(name, args ?? {})
-  return { content: [{ type: 'text', text: result }] }
+
+  try {
+    const result = await dispatch(name, args ?? {})
+    return { content: [{ type: 'text', text: result }] }
+  } catch (error) {
+    logError('call_tool_failed', {
+      tool: name,
+      args: args ?? {},
+      error,
+    })
+    throw error
+  }
 })
 
 const transport = new StdioServerTransport()
 await server.connect(transport)
-console.error('[knowledge-service] MCP server running on stdio')
+
+logInfo('server_started', {
+  transport: 'stdio',
+  pid: process.pid,
+  knowledgeServiceUrl: process.env.KNOWLEDGE_SERVICE_URL || 'http://127.0.0.1:8092',
+  logFile: LOG_FILE_PATH,
+})

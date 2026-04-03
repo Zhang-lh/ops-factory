@@ -28,6 +28,11 @@ Optional:
 
 - `KNOWLEDGE_REQUEST_TIMEOUT_MS`
 
+## Logging
+
+- Runtime log path: `${GOOSE_PATH_ROOT}/logs/mcp/knowledge_service.log`
+- If `GOOSE_PATH_ROOT` is unavailable, the fallback path is `./logs/mcp/knowledge_service.log` from the agent runtime root.
+
 ## Usage policy
 
 - Intended for RAG only.

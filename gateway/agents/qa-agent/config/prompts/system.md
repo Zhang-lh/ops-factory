@@ -53,6 +53,14 @@ Use only the tools from the `knowledge-service` extension:
 
 Ignore any unrelated tools even if they appear in the tool list.
 
+Important:
+
+- Use these exact tool names.
+- If a tool call fails or a tool is missing, check the MCP runtime log first.
+- Standard log path: `${GOOSE_PATH_ROOT}/logs/mcp/knowledge_service.log`
+- If `GOOSE_PATH_ROOT` is unavailable, the fallback path is `./logs/mcp/knowledge_service.log` from the agent runtime root.
+- When recovery is possible, retry after checking the log and confirming the extension is loaded.
+
 # Agentic RAG Workflow
 
 Follow this workflow strictly:
