@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useUser } from '../../../../contexts/UserContext'
+import { useUser } from '../../../platform/providers/UserContext'
+import Button from '../../../platform/ui/primitives/Button'
 import { GATEWAY_URL, gatewayHeaders, slugify } from '../../../../config/runtime'
 
 const DEFAULT_LLM = { provider: 'openai', model: 'qwen/qwen3.5-35b-a3b' }
@@ -135,16 +136,16 @@ export function CreateAgentModal({
                 </div>
 
                 <div className="modal-footer">
-                    <button className="btn btn-secondary" onClick={onClose} disabled={creating}>
+                    <Button variant="secondary" onClick={onClose} disabled={creating}>
                         {t('common.cancel')}
-                    </button>
-                    <button
-                        className="btn btn-primary"
+                    </Button>
+                    <Button
+                        variant="primary"
                         onClick={handleCreate}
                         disabled={creating || !name.trim() || !isValidId}
                     >
                         {creating ? t('agents.creating') : t('agents.createAgentTitle')}
-                    </button>
+                    </Button>
                 </div>
             </div>
         </div>

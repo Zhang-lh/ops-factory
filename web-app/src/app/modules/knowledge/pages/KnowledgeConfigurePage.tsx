@@ -1,14 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { useToast } from '../../../../contexts/ToastContext'
-import { usePreview } from '../../../../contexts/PreviewContext'
+import { useToast } from '../../../platform/providers/ToastContext'
+import { usePreview } from '../../../platform/providers/PreviewContext'
 import { KNOWLEDGE_SERVICE_URL } from '../../../../config/runtime'
-import { useKnowledgeSourceDetail } from '../../../../hooks/useKnowledgeSourceDetail'
+import { useKnowledgeSourceDetail } from '../hooks/useKnowledgeSourceDetail'
 import { getErrorMessage } from '../../../../utils/errorMessages'
-import KnowledgeChunksTab from '../../../../components/knowledge/KnowledgeChunksTab'
-import KnowledgeRetrievalTab from '../../../../components/knowledge/KnowledgeRetrievalTab'
-import type { ResourceStatusTone } from '../../../../components/ResourceCard'
+import KnowledgeChunksTab from '../components/KnowledgeChunksTab'
+import KnowledgeRetrievalTab from '../components/KnowledgeRetrievalTab'
+import type { ResourceStatusTone } from '../../../platform/ui/primitives/ResourceCard'
 import type {
     KnowledgeDocumentArtifacts,
     KnowledgeDocumentPreview,
@@ -2546,30 +2546,26 @@ export default function KnowledgeConfigure() {
                                                         <span className="knowledge-doc-cell">{getArtifactsLabel(artifacts, t)}</span>
                                                         <span className="knowledge-doc-cell">{formatDateTime(document.updatedAt)}</span>
                                                         <div className="knowledge-doc-actions">
-                                                            <div className="knowledge-doc-actions-text">
-                                                                <button
-                                                                    type="button"
-                                                                    className="knowledge-doc-action-link"
-                                                                    onClick={() => updateRouteState('chunks', { documentId: document.id })}
-                                                                >
-                                                                    {t('knowledge.docViewChunks')}
-                                                                </button>
-                                                                <button
-                                                                    type="button"
-                                                                    className="knowledge-doc-action-link"
-                                                                    onClick={() => {
-                                                                        setRenameDocumentError(null)
-                                                                        setRenameDocumentTarget(document)
-                                                                    }}
-                                                                    disabled={isSourceUnavailable}
-                                                                >
-                                                                    {t('knowledge.docRename')}
-                                                                </button>
-                                                            </div>
                                                             <div className="knowledge-doc-actions-icons">
                                                                 <button
                                                                     type="button"
-                                                                    className={`knowledge-doc-action-btn knowledge-doc-action-icon${isSelected ? ' active' : ''}`}
+                                                                    className="icon-action-button knowledge-doc-action-icon"
+                                                                    title={t('knowledge.docViewChunks')}
+                                                                    aria-label={t('knowledge.docViewChunks')}
+                                                                    onClick={() => updateRouteState('chunks', { documentId: document.id })}
+                                                                >
+                                                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="18" height="18">
+                                                                        <line x1="8" y1="6" x2="21" y2="6" />
+                                                                        <line x1="8" y1="12" x2="21" y2="12" />
+                                                                        <line x1="8" y1="18" x2="21" y2="18" />
+                                                                        <line x1="3" y1="6" x2="3.01" y2="6" />
+                                                                        <line x1="3" y1="12" x2="3.01" y2="12" />
+                                                                        <line x1="3" y1="18" x2="3.01" y2="18" />
+                                                                    </svg>
+                                                                </button>
+                                                                <button
+                                                                    type="button"
+                                                                    className={`icon-action-button knowledge-doc-action-icon${isSelected ? ' active' : ''}`}
                                                                     title={t('files.preview')}
                                                                     aria-label={t('files.preview')}
                                                                     onClick={() => void handlePreviewDocument(document)}
@@ -2581,7 +2577,23 @@ export default function KnowledgeConfigure() {
                                                                 </button>
                                                                 <button
                                                                     type="button"
-                                                                    className="knowledge-doc-action-btn knowledge-doc-action-icon"
+                                                                    className="icon-action-button knowledge-doc-action-icon"
+                                                                    title={t('knowledge.docRename')}
+                                                                    aria-label={t('knowledge.docRename')}
+                                                                    onClick={() => {
+                                                                        setRenameDocumentError(null)
+                                                                        setRenameDocumentTarget(document)
+                                                                    }}
+                                                                    disabled={isSourceUnavailable}
+                                                                >
+                                                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="18" height="18">
+                                                                        <path d="M12 20h9" />
+                                                                        <path d="M16.5 3.5a2.12 2.12 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z" />
+                                                                    </svg>
+                                                                </button>
+                                                                <button
+                                                                    type="button"
+                                                                    className="icon-action-button knowledge-doc-action-icon"
                                                                     title={t('files.download')}
                                                                     aria-label={t('knowledge.docDownload')}
                                                                     onClick={() => void handleDownloadDocument(document)}
@@ -2595,7 +2607,7 @@ export default function KnowledgeConfigure() {
                                                                 </button>
                                                                 <button
                                                                     type="button"
-                                                                    className="knowledge-doc-action-btn knowledge-doc-action-icon danger"
+                                                                    className="icon-action-button knowledge-doc-action-icon danger"
                                                                     title={t('common.delete')}
                                                                     aria-label={t('common.delete')}
                                                                     onClick={() => {

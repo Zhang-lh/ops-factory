@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { AdminRoute } from '../../contexts/UserContext'
+import { AdminRoute } from './providers/UserContext'
 import type { AccessLevel } from './module-types'
 
 export function hasAccess(access: AccessLevel, ctx: { isAdmin: boolean; isAuthenticated: boolean }) {
@@ -27,4 +27,3 @@ export function AccessGuard({
 
     return <>{children}</>
 }
-

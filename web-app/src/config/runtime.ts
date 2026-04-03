@@ -1,4 +1,4 @@
-import type { UserRole } from '../contexts/UserContext'
+import type { UserRole } from '../app/platform/providers/UserContext'
 
 interface RuntimeConfig {
     gatewayUrl?: string

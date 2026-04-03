@@ -1,17 +1,21 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, type ReactNode, type SVGProps } from 'react'
+import {
+    CodeXml,
+    Presentation,
+} from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { useGoosed } from '../../../../contexts/GoosedContext'
-import { usePreview } from '../../../../contexts/PreviewContext'
-import { useUser } from '../../../../contexts/UserContext'
-import { useToast } from '../../../../contexts/ToastContext'
-import PageHeader from '../../../../components/PageHeader'
-import Pagination from '../../../../components/Pagination'
-import ListCard from '../../../../components/list/ListCard'
-import ListFooter from '../../../../components/list/ListFooter'
-import ListResultsMeta from '../../../../components/list/ListResultsMeta'
-import ListSearchInput from '../../../../components/list/ListSearchInput'
-import ListToolbar from '../../../../components/list/ListToolbar'
-import ListWorkbench from '../../../../components/list/ListWorkbench'
+import { useGoosed } from '../../../platform/providers/GoosedContext'
+import { usePreview } from '../../../platform/providers/PreviewContext'
+import { useUser } from '../../../platform/providers/UserContext'
+import { useToast } from '../../../platform/providers/ToastContext'
+import PageHeader from '../../../platform/ui/primitives/PageHeader'
+import Pagination from '../../../platform/ui/primitives/Pagination'
+import ListCard from '../../../platform/ui/list/ListCard'
+import ListFooter from '../../../platform/ui/list/ListFooter'
+import ListResultsMeta from '../../../platform/ui/list/ListResultsMeta'
+import ListSearchInput from '../../../platform/ui/list/ListSearchInput'
+import ListToolbar from '../../../platform/ui/list/ListToolbar'
+import ListWorkbench from '../../../platform/ui/list/ListWorkbench'
 import { GATEWAY_URL, GATEWAY_SECRET_KEY, gatewayHeaders } from '../../../../config/runtime'
 import '../styles/files.css'
 
@@ -67,58 +71,140 @@ function formatDate(iso: string): string {
     })
 }
 
-function getFileIcon(type: string) {
-    switch (type) {
+type FileIconProps = SVGProps<SVGSVGElement> & {
+    strokeWidth?: number
+}
+
+type FileIconComponent = (props: FileIconProps) => ReactNode
+
+function FileIconFrame({ children, strokeWidth = 1.85, ...props }: FileIconProps & { children: ReactNode }) {
+    return (
+        <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={strokeWidth}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+            {...props}
+        >
+            {children}
+        </svg>
+    )
+}
+
+function DocumentFileIcon(props: FileIconProps) {
+    return (
+        <FileIconFrame {...props}>
+            <path d="M7.3 3.75h5.9l4.5 4.45v10.95a1.7 1.7 0 0 1-1.7 1.7H7.3a1.7 1.7 0 0 1-1.7-1.7V5.45a1.7 1.7 0 0 1 1.7-1.7z" />
+            <path d="M13.2 3.95v4.35h4.35" />
+            <path d="M9.15 11.2h5.7" />
+            <path d="M9.15 14.8h5.7" />
+        </FileIconFrame>
+    )
+}
+
+function SheetFileIcon(props: FileIconProps) {
+    return (
+        <FileIconFrame {...props}>
+            <path d="M7.3 3.75h5.9l4.5 4.45v10.95a1.7 1.7 0 0 1-1.7 1.7H7.3a1.7 1.7 0 0 1-1.7-1.7V5.45a1.7 1.7 0 0 1 1.7-1.7z" />
+            <path d="M13.2 3.95v4.35h4.35" />
+            <path d="M8.9 11.1h6.2" />
+            <path d="M8.9 14.1h6.2" />
+            <path d="M11.8 9.9v7.15" />
+        </FileIconFrame>
+    )
+}
+
+function MarkdownFileIcon(props: FileIconProps) {
+    return (
+        <FileIconFrame {...props}>
+            <path d="M7.3 3.75h5.9l4.5 4.45v10.95a1.7 1.7 0 0 1-1.7 1.7H7.3a1.7 1.7 0 0 1-1.7-1.7V5.45a1.7 1.7 0 0 1 1.7-1.7z" />
+            <path d="M13.2 3.95v4.35h4.35" />
+            <path d="M8.75 15.65v-3.55l1.35 1.75 1.35-1.75v3.55" />
+            <path d="M13.7 12.35h2.05" />
+            <path d="M14.75 11.3v4.95" />
+        </FileIconFrame>
+    )
+}
+
+function ImageFileIcon(props: FileIconProps) {
+    return (
+        <FileIconFrame {...props}>
+            <path d="M7.3 3.75h5.9l4.5 4.45v10.95a1.7 1.7 0 0 1-1.7 1.7H7.3a1.7 1.7 0 0 1-1.7-1.7V5.45a1.7 1.7 0 0 1 1.7-1.7z" />
+            <path d="M13.2 3.95v4.35h4.35" />
+            <circle cx="10.1" cy="10.35" r="1.15" />
+            <path d="M8.65 16.15l2.3-2.55 1.7 1.65 1.55-1.75 1.7 2.65" />
+        </FileIconFrame>
+    )
+}
+
+function CodeFileIcon(props: FileIconProps) {
+    return (
+        <FileIconFrame {...props}>
+            <path d="M7.3 3.75h5.9l4.5 4.45v10.95a1.7 1.7 0 0 1-1.7 1.7H7.3a1.7 1.7 0 0 1-1.7-1.7V5.45a1.7 1.7 0 0 1 1.7-1.7z" />
+            <path d="M13.2 3.95v4.35h4.35" />
+            <path d="M10.55 11.1L8.95 12.7l1.6 1.6" />
+            <path d="M13.45 11.1l1.6 1.6-1.6 1.6" />
+        </FileIconFrame>
+    )
+}
+
+function DefaultFileIcon(props: FileIconProps) {
+    return (
+        <FileIconFrame {...props}>
+            <path d="M7.3 3.75h5.9l4.5 4.45v10.95a1.7 1.7 0 0 1-1.7 1.7H7.3a1.7 1.7 0 0 1-1.7-1.7V5.45a1.7 1.7 0 0 1 1.7-1.7z" />
+            <path d="M13.2 3.95v4.35h4.35" />
+        </FileIconFrame>
+    )
+}
+
+function getFileVisual(type: string | undefined): { icon: FileIconComponent; tone: string } {
+    switch ((type || '').toLowerCase()) {
         case 'docx':
         case 'doc':
         case 'pdf':
-            return (
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                    <polyline points="14 2 14 8 20 8" />
-                    <line x1="16" y1="13" x2="8" y2="13" />
-                    <line x1="16" y1="17" x2="8" y2="17" />
-                </svg>
-            )
+        case 'txt':
+        case 'log':
+            return { icon: DocumentFileIcon, tone: 'document' }
         case 'xlsx':
         case 'xls':
         case 'csv':
-            return (
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                    <polyline points="14 2 14 8 20 8" />
-                    <line x1="8" y1="13" x2="16" y2="13" />
-                    <line x1="8" y1="17" x2="16" y2="17" />
-                    <line x1="12" y1="9" x2="12" y2="21" />
-                </svg>
-            )
+        case 'tsv':
+            return { icon: SheetFileIcon, tone: 'sheet' }
+        case 'pptx':
+        case 'ppt':
+            return { icon: Presentation, tone: 'slide' }
+        case 'md':
+        case 'markdown':
+            return { icon: MarkdownFileIcon, tone: 'markdown' }
         case 'png':
         case 'jpg':
         case 'jpeg':
         case 'gif':
         case 'svg':
-            return (
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                    <circle cx="8.5" cy="8.5" r="1.5" />
-                    <polyline points="21 15 16 10 5 21" />
-                </svg>
-            )
+        case 'webp':
+            return { icon: ImageFileIcon, tone: 'image' }
         case 'html':
         case 'htm':
-            return (
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <polyline points="16 18 22 12 16 6" />
-                    <polyline points="8 6 2 12 8 18" />
-                </svg>
-            )
+            return { icon: CodeXml, tone: 'html' }
+        case 'json':
+        case 'yaml':
+        case 'yml':
+        case 'xml':
+        case 'js':
+        case 'ts':
+        case 'tsx':
+        case 'jsx':
+        case 'py':
+        case 'java':
+        case 'go':
+        case 'sh':
+        case 'sql':
+            return { icon: CodeFileIcon, tone: 'code' }
         default:
-            return (
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                    <polyline points="14 2 14 8 20 8" />
-                </svg>
-            )
+            return { icon: DefaultFileIcon, tone: 'default' }
     }
 }
 
@@ -326,10 +412,7 @@ export default function FilesPage() {
                     </div>
                 ) : files.length === 0 ? (
                     <div className="empty-state">
-                        <svg className="empty-state-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                            <polyline points="14 2 14 8 20 8" />
-                        </svg>
+                        <DefaultFileIcon className="empty-state-icon" strokeWidth={1.6} />
                         <h3 className="empty-state-title">{t('files.noFiles')}</h3>
                         <p className="empty-state-description">{t('files.noFilesHint')}</p>
                     </div>
@@ -347,10 +430,13 @@ export default function FilesPage() {
                         {paginatedFiles.map((file) => {
                             const fileKey = `${file.agentId}-${file.path}`
                             const isDeleting = deletingKey === fileKey
+                            const { icon: FileIcon, tone } = getFileVisual(file.type)
 
                             return (
                                 <ListCard key={fileKey} className={`file-item animate-slide-in${isDeleting ? ' is-deleting' : ''}`}>
-                                    <div className="file-icon">{getFileIcon(file.type)}</div>
+                                    <div className={`file-icon file-icon-${tone}`} aria-hidden="true">
+                                        <FileIcon strokeWidth={1.9} />
+                                    </div>
                                     <div className="file-info">
                                         <div className="file-name">{file.name}</div>
                                         <div className="file-meta">
@@ -366,7 +452,7 @@ export default function FilesPage() {
                                     <div className="file-actions">
                                         {isPreviewable(file.type, file.name, file.path) && (
                                             <button
-                                                className="file-list-preview-btn"
+                                                className="icon-action-button"
                                                 title={t('files.preview')}
                                                 onClick={() => openPreview({
                                                     name: file.name,

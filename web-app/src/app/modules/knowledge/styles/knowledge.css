@@ -229,7 +229,7 @@
 .knowledge-doc-table-head,
 .knowledge-doc-row {
     display: grid;
-    grid-template-columns: minmax(320px, 1.8fr) 64px 96px 72px 72px 136px 236px;
+    grid-template-columns: minmax(0, 2.8fr) 72px 104px 72px 88px 148px 132px;
     gap: var(--spacing-3);
     align-items: center;
     padding: var(--spacing-4) var(--spacing-5);
@@ -296,11 +296,9 @@
 .knowledge-doc-actions {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: var(--spacing-3);
-    flex-wrap: nowrap;
+    justify-content: flex-end;
+    gap: var(--spacing-2);
     min-width: 0;
-    padding-right: var(--spacing-2);
 }
 
 .knowledge-doc-actions-text,
@@ -312,14 +310,14 @@
 }
 
 .knowledge-doc-actions-text {
-    justify-content: flex-start;
-    flex: 1 1 auto;
     min-width: 0;
+    flex-wrap: nowrap;
 }
 
 .knowledge-doc-actions-icons {
     justify-content: flex-end;
     flex: 0 0 auto;
+    white-space: nowrap;
 }
 
 .knowledge-doc-action-btn,
@@ -397,6 +395,10 @@
     display: flex;
     flex-direction: column;
     gap: var(--spacing-3);
+}
+
+.knowledge-chunk-list + .pagination {
+    margin-top: var(--spacing-4);
 }
 
 .knowledge-chunk-card {

@@ -27,20 +27,64 @@
 }
 
 .file-icon {
-    width: 36px;
-    height: 36px;
+    width: 34px;
+    height: 34px;
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: var(--radius-md);
-    background: var(--color-bg-tertiary);
-    color: var(--color-text-secondary);
+    border-radius: 10px;
+    border: 1px solid transparent;
+    background: rgba(148, 163, 184, 0.10);
+    color: #64748b;
     flex-shrink: 0;
+    transition: transform var(--transition-fast), background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
 }
 
 .file-icon svg {
-    width: 20px;
-    height: 20px;
+    width: 18px;
+    height: 18px;
+}
+
+.file-item:hover .file-icon {
+    transform: translateY(-1px);
+}
+
+.file-icon-document {
+    background: rgba(59, 130, 246, 0.10);
+    border-color: rgba(59, 130, 246, 0.12);
+    color: #2563eb;
+}
+
+.file-icon-sheet {
+    background: rgba(16, 185, 129, 0.10);
+    border-color: rgba(16, 185, 129, 0.12);
+    color: #059669;
+}
+
+.file-icon-slide {
+    background: rgba(249, 115, 22, 0.10);
+    border-color: rgba(249, 115, 22, 0.12);
+    color: #ea580c;
+}
+
+.file-icon-markdown,
+.file-icon-code,
+.file-icon-html {
+    background: rgba(99, 102, 241, 0.10);
+    border-color: rgba(99, 102, 241, 0.12);
+    color: #4f46e5;
+}
+
+.file-icon-image {
+    background: rgba(168, 85, 247, 0.10);
+    border-color: rgba(168, 85, 247, 0.12);
+    color: #9333ea;
+}
+
+.file-icon-default {
+    background: rgba(148, 163, 184, 0.10);
+    border-color: rgba(148, 163, 184, 0.14);
+    color: #64748b;
 }
 
 .file-info {
@@ -121,25 +165,6 @@
 .file-download-btn:hover {
     background: var(--color-bg-hover);
     color: var(--color-text-primary);
-}
-
-.file-list-preview-btn {
-    width: 32px;
-    height: 32px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: var(--radius-md);
-    color: var(--color-text-secondary);
-    background: none;
-    border: none;
-    cursor: pointer;
-    transition: all var(--transition-fast);
-}
-
-.file-list-preview-btn:hover {
-    background: var(--color-accent-subtle);
-    color: var(--color-accent);
 }
 
 .file-delete-btn {

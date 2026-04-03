@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { useUser } from '../../../contexts/UserContext'
+import { useUser } from '../providers/UserContext'
 import './styles/settings-modal.css'
 
 const EMOJI_AVATARS = ['🦆', '🐱', '🐶', '🦊', '🐸', '🐼', '🐨', '🦉', '🐙', '🦄', '🐝', '🦋']

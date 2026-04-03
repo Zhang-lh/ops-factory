@@ -1,0 +1,103 @@
+import type { ReactElement, ReactNode } from 'react'
+import Button from './Button'
+import './ResourceCard.css'
+
+export type ResourceStatusTone = 'neutral' | 'configured' | 'success' | 'warning' | 'danger'
+
+export interface ResourceCardMetric {
+    label: string
+    value: ReactNode
+    valueClassName?: string
+}
+
+interface ResourceCardProps {
+    className?: string
+    title: string
+    statusLabel?: string
+    statusTone?: ResourceStatusTone
+    tags?: ReactNode
+    summary?: ReactNode
+    metrics: ResourceCardMetric[]
+    footer?: ReactNode
+}
+
+interface ResourceCardActionProps {
+    danger?: boolean
+    onClick?: () => void
+    children: ReactNode
+}
+
+export function ResourceCardPrimaryAction({ onClick, children }: ResourceCardActionProps): ReactElement {
+    return (
+        <Button variant="primary" size="sm" className="resource-card-primary-button" onClick={onClick}>
+            {children}
+        </Button>
+    )
+}
+
+export function ResourceCardDangerAction({ onClick, children }: ResourceCardActionProps): ReactElement {
+    return (
+        <button type="button" className="resource-card-danger-action" onClick={onClick}>
+            {children}
+        </button>
+    )
+}
+
+function getMetricColumnClass(count: number): string {
+    if (count <= 1) return 'columns-1'
+    if (count === 2) return 'columns-2'
+    return 'columns-3'
+}
+
+export default function ResourceCard({
+    className,
+    title,
+    statusLabel,
+    statusTone = 'neutral',
+    tags,
+    summary,
+    metrics,
+    footer,
+}: ResourceCardProps) {
+    const cardClassName = ['resource-card', className].filter(Boolean).join(' ')
+    const metricClassName = ['resource-card-metrics', getMetricColumnClass(metrics.length)].join(' ')
+
+    return (
+        <article className={cardClassName}>
+            <div className="resource-card-header">
+                <h3 className="resource-card-title" title={title}>
+                    {title}
+                </h3>
+                {statusLabel && (
+                    <span className={`resource-status resource-status-${statusTone}`}>
+                        {statusLabel}
+                    </span>
+                )}
+            </div>
+
+            {(tags || summary) && (
+                <div className="resource-card-summary">
+                    {tags && <div className="resource-card-tags-slot">{tags}</div>}
+                    {summary}
+                </div>
+            )}
+
+            <div className={metricClassName}>
+                {metrics.map(metric => (
+                    <div key={metric.label} className="resource-card-metric">
+                        <span className="resource-card-metric-label">{metric.label}</span>
+                        <span className={['resource-card-metric-value', metric.valueClassName].filter(Boolean).join(' ')}>
+                            {metric.value}
+                        </span>
+                    </div>
+                ))}
+            </div>
+
+            {footer && (
+                <div className="resource-card-footer">
+                    {footer}
+                </div>
+            )}
+        </article>
+    )
+}

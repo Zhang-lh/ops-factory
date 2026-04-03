@@ -2,9 +2,10 @@ import { useState } from 'react'
 import type { EChartsOption } from 'echarts'
 import { useTranslation } from 'react-i18next'
 import MonitoringChartCard from '../components/MonitoringChartCard'
-import { useGoosed } from '../../../../contexts/GoosedContext'
-import { useMonitoring, useMonitoringPlatform, type TimeRange, type DailyPoint, type TraceRow, type AgentInfo } from '../../../../hooks/useMonitoring'
-import { useMetrics, type MetricsPoint, type AgentMetrics } from '../../../../hooks/useMetrics'
+import { useGoosed } from '../../../platform/providers/GoosedContext'
+import { useMonitoring, useMonitoringPlatform, type TimeRange, type DailyPoint, type TraceRow, type AgentInfo } from '../hooks/useMonitoring'
+import { useMetrics, type MetricsPoint, type AgentMetrics } from '../hooks/useMetrics'
+import DependencyStatus from '../../../platform/ui/primitives/DependencyStatus'
 import '../styles/monitoring.css'
 
 // --- Helpers --------------------------------------------------------------
@@ -518,21 +519,6 @@ function ExternalLinkIcon({ size = 13 }: { size?: number }) {
   )
 }
 
-function MonitoringDisabled({ title, desc }: { title: string; desc: string }) {
-  return (
-    <div className="mon-disabled">
-      <div className="mon-disabled-icon">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="48" height="48">
-          <path d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126z" />
-          <path d="M12 15.75h.007v.008H12v-.008z" />
-        </svg>
-      </div>
-      <h2 className="mon-disabled-title">{title}</h2>
-      <p className="mon-disabled-desc">{desc}</p>
-    </div>
-  )
-}
-
 // --- Tab: Platform --------------------------------------------------------
 
 function PlatformTab() {
@@ -872,11 +858,37 @@ function ObservabilityTab() {
 
   // Disabled states (Langfuse not configured or not reachable)
   if (!isLoading && status && !status.enabled) {
-    return <MonitoringDisabled title={t('monitoring.notEnabled')} desc={t('monitoring.notEnabledDesc')} />
+    return (
+      <div className="mon-state-wrap">
+        <DependencyStatus
+          dependency={t('monitoring.platformLangfuse')}
+          tone="warning"
+          title={t('common.serviceNotConfiguredTitle', { service: t('monitoring.platformLangfuse') })}
+          description={t('monitoring.notEnabledDesc')}
+          meta={<span className="dependency-status-meta-item">Gateway / config.yaml</span>}
+        />
+      </div>
+    )
   }
 
   if (!isLoading && status && status.enabled && !status.reachable) {
-    return <MonitoringDisabled title={t('monitoring.notReachable')} desc={t('monitoring.notReachableDesc', { host: status.host })} />
+    return (
+      <div className="mon-state-wrap">
+        <DependencyStatus
+          dependency={t('monitoring.platformLangfuse')}
+          tone="error"
+          title={t('common.serviceUnavailableTitle', { service: t('monitoring.platformLangfuse') })}
+          description={t('monitoring.notReachableDesc', { host: status.host })}
+          meta={status.host ? <span className="dependency-status-meta-item">{status.host}</span> : undefined}
+          action={status.host ? (
+            <a href={status.host} target="_blank" rel="noopener noreferrer" className="btn btn-secondary">
+              {t('monitoring.openLangfuse')}
+              <ExternalLinkIcon />
+            </a>
+          ) : undefined}
+        />
+      </div>
+    )
   }
 
   return (
@@ -1036,12 +1048,20 @@ export default function Monitoring() {
       </div>
 
       {connectionError && (
-        <div className="conn-banner conn-banner-error">
-          {t('common.connectionError', { error: connectionError })}
-        </div>
+        <DependencyStatus
+          dependency={t('common.gatewayLabel')}
+          tone="error"
+          title={t('common.serviceUnavailableTitle', { service: t('common.gatewayLabel') })}
+          description={t('common.connectionError', { error: connectionError })}
+        />
       )}
       {!isConnected && !connectionError && (
-        <div className="conn-banner conn-banner-warning">{t('common.connectingGateway')}</div>
+        <DependencyStatus
+          dependency={t('common.gatewayLabel')}
+          tone="warning"
+          title={t('common.serviceConnectingTitle', { service: t('common.gatewayLabel') })}
+          description={t('common.connectingGateway')}
+        />
       )}
 
       {/* Tab Navigation */}

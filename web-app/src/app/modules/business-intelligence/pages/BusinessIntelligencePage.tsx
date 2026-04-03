@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { RefreshCw } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { BUSINESS_INTELLIGENCE_SERVICE_URL } from '../../../../config/runtime'
-import { useToast } from '../../../../contexts/ToastContext'
+import { useToast } from '../../../platform/providers/ToastContext'
 import '../styles/business-intelligence.css'
 
 interface TabMeta {

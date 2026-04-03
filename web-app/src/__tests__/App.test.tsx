@@ -2,9 +2,9 @@ import { render, screen } from '@testing-library/react'
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import App from '../App'
 import { BrowserRouter } from 'react-router-dom'
-import { UserProvider } from '../contexts/UserContext'
-import { GoosedProvider } from '../contexts/GoosedContext'
-import { ToastProvider } from '../contexts/ToastContext'
+import { UserProvider } from '../app/platform/providers/UserContext'
+import { GoosedProvider } from '../app/platform/providers/GoosedContext'
+import { ToastProvider } from '../app/platform/providers/ToastContext'
 
 const STORAGE_KEY = 'opsfactory:userId'
 

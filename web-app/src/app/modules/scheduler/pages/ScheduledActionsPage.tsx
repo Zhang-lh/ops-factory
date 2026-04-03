@@ -2,20 +2,20 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import type { ScheduledJob, ScheduleSessionInfo } from '@goosed/sdk'
-import { useGoosed } from '../../../../contexts/GoosedContext'
-import { useToast } from '../../../../contexts/ToastContext'
-import { useInbox } from '../../../../contexts/InboxContext'
-import { useUser } from '../../../../contexts/UserContext'
-import CardGrid from '../../../../components/cards/CardGrid'
-import CardWorkbench from '../../../../components/cards/CardWorkbench'
-import PageHeader from '../../../../components/PageHeader'
-import FilterBar from '../../../../components/filters/FilterBar'
-import FilterInlineGroup from '../../../../components/filters/FilterInlineGroup'
-import FilterSelect from '../../../../components/filters/FilterSelect'
-import ListSearchInput from '../../../../components/list/ListSearchInput'
-import DetailDialog from '../../../../components/DetailDialog'
+import { useGoosed } from '../../../platform/providers/GoosedContext'
+import { useToast } from '../../../platform/providers/ToastContext'
+import { useInbox } from '../../../platform/providers/InboxContext'
+import { useUser } from '../../../platform/providers/UserContext'
+import CardGrid from '../../../platform/ui/cards/CardGrid'
+import CardWorkbench from '../../../platform/ui/cards/CardWorkbench'
+import PageHeader from '../../../platform/ui/primitives/PageHeader'
+import FilterBar from '../../../platform/ui/filters/FilterBar'
+import FilterInlineGroup from '../../../platform/ui/filters/FilterInlineGroup'
+import FilterSelect from '../../../platform/ui/filters/FilterSelect'
+import ListSearchInput from '../../../platform/ui/list/ListSearchInput'
+import DetailDialog from '../../../platform/ui/primitives/DetailDialog'
 import { slugify } from '../../../../config/runtime'
-import ResourceCard, { type ResourceStatusTone } from '../../../../components/ResourceCard'
+import ResourceCard, { ResourceCardPrimaryAction, type ResourceStatusTone } from '../../../platform/ui/primitives/ResourceCard'
 import '../styles/scheduled-actions.css'
 
 interface FormState {
@@ -474,9 +474,9 @@ export default function ScheduledActions() {
                                         <button type="button" className="resource-card-danger-action" onClick={() => handleDelete(job)}>
                                             {t('common.delete')}
                                         </button>
-                                        <button type="button" className="resource-card-primary-action scheduled-card-primary-action" onClick={() => void openEditModal(job)}>
+                                        <ResourceCardPrimaryAction onClick={() => void openEditModal(job)}>
                                             {t('scheduler.configure')}
-                                        </button>
+                                        </ResourceCardPrimaryAction>
                                     </>
                                 )}
                             />
@@ -489,8 +489,8 @@ export default function ScheduledActions() {
                 <DetailDialog
                     title={editingJob ? t('scheduler.editAction') : t('scheduler.createAction')}
                     onClose={() => setShowModal(false)}
-                    variant="default"
-                    className="scheduled-modal"
+                    variant="wide"
+                    className="scheduled-modal-wide"
                     bodyClassName="scheduled-modal-body"
                     footer={(
                         <>
@@ -503,57 +503,59 @@ export default function ScheduledActions() {
                         </>
                     )}
                 >
-                    {!editingJob && (
+                    <section className="scheduled-modal-section scheduled-modal-form-section">
+                        {!editingJob && (
+                            <label className="scheduled-field-label">
+                                {t('scheduler.agent')}
+                                <select
+                                    className="scheduled-input"
+                                    value={createAgentId}
+                                    onChange={(e) => setCreateAgentId(e.target.value)}
+                                >
+                                    {agents.map((agent) => (
+                                        <option key={agent.id} value={agent.id}>
+                                            {agent.name}
+                                        </option>
+                                    ))}
+                                </select>
+                            </label>
+                        )}
                         <label className="scheduled-field-label">
-                            {t('scheduler.agent')}
-                            <select
+                            {t('scheduler.name')}
+                            <input
                                 className="scheduled-input"
-                                value={createAgentId}
-                                onChange={(e) => setCreateAgentId(e.target.value)}
-                            >
-                                {agents.map((agent) => (
-                                    <option key={agent.id} value={agent.id}>
-                                        {agent.name}
-                                    </option>
-                                ))}
-                            </select>
+                                value={form.name}
+                                onChange={(e) => setForm(prev => ({ ...prev, name: e.target.value }))}
+                                placeholder="daily-summary-job"
+                            />
                         </label>
-                    )}
-                    <label className="scheduled-field-label">
-                        {t('scheduler.name')}
-                        <input
-                            className="scheduled-input"
-                            value={form.name}
-                            onChange={(e) => setForm(prev => ({ ...prev, name: e.target.value }))}
-                            placeholder="daily-summary-job"
-                        />
-                    </label>
-                    <label className="scheduled-field-label">
-                        {t('scheduler.instruction')}
-                        <textarea
-                            className="scheduled-textarea"
-                            value={form.instruction}
-                            onChange={(e) => setForm(prev => ({ ...prev, instruction: e.target.value }))}
-                            placeholder={editingJob ? t('scheduler.instructionPlaceholderEdit') : t('scheduler.instructionPlaceholderNew')}
-                            rows={5}
-                        />
-                    </label>
+                        <label className="scheduled-field-label">
+                            {t('scheduler.instruction')}
+                            <textarea
+                                className="scheduled-textarea"
+                                value={form.instruction}
+                                onChange={(e) => setForm(prev => ({ ...prev, instruction: e.target.value }))}
+                                placeholder={editingJob ? t('scheduler.instructionPlaceholderEdit') : t('scheduler.instructionPlaceholderNew')}
+                                rows={5}
+                            />
+                        </label>
 
-                    {editingJob && <div className="scheduled-editing-id">{t('scheduler.currentScheduleId', { id: editingJob.id })}</div>}
+                        {editingJob && <div className="scheduled-editing-id">{t('scheduler.currentScheduleId', { id: editingJob.id })}</div>}
 
-                    <label className="scheduled-field-label">
-                        {t('scheduler.cron')}
-                        <input
-                            className="scheduled-input"
-                            value={form.cron}
-                            onChange={(e) => setForm(prev => ({ ...prev, cron: e.target.value }))}
-                            placeholder="0 0 9 * * *"
-                        />
-                    </label>
-                    <p className="scheduled-hint">{t('scheduler.cronHint')}</p>
+                        <label className="scheduled-field-label">
+                            {t('scheduler.cron')}
+                            <input
+                                className="scheduled-input"
+                                value={form.cron}
+                                onChange={(e) => setForm(prev => ({ ...prev, cron: e.target.value }))}
+                                placeholder="0 0 9 * * *"
+                            />
+                        </label>
+                        <p className="scheduled-hint">{t('scheduler.cronHint')}</p>
+                    </section>
 
                     {editingJob && (
-                        <div className="scheduled-modal-section">
+                        <section className="scheduled-modal-section">
                             <div className="scheduled-modal-section-header">
                                 <h4 className="scheduled-modal-section-title">{t('scheduler.manageTitle')}</h4>
                                 <div className="resource-card-tags">
@@ -588,11 +590,11 @@ export default function ScheduledActions() {
                                     </button>
                                 )}
                             </div>
-                        </div>
+                        </section>
                     )}
 
                     {editingJob && (
-                        <div className="scheduled-modal-section">
+                        <section className="scheduled-modal-section">
                             <div className="scheduled-modal-section-header">
                                 <h4 className="scheduled-modal-section-title">{t('scheduler.recentRuns')}</h4>
                             </div>
@@ -630,7 +632,7 @@ export default function ScheduledActions() {
                                     ))}
                                 </div>
                             )}
-                        </div>
+                        </section>
                     )}
                 </DetailDialog>
             )}

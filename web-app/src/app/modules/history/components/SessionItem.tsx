@@ -2,7 +2,7 @@ import type { MouseEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { Session } from '@goosed/sdk'
 import { isScheduledSession } from '../../../../config/runtime'
-import ListCard from '../../../../components/list/ListCard'
+import ListCard from '../../../platform/ui/list/ListCard'
 
 export type SessionWithAgent = Session & { agentId?: string }
 

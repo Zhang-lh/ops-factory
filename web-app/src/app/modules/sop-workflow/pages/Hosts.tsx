@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useHosts } from '../../../../hooks/useHosts'
-import { useToast } from '../../../../contexts/ToastContext'
+import { useHosts } from '../hooks/useHosts'
+import { useToast } from '../../../platform/providers/ToastContext'
 import type { Host, HostCreateRequest } from '../../../../types/host'
 
 function TrashIcon() {

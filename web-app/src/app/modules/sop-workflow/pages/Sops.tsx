@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useSops } from '../../../../hooks/useSops'
-import { useCommandWhitelist } from '../../../../hooks/useCommandWhitelist'
-import { useToast } from '../../../../contexts/ToastContext'
-import DetailDialog from '../../../../components/DetailDialog'
+import { useSops } from '../hooks/useSops'
+import { useCommandWhitelist } from '../hooks/useCommandWhitelist'
+import { useToast } from '../../../platform/providers/ToastContext'
+import DetailDialog from '../../../platform/ui/primitives/DetailDialog'
 import type { Sop, SopNode, SopCreateRequest } from '../../../../types/sop'
 
 // ---------------------------------------------------------------------------

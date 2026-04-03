@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useCommandWhitelist } from '../../../../hooks/useCommandWhitelist'
-import { useToast } from '../../../../contexts/ToastContext'
+import { useCommandWhitelist } from '../hooks/useCommandWhitelist'
+import { useToast } from '../../../platform/providers/ToastContext'
 import type { WhitelistCommand } from '../../../../types/commandWhitelist'
 
 function TrashIcon() {

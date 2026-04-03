@@ -15,17 +15,17 @@ function readSource(relativePath: string): string {
 
 describe('Hook HTTP error friendlification — getErrorMessage usage', () => {
     const hooksToCheck = [
-        { file: 'hooks/useAgentConfig.ts', name: 'useAgentConfig' },
-        { file: 'hooks/useMcp.ts', name: 'useMcp' },
-        { file: 'hooks/useSkills.ts', name: 'useSkills' },
-        { file: 'hooks/useMonitoring.ts', name: 'useMonitoring' },
-        { file: 'contexts/GoosedContext.tsx', name: 'GoosedContext' },
+        { file: 'app/modules/agents/hooks/useAgentConfig.ts', name: 'useAgentConfig' },
+        { file: 'app/modules/agents/hooks/useMcp.ts', name: 'useMcp' },
+        { file: 'app/modules/agents/hooks/useSkills.ts', name: 'useSkills' },
+        { file: 'app/modules/monitoring/hooks/useMonitoring.ts', name: 'useMonitoring' },
+        { file: 'app/platform/providers/GoosedContext.tsx', name: 'GoosedContext' },
     ]
 
     for (const { file, name } of hooksToCheck) {
         it(`${name} imports getErrorMessage`, () => {
             const src = readSource(file)
-            expect(src).toContain("import { getErrorMessage } from '../utils/errorMessages'")
+            expect(src).toMatch(/import\s+\{\s*getErrorMessage\s*\}\s+from\s+['"][^'"]*utils\/errorMessages['"]/)
         })
 
         it(`${name} uses getErrorMessage(err) in catch blocks`, () => {
@@ -118,7 +118,7 @@ describe('i18n error keys exist', () => {
 describe('ToastProvider root-level placement', () => {
     it('main.tsx imports ToastProvider', () => {
         const src = readSource('main.tsx')
-        expect(src).toContain("import { ToastProvider } from './contexts/ToastContext'")
+        expect(src).toContain("import { ToastProvider } from './app/platform/providers/ToastContext'")
     })
 
     it('main.tsx wraps app with ToastProvider', () => {
@@ -136,7 +136,7 @@ describe('ToastProvider root-level placement', () => {
 
 describe('SSE closure bug fix — useChat.ts', () => {
     it('uses streamErrorRef instead of state.error in STREAM_FINISH', () => {
-        const src = readSource('hooks/useChat.ts')
+        const src = readSource('app/platform/chat/useChat.ts')
         expect(src).toContain('streamErrorRef')
         expect(src).toContain('streamErrorRef.current = null')
         expect(src).toContain('streamErrorRef.current = errorMsg')
@@ -144,7 +144,7 @@ describe('SSE closure bug fix — useChat.ts', () => {
     })
 
     it('does not use state.error in sendMessage dependency array', () => {
-        const src = readSource('hooks/useChat.ts')
+        const src = readSource('app/platform/chat/useChat.ts')
         // The sendMessage useCallback should not depend on state.error
         const sendMessageDeps = src.match(/\}, \[client, sessionId.*?\]\)/)
         expect(sendMessageDeps).not.toBeNull()

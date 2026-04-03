@@ -1,5 +1,5 @@
 import { isAdminUser } from '../../config/runtime'
-import { useUser } from '../../contexts/UserContext'
+import { useUser } from './providers/UserContext'
 import { loadModules } from './ModuleLoader'
 import type { ModuleContext } from './module-types'
 
@@ -21,4 +21,3 @@ export function useEnabledModules() {
 
     return ALL_MODULES.filter((module) => module.enabled?.(ctx) ?? true)
 }
-

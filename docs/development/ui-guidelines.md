@@ -3,7 +3,7 @@
 ## Preserve Existing Interaction Model
 - Keep the current route-driven shell and sidebar-based navigation.
 - Preserve the right-panel pattern for preview and market-style auxiliary flows.
-- Reuse existing contexts, hooks, and shared components before adding parallel state flows.
+- Reuse `app/platform/*` capabilities before adding parallel state flows.
 
 ## Default Page Patterns
 Choose the closest existing pattern before designing a new one.
@@ -15,7 +15,10 @@ Choose the closest existing pattern before designing a new one.
 - Empty, loading, and error states should stay inline with the current section instead of introducing custom full-page treatments unless the route genuinely has no usable content.
 
 ## UI Change Rules
-- New pages should fit the current information architecture: `src/pages` for route pages, `src/components` for reusable UI, `src/hooks` for shared logic.
+- New pages should fit the current information architecture:
+  - `web-app/src/app/platform/*` for shared shell, navigation, providers, chat, preview, renderers, panels, runtime helpers, styles, and reusable UI primitives/patterns
+  - `web-app/src/app/modules/<module>/*` for feature-local pages, components, hooks, and styles
+  - root-level `web-app/src` only for entrypoints and cross-cutting assets such as `App.tsx`, `main.tsx`, `assets`, `config`, `i18n`, `types`, and `utils`
 - Keep i18n support in mind when introducing user-facing text.
 - Errors should use the established error-handling and toast patterns rather than bespoke banners per page.
 - Responsive behavior is required for any new top-level page or major workflow.
@@ -23,6 +26,9 @@ Choose the closest existing pattern before designing a new one.
 - Prefer shared primitives for cards, pills/tags, banners, empty states, split layouts, and detail panels. Feature-specific classes should only describe domain-specific content, not restate common card chrome.
 - New controls should preserve the existing button hierarchy, form spacing, border treatment, and selection states.
 - When a new shared visual pattern is introduced, extract it intentionally and document where it should be reused.
+- Do not recreate root-level `src/pages`, `src/components`, `src/hooks`, or `src/contexts`.
+- Modules must not import other modules directly. Shared capability must be promoted into `app/platform/*` instead of being borrowed from another business module.
+- Shared conversation, message rendering, preview, and auxiliary panel capabilities are platform concerns, even if they appear inside a specific route.
 
 ## Visual Consistency Rules
 - Reuse the established spacing scale, radius tokens, border colors, muted text treatment, and hover/selected affordances already used across the app.
@@ -40,9 +46,11 @@ Choose the closest existing pattern before designing a new one.
 Before considering a frontend task complete, confirm:
 
 - The feature matches an existing page pattern or documents why a new one was necessary.
-- Shared layout and visual primitives were reused before adding page-specific wrappers.
+- Shared layout and visual primitives were reused from `app/platform/*` before adding page-specific wrappers.
 - User-facing text is localized and consistent with nearby features.
 - Empty, loading, error, and responsive states were implemented with existing patterns.
+- New code was placed in `app/platform/*` or the owning `app/modules/<module>/*` directory instead of a new root-level implementation folder.
+- `cd web-app && npm run check:boundaries` passes after structural changes.
 - Screenshots or an equivalent visual check were captured for any user-visible layout change.
 
 ## Review Triggers

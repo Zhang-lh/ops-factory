@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useUser } from '../../../../contexts/UserContext'
+import { useUser } from '../../../platform/providers/UserContext'
+import Button from '../../../platform/ui/primitives/Button'
 import { GATEWAY_URL, gatewayHeaders } from '../../../../config/runtime'
 
 export function DeleteAgentModal({
@@ -66,15 +67,14 @@ export function DeleteAgentModal({
                 </div>
 
                 <div className="modal-footer">
-                    <button className="btn btn-secondary" onClick={onClose} disabled={deleting}>
+                    <Button variant="secondary" onClick={onClose} disabled={deleting}>
                         {t('common.cancel')}
-                    </button>
-                    <button className="btn btn-danger" onClick={handleDelete} disabled={deleting}>
+                    </Button>
+                    <Button variant="danger" onClick={handleDelete} disabled={deleting}>
                         {deleting ? t('agents.deleting') : t('common.delete')}
-                    </button>
+                    </Button>
                 </div>
             </div>
         </div>
     )
 }
-

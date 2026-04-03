@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { useAgentConfig } from '../../../../hooks/useAgentConfig'
-import { useToast } from '../../../../contexts/ToastContext'
-import { McpSection } from '../../../../components/mcp'
-import { SkillSection } from '../../../../components/skill'
-import { PromptsSection } from '../../../../components/prompt'
-import { MemorySection } from '../../../../components/memory'
-import { useRightPanel } from '../../../../contexts/RightPanelContext'
+import { useAgentConfig } from '../hooks/useAgentConfig'
+import { useToast } from '../../../platform/providers/ToastContext'
+import { McpSection } from '../components/mcp'
+import { SkillSection } from '../components/skill'
+import { PromptsSection } from '../components/prompt'
+import { MemorySection } from '../components/memory'
+import Button from '../../../platform/ui/primitives/Button'
+import { useRightPanel } from '../../../platform/providers/RightPanelContext'
 import '../styles/agents.css'
 
 type ConfigTab = 'overview' | 'prompts' | 'mcp' | 'skills' | 'memory'
@@ -61,7 +62,7 @@ export default function AgentConfigure() {
 
     if (isLoading) {
         return (
-            <div className="page-container agent-configure-page">
+            <div className="page-container sidebar-top-page agent-configure-page">
                 <div className="agent-configure-loading">{t('agentConfigure.loadingConfig')}</div>
             </div>
         )
@@ -69,7 +70,7 @@ export default function AgentConfigure() {
 
     if (error || !config) {
         return (
-            <div className="page-container agent-configure-page">
+            <div className="page-container sidebar-top-page agent-configure-page">
                 <div className="agent-configure-error">
                     {error || t('agentConfigure.agentNotFound')}
                     <button type="button" onClick={() => navigate('/agents')}>
@@ -98,7 +99,7 @@ export default function AgentConfigure() {
                 overflowX: 'hidden'
             }}
         >
-            <div className="page-container agent-configure-page">
+            <div className="page-container sidebar-top-page agent-configure-page">
                 <div className="agent-configure-header">
                 <button
                     type="button"
@@ -144,14 +145,13 @@ export default function AgentConfigure() {
                             />
                         </div>
                         <div className="agent-configure-actions">
-                            <button
-                                type="button"
-                                className="btn btn-primary"
+                            <Button
+                                variant="primary"
                                 onClick={handleSavePrompt}
                                 disabled={isSavingPrompt}
                             >
                                 {isSavingPrompt ? t('agentConfigure.saving') : t('agentConfigure.savePrompt')}
-                            </button>
+                            </Button>
                         </div>
                     </section>
                 )}

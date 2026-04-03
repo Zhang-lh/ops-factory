@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { useMcp } from '../../../../hooks/useMcp'
+import { useMcp } from '../hooks/useMcp'
 
 export function McpCount({ agentId }: { agentId: string }) {
     const { entries, fetchMcp } = useMcp(agentId)
@@ -11,4 +11,3 @@ export function McpCount({ agentId }: { agentId: string }) {
     const enabledCount = entries.filter((entry) => entry.enabled).length
     return <span>{enabledCount}</span>
 }
-

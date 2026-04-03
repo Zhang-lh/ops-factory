@@ -1,7 +1,7 @@
-import FilePreview from '../../components/FilePreview'
-import CapabilityMarketPanel from '../../components/market/CapabilityMarketPanel'
-import { useRightPanel } from '../../contexts/RightPanelContext'
-import { usePreview } from '../../contexts/PreviewContext'
+import FilePreview from './preview/FilePreview'
+import CapabilityMarketPanel from './panels/CapabilityMarketPanel'
+import { useRightPanel } from './providers/RightPanelContext'
+import { usePreview } from './providers/PreviewContext'
 
 export function RightPanelHost() {
     const { previewFile } = usePreview()
@@ -24,4 +24,3 @@ export function RightPanelHost() {
         </div>
     )
 }
-

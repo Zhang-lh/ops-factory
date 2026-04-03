@@ -19,6 +19,8 @@
     --color-accent: #32353b;
     --color-accent-hover: #22252a;
     --color-accent-subtle: rgba(50, 53, 59, 0.08);
+    --button-primary-bg: #2f3338;
+    --button-primary-bg-hover: #25292e;
 
     --color-success: #10b981;
     --color-warning: #f59e0b;
@@ -38,7 +40,7 @@
     --composer-shadow: 0 1px 1px rgba(16, 24, 40, 0.04);
     --composer-shadow-focus: 0 4px 12px rgba(16, 24, 40, 0.07);
     --composer-radius: 28px;
-    --composer-button-size: 42px;
+    --composer-button-size: 40px;
     --composer-button-bg: #111111;
     --composer-button-bg-hover: #232323;
     --composer-button-disabled-bg: #c9cdd3;

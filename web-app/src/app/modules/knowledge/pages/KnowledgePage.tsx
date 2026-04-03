@@ -1,15 +1,19 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { useToast } from '../../../../contexts/ToastContext'
+import { useToast } from '../../../platform/providers/ToastContext'
 import { KNOWLEDGE_SERVICE_URL } from '../../../../config/runtime'
-import CardGrid from '../../../../components/cards/CardGrid'
-import PageHeader from '../../../../components/PageHeader'
-import ResourceCard, { type ResourceStatusTone } from '../../../../components/ResourceCard'
-import ListResultsMeta from '../../../../components/list/ListResultsMeta'
-import ListSearchInput from '../../../../components/list/ListSearchInput'
-import ListToolbar from '../../../../components/list/ListToolbar'
-import ListWorkbench from '../../../../components/list/ListWorkbench'
+import CardGrid from '../../../platform/ui/cards/CardGrid'
+import PageHeader from '../../../platform/ui/primitives/PageHeader'
+import ResourceCard, {
+    ResourceCardDangerAction,
+    ResourceCardPrimaryAction,
+    type ResourceStatusTone,
+} from '../../../platform/ui/primitives/ResourceCard'
+import ListResultsMeta from '../../../platform/ui/list/ListResultsMeta'
+import ListSearchInput from '../../../platform/ui/list/ListSearchInput'
+import ListToolbar from '../../../platform/ui/list/ListToolbar'
+import ListWorkbench from '../../../platform/ui/list/ListWorkbench'
 
 interface SourceSummary {
     id: string
@@ -414,20 +418,12 @@ export default function Knowledge() {
                                     ]}
                                     footer={(
                                         <>
-                                            <button
-                                                type="button"
-                                                className="resource-card-danger-action"
-                                                onClick={() => setDeleteTarget(source)}
-                                            >
+                                            <ResourceCardDangerAction onClick={() => setDeleteTarget(source)}>
                                                 {t('common.delete')}
-                                            </button>
-                                            <button
-                                                type="button"
-                                                className="resource-card-primary-action"
-                                                onClick={() => navigate(`/knowledge/${source.id}`)}
-                                            >
+                                            </ResourceCardDangerAction>
+                                            <ResourceCardPrimaryAction onClick={() => navigate(`/knowledge/${source.id}`)}>
                                                 {t('knowledge.configure')}
-                                            </button>
+                                            </ResourceCardPrimaryAction>
                                         </>
                                     )}
                                 />

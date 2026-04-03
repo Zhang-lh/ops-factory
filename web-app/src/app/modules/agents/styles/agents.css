@@ -24,7 +24,7 @@
 }
 
 .agent-configure-page {
-    max-width: 900px;
+    min-width: 0;
 }
 
 .agent-configure-header {

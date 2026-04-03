@@ -10,10 +10,45 @@
     min-height: 250px;
 }
 
+.scheduled-modal-wide {
+    width: min(960px, calc(100vw - 48px));
+    max-width: 960px;
+    height: min(860px, calc(100vh - 48px));
+    max-height: calc(100vh - 48px);
+}
+
+.scheduled-modal-wide .modal-body {
+    scrollbar-gutter: stable;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(158, 167, 179, 0.34) transparent;
+}
+
+.scheduled-modal-wide .modal-body::-webkit-scrollbar {
+    width: 14px;
+}
+
+.scheduled-modal-wide .modal-body::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.scheduled-modal-wide .modal-body::-webkit-scrollbar-thumb {
+    background: rgba(158, 167, 179, 0.34);
+    border: 3px solid transparent;
+    background-clip: content-box;
+    border-radius: 999px;
+}
+
+.scheduled-modal-wide .modal-body:hover::-webkit-scrollbar-thumb {
+    background: rgba(129, 140, 153, 0.42);
+    border: 3px solid transparent;
+    background-clip: content-box;
+}
+
 .scheduled-modal-body {
     display: flex;
     flex-direction: column;
-    gap: var(--spacing-5);
+    gap: var(--spacing-4);
+    min-height: 0;
 }
 
 .scheduled-field-label {
@@ -62,8 +97,15 @@
     display: flex;
     flex-direction: column;
     gap: var(--spacing-4);
-    padding-top: var(--spacing-6);
-    border-top: 1px solid var(--color-border);
+    padding: var(--spacing-5);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-xl);
+    background: var(--color-bg-primary);
+    box-shadow: var(--shadow-xs);
+}
+
+.scheduled-modal-form-section {
+    gap: var(--spacing-5);
 }
 
 .scheduled-modal-section-header {
@@ -121,10 +163,6 @@
     word-break: break-all;
 }
 
-.scheduled-card-primary-action {
-    margin-left: auto;
-}
-
 .scheduled-detail-actions {
     display: flex;
     flex-wrap: wrap;
@@ -132,6 +170,13 @@
 }
 
 @media (max-width: 768px) {
+    .scheduled-modal-wide {
+        width: calc(100vw - 24px);
+        max-width: calc(100vw - 24px);
+        height: calc(100vh - 24px);
+        max-height: calc(100vh - 24px);
+    }
+
     .scheduled-modal-section-header {
         flex-direction: column;
         align-items: flex-start;

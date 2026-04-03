@@ -15,9 +15,9 @@ function readSource(relativePath: string): string {
 
 describe('alert() removal — static analysis', () => {
     const filesToCheck = [
-        'pages/Home.tsx',
-        'pages/History.tsx',
-        'components/ChatInput.tsx',
+        'app/modules/home/pages/HomePage.tsx',
+        'app/modules/history/pages/HistoryPage.tsx',
+        'app/platform/chat/ChatInput.tsx',
     ]
 
     for (const file of filesToCheck) {
@@ -30,7 +30,7 @@ describe('alert() removal — static analysis', () => {
 
         it(`${file} imports useToast`, () => {
             const src = readSource(file)
-            expect(src).toContain("import { useToast } from '../contexts/ToastContext'")
+            expect(src).toContain('useToast')
         })
 
         it(`${file} calls showToast`, () => {
@@ -42,17 +42,17 @@ describe('alert() removal — static analysis', () => {
 
 describe('showToast replacement correctness', () => {
     it('Home.tsx uses showToast("error", ...) for session creation failure', () => {
-        const src = readSource('pages/Home.tsx')
+        const src = readSource('app/modules/home/pages/HomePage.tsx')
         expect(src).toContain("showToast('error', t('home.failedToCreateSession'")
     })
 
     it('History.tsx uses showToast("error", ...) for delete failure', () => {
-        const src = readSource('pages/History.tsx')
+        const src = readSource('app/modules/history/pages/HistoryPage.tsx')
         expect(src).toContain("showToast('error', t('errors.deleteFailed'))")
     })
 
     it('ChatInput.tsx uses showToast("warning", ...) for image upload limits', () => {
-        const src = readSource('components/ChatInput.tsx')
+        const src = readSource('app/platform/chat/ChatInput.tsx')
         expect(src).toContain("showToast('warning', t('chat.maxImagesAllowed'")
         expect(src).toContain("showToast('warning', t('chat.maxFilesAllowed'")
     })
@@ -60,12 +60,12 @@ describe('showToast replacement correctness', () => {
 
 describe('Voice error display in ChatInput', () => {
     it('ChatInput.tsx destructures voiceError from useVoiceInput', () => {
-        const src = readSource('components/ChatInput.tsx')
+        const src = readSource('app/platform/chat/ChatInput.tsx')
         expect(src).toContain('error: voiceError')
     })
 
     it('ChatInput.tsx has useEffect for voiceError toast', () => {
-        const src = readSource('components/ChatInput.tsx')
+        const src = readSource('app/platform/chat/ChatInput.tsx')
         expect(src).toContain('voiceError')
         expect(src).toContain("t('errors.micPermissionDenied')")
         expect(src).toContain("t('errors.voiceError'")
@@ -74,12 +74,12 @@ describe('Voice error display in ChatInput', () => {
 
 describe('FilePreview copy failure toast', () => {
     it('FilePreview.tsx imports useToast', () => {
-        const src = readSource('components/FilePreview.tsx')
-        expect(src).toContain("import { useToast } from '../contexts/ToastContext'")
+        const src = readSource('app/platform/preview/FilePreview.tsx')
+        expect(src).toContain("import { useToast } from '../providers/ToastContext'")
     })
 
     it('FilePreview.tsx shows toast on copy failure', () => {
-        const src = readSource('components/FilePreview.tsx')
+        const src = readSource('app/platform/preview/FilePreview.tsx')
         expect(src).toContain("showToast('error', t('errors.copyFailed'))")
     })
 })

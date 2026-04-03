@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { MemoryRouter } from 'react-router-dom'
-import { UserProvider, useUser } from '../contexts/UserContext'
+import { UserProvider, useUser } from '../app/platform/providers/UserContext'
 
 const STORAGE_KEY = 'opsfactory:userId'
 
