@@ -61,6 +61,8 @@ public class ControlCenterProperties {
         private boolean required = true;
         private String healthPath;
         private String ctlComponent;
+        private String configPath = "";
+        private String logPath = "";
         private Auth auth = new Auth();
 
         public String getId() {
@@ -109,6 +111,22 @@ public class ControlCenterProperties {
 
         public void setCtlComponent(String ctlComponent) {
             this.ctlComponent = ctlComponent;
+        }
+
+        public String getConfigPath() {
+            return configPath;
+        }
+
+        public void setConfigPath(String configPath) {
+            this.configPath = configPath;
+        }
+
+        public String getLogPath() {
+            return logPath;
+        }
+
+        public void setLogPath(String logPath) {
+            this.logPath = logPath;
         }
 
         public Auth getAuth() {

@@ -1,4 +1,5 @@
 import ControlCenterPage from './pages/ControlCenterPage'
+import ManagedServiceDetailPage from './pages/ManagedServiceDetailPage'
 import type { AppModule } from '../../platform/module-types'
 
 const controlCenterModule: AppModule = {
@@ -6,6 +7,7 @@ const controlCenterModule: AppModule = {
     owner: 'platform',
     routes: [
         { id: 'control-center.index', path: '/control-center', component: ControlCenterPage, access: 'admin' },
+        { id: 'control-center.service', path: '/control-center/services/:serviceId', component: ManagedServiceDetailPage, access: 'admin', hidden: true },
     ],
     navItems: [
         {
