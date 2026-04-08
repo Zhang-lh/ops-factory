@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import type { EChartsOption } from 'echarts'
 import { useTranslation } from 'react-i18next'
 import ControlCenterChartCard from '../components/ControlCenterChartCard'
@@ -529,6 +530,7 @@ function ExternalLinkIcon({ size = 13 }: { size?: number }) {
 
 function PlatformTab() {
   const { t } = useTranslation()
+  const navigate = useNavigate()
   const { system, instances, services, isLoading, error, runtimeError, refresh } = useMonitoringPlatform()
   const { showToast } = useToast()
   const { runAction, pendingServiceId, pendingAction } = useControlCenterActions()
@@ -606,6 +608,7 @@ function PlatformTab() {
                 service={service}
                 pendingAction={pendingServiceId === service.id ? pendingAction : null}
                 onAction={handleAction}
+                onConfigure={() => navigate(`/control-center/services/${service.id}`)}
               />
             ))}
           </CardGrid>
@@ -1165,10 +1168,12 @@ function ServiceCard({
   service,
   pendingAction,
   onAction,
+  onConfigure,
 }: {
   service: ManagedServiceStatus
   pendingAction: ControlCenterAction | null
   onAction: (service: ManagedServiceStatus, action: ControlCenterAction) => void
+  onConfigure: () => void
 }) {
   const { t } = useTranslation()
   const statusTone: ResourceStatusTone =
@@ -1210,26 +1215,31 @@ function ServiceCard({
       ]}
       footer={(
         <div className="control-center-service-footer">
-          {service.message ? <span className="control-center-service-message">{service.message}</span> : <span />}
-          {hasActions ? (
-            <div className="control-center-service-actions">
-              {showStart && (
-                <Button size="sm" tone="quiet" onClick={() => onAction(service, 'start')} disabled={!!pendingAction}>
-                  {pendingAction === 'start' ? t('controlCenter.actionRunning') : t('controlCenter.actionLabel.start')}
-                </Button>
-              )}
-              {showRestart && (
-                <Button size="sm" tone="quiet" onClick={() => onAction(service, 'restart')} disabled={!!pendingAction}>
-                  {pendingAction === 'restart' ? t('controlCenter.actionRunning') : t('controlCenter.actionLabel.restart')}
-                </Button>
-              )}
-              {showStop && (
-                <Button size="sm" variant="danger" tone="quiet" onClick={() => onAction(service, 'stop')} disabled={!!pendingAction}>
-                  {pendingAction === 'stop' ? t('controlCenter.actionRunning') : t('controlCenter.actionLabel.stop')}
-                </Button>
-              )}
-            </div>
-          ) : null}
+          <div className="control-center-service-footer-left">
+            {hasActions ? (
+              <div className="control-center-service-actions">
+                {showStart && (
+                  <Button size="sm" tone="quiet" onClick={() => onAction(service, 'start')} disabled={!!pendingAction}>
+                    {pendingAction === 'start' ? t('controlCenter.actionRunning') : t('controlCenter.actionLabel.start')}
+                  </Button>
+                )}
+                {showRestart && (
+                  <Button size="sm" tone="quiet" onClick={() => onAction(service, 'restart')} disabled={!!pendingAction}>
+                    {pendingAction === 'restart' ? t('controlCenter.actionRunning') : t('controlCenter.actionLabel.restart')}
+                  </Button>
+                )}
+                {showStop && (
+                  <Button size="sm" variant="danger" tone="quiet" onClick={() => onAction(service, 'stop')} disabled={!!pendingAction}>
+                    {pendingAction === 'stop' ? t('controlCenter.actionRunning') : t('controlCenter.actionLabel.stop')}
+                  </Button>
+                )}
+              </div>
+            ) : null}
+            {service.message ? <span className="control-center-service-message">{service.message}</span> : null}
+          </div>
+          <Button size="sm" variant="primary" onClick={onConfigure}>
+            {t('controlCenter.configure')}
+          </Button>
         </div>
       )}
     />
