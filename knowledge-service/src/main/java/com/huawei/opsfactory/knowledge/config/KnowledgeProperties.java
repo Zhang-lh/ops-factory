@@ -49,6 +49,9 @@ public class KnowledgeProperties {
         private int maxFileSizeMb = 100;
         private List<String> allowedContentTypes = new ArrayList<>(List.of(
             "application/pdf",
+            "application/vnd.ms-htmlhelp",
+            "application/chm",
+            "application/x-chm",
             "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
             "application/vnd.openxmlformats-officedocument.presentationml.presentation",
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",

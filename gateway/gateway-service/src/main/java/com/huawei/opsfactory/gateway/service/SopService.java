@@ -88,7 +88,10 @@ public class SopService {
     }
 
     public Map<String, Object> createSop(Map<String, Object> body) {
-        validateNodeCommands(body);
+        String mode = String.valueOf(body.getOrDefault("mode", "structured"));
+        if (!"natural_language".equals(mode)) {
+            validateNodeCommands(body);
+        }
         String name = body.getOrDefault("name", "") != null ? body.getOrDefault("name", "").toString() : "";
         validateSopNameUnique(name, null);
         String id = UUID.randomUUID().toString();
@@ -100,9 +103,13 @@ public class SopService {
         sop.put("version", body.getOrDefault("version", "1.0.0"));
         sop.put("triggerCondition", body.getOrDefault("triggerCondition", ""));
         sop.put("nodes", body.getOrDefault("nodes", List.of()));
+        sop.put("enabled", body.getOrDefault("enabled", true));
+        sop.put("mode", body.getOrDefault("mode", "structured"));
+        sop.put("stepsDescription", body.getOrDefault("stepsDescription", ""));
+        sop.put("tags", body.getOrDefault("tags", List.of()));
 
         writeSopFile(id, sop);
-        log.info("Created SOP: id={}, name={}", id, sop.get("name"));
+        log.info("Created SOP: id={}, name={}, mode={}", id, sop.get("name"), mode);
         return sop;
     }
 
@@ -112,6 +119,11 @@ public class SopService {
         if (sop == null) {
             throw new IllegalArgumentException("SOP not found: " + id);
         }
+
+        // Determine effective mode for command validation
+        String effectiveMode = body.containsKey("mode")
+                ? String.valueOf(body.get("mode"))
+                : String.valueOf(sop.getOrDefault("mode", "structured"));
 
         // Update mutable fields
         if (body.containsKey("name")) {
@@ -128,8 +140,22 @@ public class SopService {
             sop.put("triggerCondition", body.get("triggerCondition"));
         }
         if (body.containsKey("nodes")) {
-            validateNodeCommands(body);
+            if (!"natural_language".equals(effectiveMode)) {
+                validateNodeCommands(body);
+            }
             sop.put("nodes", body.get("nodes"));
+        }
+        if (body.containsKey("enabled")) {
+            sop.put("enabled", body.get("enabled"));
+        }
+        if (body.containsKey("mode")) {
+            sop.put("mode", body.get("mode"));
+        }
+        if (body.containsKey("stepsDescription")) {
+            sop.put("stepsDescription", body.get("stepsDescription"));
+        }
+        if (body.containsKey("tags")) {
+            sop.put("tags", body.get("tags"));
         }
 
         writeSopFile(id, sop);
@@ -226,7 +252,13 @@ public class SopService {
         }
         try {
             String json = Files.readString(file, StandardCharsets.UTF_8);
-            return MAPPER.readValue(json, new TypeReference<LinkedHashMap<String, Object>>() {});
+            Map<String, Object> sop = MAPPER.readValue(json, new TypeReference<LinkedHashMap<String, Object>>() {});
+            // Ensure backward-compatible defaults for new fields
+            sop.putIfAbsent("enabled", true);
+            sop.putIfAbsent("mode", "structured");
+            sop.putIfAbsent("stepsDescription", "");
+            sop.putIfAbsent("tags", List.of());
+            return sop;
         } catch (IOException e) {
             log.error("Failed to read SOP file: {}", file, e);
             return null;

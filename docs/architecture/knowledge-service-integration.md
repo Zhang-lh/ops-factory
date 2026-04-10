@@ -216,6 +216,9 @@ KNOWLEDGE_LOG_QUERY_TEXT=false \
 - `max-file-size-mb`：单文件最大大小，默认 `100`
 - `allowed-content-types`：允许导入的 MIME 类型。当前实现默认支持：
   - `application/pdf`
+  - `application/vnd.ms-htmlhelp`
+  - `application/chm`
+  - `application/x-chm`
   - `application/vnd.openxmlformats-officedocument.wordprocessingml.document`
   - `application/vnd.openxmlformats-officedocument.presentationml.presentation`
   - `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`

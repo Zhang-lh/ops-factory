@@ -28,6 +28,7 @@ import java.util.Comparator;
 import java.util.HexFormat;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -46,6 +47,12 @@ public class KnowledgeServiceFacade {
 
     private static final Logger log = LoggerFactory.getLogger(KnowledgeServiceFacade.class);
     private static final int COMPARE_FETCH_TOP_K = 64;
+    private static final Set<String> GENERIC_CONTENT_TYPES = Set.of("application/octet-stream");
+    private static final Set<String> CHM_CONTENT_TYPES = Set.of(
+        "application/vnd.ms-htmlhelp",
+        "application/chm",
+        "application/x-chm"
+    );
 
     private final SourceRepository sourceRepository;
     private final DocumentRepository documentRepository;
@@ -1163,10 +1170,15 @@ public class KnowledgeServiceFacade {
                 );
                 throw new IllegalStateException("Unsupported content type: " + conversion.contentType());
             }
+            String persistedContentType = resolvePersistedContentType(
+                file.getContentType(),
+                conversion.contentType(),
+                file.getOriginalFilename()
+            );
             Instant now = Instant.now();
             DocumentRepository.DocumentRecord doc = new DocumentRepository.DocumentRecord(
                 documentId, sourceId, file.getOriginalFilename(), file.getOriginalFilename(), conversion.title(), null, List.of(),
-                sha256, Optional.ofNullable(file.getContentType()).orElse(conversion.contentType()), "zh",
+                sha256, persistedContentType, "zh",
                 "INDEXED", "INDEXED", file.getSize(), 0, 0, null, "system", now, now
             );
             documentRepository.insert(doc);
@@ -1192,7 +1204,7 @@ public class KnowledgeServiceFacade {
                 sourceId,
                 documentId,
                 file.getOriginalFilename(),
-                conversion.contentType(),
+                persistedContentType,
                 insertedChunks.size(),
                 file.getSize()
             );
@@ -1207,8 +1219,42 @@ public class KnowledgeServiceFacade {
     }
 
     private boolean isAllowedContentType(String requestContentType, String detectedContentType) {
-        List<String> allowed = profileBootstrapService.allowedContentTypes();
-        return allowed.contains(requestContentType) || allowed.contains(detectedContentType);
+        Set<String> allowed = profileBootstrapService.allowedContentTypes().stream()
+            .map(KnowledgeServiceFacade::normalizeContentType)
+            .collect(Collectors.toSet());
+        return allowed.contains(normalizeContentType(requestContentType))
+            || allowed.contains(normalizeContentType(detectedContentType));
+    }
+
+    static String resolvePersistedContentType(String requestContentType, String detectedContentType, String fileName) {
+        String normalizedRequest = normalizeContentType(requestContentType);
+        String normalizedDetected = normalizeContentType(detectedContentType);
+        boolean chmUpload = isChmFileName(fileName)
+            || CHM_CONTENT_TYPES.contains(normalizedRequest)
+            || CHM_CONTENT_TYPES.contains(normalizedDetected);
+
+        if (chmUpload && StringUtils.hasText(normalizedDetected)) {
+            return normalizedDetected;
+        }
+        if (!StringUtils.hasText(normalizedRequest) || GENERIC_CONTENT_TYPES.contains(normalizedRequest)) {
+            return StringUtils.hasText(normalizedDetected) ? normalizedDetected : normalizedRequest;
+        }
+        return normalizedRequest;
+    }
+
+    private static String normalizeContentType(String contentType) {
+        if (!StringUtils.hasText(contentType)) {
+            return "";
+        }
+        return contentType
+            .trim()
+            .split(";", 2)[0]
+            .trim()
+            .toLowerCase(Locale.ROOT);
+    }
+
+    private static boolean isChmFileName(String fileName) {
+        return StringUtils.hasText(fileName) && fileName.toLowerCase(Locale.ROOT).endsWith(".chm");
     }
 
     private void validateIndexProfileExists(String profileId) {
@@ -1643,7 +1689,8 @@ public class KnowledgeServiceFacade {
         DocumentRepository.DocumentRecord updatedDocument = new DocumentRepository.DocumentRecord(
             document.id(), document.sourceId(), document.name(), document.originalFilename(),
             conversion.title(), document.description(), document.tags(), document.sha256(),
-            document.contentType(), document.language(), "INDEXED", "INDEXED", document.fileSizeBytes(), 0, 0,
+            resolvePersistedContentType(document.contentType(), conversion.contentType(), document.originalFilename()),
+            document.language(), "INDEXED", "INDEXED", document.fileSizeBytes(), 0, 0,
             null, "system", document.createdAt(), now
         );
         documentRepository.update(updatedDocument);

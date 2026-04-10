@@ -16,6 +16,9 @@ knowledge:
     max-file-size-mb: 100
     allowed-content-types:
       - application/pdf
+      - application/vnd.ms-htmlhelp
+      - application/chm
+      - application/x-chm
       - application/vnd.openxmlformats-officedocument.wordprocessingml.document
       - application/vnd.openxmlformats-officedocument.presentationml.presentation
       - application/vnd.openxmlformats-officedocument.spreadsheetml.sheet

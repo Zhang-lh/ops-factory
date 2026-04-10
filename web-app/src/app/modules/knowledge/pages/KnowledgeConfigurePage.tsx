@@ -44,6 +44,9 @@ const UPLOAD_BATCH_MAX_SIZE_MB = 100
 const RETRIEVAL_SCORE_THRESHOLD_MIN = 0
 const RETRIEVAL_SCORE_THRESHOLD_MAX = 1
 const RETRIEVAL_SCORE_THRESHOLD_STEP = 0.01
+const UPLOAD_EXTENSION_CONTENT_TYPE_FALLBACKS: Record<string, string[]> = {
+    chm: ['application/vnd.ms-htmlhelp', 'application/chm', 'application/x-chm'],
+}
 
 interface UploadQueueItem {
     id: string
@@ -840,11 +843,36 @@ function isAllowedUploadFile(
         return 'knowledge.uploadFileTooLarge'
     }
 
-    if (allowedContentTypes && allowedContentTypes.length > 0 && file.type && !allowedContentTypes.includes(file.type)) {
-        return 'knowledge.uploadTypeUnsupported'
+    if (allowedContentTypes && allowedContentTypes.length > 0) {
+        const normalizedAllowed = new Set(allowedContentTypes.map(type => type.toLowerCase()))
+        const candidateContentTypes = getUploadCandidateContentTypes(file)
+        if (candidateContentTypes.length > 0 && !candidateContentTypes.some(type => normalizedAllowed.has(type))) {
+            return 'knowledge.uploadTypeUnsupported'
+        }
     }
 
     return null
+}
+
+function getUploadCandidateContentTypes(file: File): string[] {
+    const candidates: string[] = []
+
+    if (file.type) {
+        candidates.push(file.type.toLowerCase())
+    }
+
+    const extension = getFileExtension(file.name)
+    if (extension) {
+        candidates.push(...(UPLOAD_EXTENSION_CONTENT_TYPE_FALLBACKS[extension] || []))
+    }
+
+    return Array.from(new Set(candidates))
+}
+
+function getFileExtension(fileName: string): string {
+    const normalized = fileName.trim().toLowerCase()
+    if (!normalized.includes('.')) return ''
+    return normalized.split('.').pop() || ''
 }
 
 function appendFilesToQueue(
