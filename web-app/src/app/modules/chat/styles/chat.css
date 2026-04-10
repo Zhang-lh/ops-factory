@@ -165,8 +165,6 @@
 }
 
 .chat-messages {
-    flex: 1;
-    overflow-y: auto;
     padding: var(--spacing-6);
     display: flex;
     flex-direction: column;

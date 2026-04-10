@@ -21,7 +21,7 @@ function resolveActiveScrollElement(containerRef?: ScrollContainerRef): ActiveSc
     if (container) {
         const canContainerScroll = container.scrollHeight - container.clientHeight > BOTTOM_THRESHOLD_PX
         if (canContainerScroll) {
-            return container
+        return container
         }
     }
 

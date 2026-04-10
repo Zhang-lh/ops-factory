@@ -152,7 +152,7 @@ describe('MessageList tool error rendering', () => {
         })
     })
 
-    it('falls back to the document scroll root when the message container is not scrollable', async () => {
+    it('falls back to the document scroll root when the provided message container does not overflow', async () => {
         const scrollContainer = document.createElement('div')
         Object.defineProperty(scrollContainer, 'scrollHeight', { configurable: true, value: 600 })
         Object.defineProperty(scrollContainer, 'clientHeight', { configurable: true, value: 600 })
@@ -201,8 +201,58 @@ describe('MessageList tool error rendering', () => {
         })
 
         await waitFor(() => {
-            expect(scrollRoot.scrollTo).toHaveBeenCalledTimes(1)
             expect(scrollContainer.scrollTo).not.toHaveBeenCalled()
+            expect(scrollRoot.scrollTo).toHaveBeenCalledTimes(1)
+        })
+
+        if (originalScrollingElement) {
+            Object.defineProperty(document, 'scrollingElement', originalScrollingElement)
+        } else {
+            // @ts-expect-error test cleanup for configurable property
+            delete document.scrollingElement
+        }
+    })
+
+    it('falls back to the document scroll root when no message container is provided', async () => {
+        const scrollRoot = document.createElement('div')
+        Object.defineProperty(scrollRoot, 'scrollHeight', { configurable: true, value: 1200 })
+        Object.defineProperty(scrollRoot, 'clientHeight', { configurable: true, value: 600 })
+        let rootScrollTop = 0
+        Object.defineProperty(scrollRoot, 'scrollTop', {
+            configurable: true,
+            get: () => rootScrollTop,
+            set: (value: number) => { rootScrollTop = value },
+        })
+        scrollRoot.scrollTo = vi.fn(({ top }: ScrollToOptions) => {
+            rootScrollTop = Number(top ?? 0)
+        })
+
+        const originalScrollingElement = Object.getOwnPropertyDescriptor(document, 'scrollingElement')
+        Object.defineProperty(document, 'scrollingElement', {
+            configurable: true,
+            value: scrollRoot,
+        })
+
+        const messages: ChatMessage[] = [
+            {
+                id: 'user-1',
+                role: 'user',
+                content: [{ type: 'text', text: 'Hello' }],
+            },
+            {
+                id: 'assistant-1',
+                role: 'assistant',
+                content: [{ type: 'text', text: 'Hi there' }],
+            },
+        ]
+
+        renderMessageList(messages, {
+            agentId: 'agent-a',
+            sessionId: 'session-a',
+        })
+
+        await waitFor(() => {
+            expect(scrollRoot.scrollTo).toHaveBeenCalledTimes(1)
         })
 
         if (originalScrollingElement) {
