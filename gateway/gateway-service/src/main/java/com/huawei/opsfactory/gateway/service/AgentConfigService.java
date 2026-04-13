@@ -293,11 +293,15 @@ public class AgentConfigService {
 
     private static final int MAX_MEMORY_CONTENT_SIZE = 100 * 1024; // 100KB
 
+    private Path getGooseMemoryDir(String agentId) {
+        return getAgentConfigDir(agentId).resolve("goose").resolve("memory");
+    }
+
     /**
      * List all memory files (*.txt) for an agent, returning category name + content.
      */
     public List<Map<String, String>> listMemoryFiles(String agentId) {
-        Path memoryDir = getAgentConfigDir(agentId).resolve("memory");
+        Path memoryDir = getGooseMemoryDir(agentId);
         List<Map<String, String>> files = new ArrayList<>();
         if (!Files.isDirectory(memoryDir)) {
             return files;
@@ -328,7 +332,7 @@ public class AgentConfigService {
      * Read a single memory file content.
      */
     public String readMemoryFile(String agentId, String category) {
-        Path filePath = getAgentConfigDir(agentId).resolve("memory").resolve(category + ".txt");
+        Path filePath = getGooseMemoryDir(agentId).resolve(category + ".txt");
         try {
             return Files.readString(filePath);
         } catch (java.nio.file.NoSuchFileException e) {
@@ -346,7 +350,7 @@ public class AgentConfigService {
         if (content != null && content.getBytes(java.nio.charset.StandardCharsets.UTF_8).length > MAX_MEMORY_CONTENT_SIZE) {
             throw new IllegalArgumentException("Memory file content exceeds maximum size of 100KB");
         }
-        Path memoryDir = getAgentConfigDir(agentId).resolve("memory");
+        Path memoryDir = getGooseMemoryDir(agentId);
         Files.createDirectories(memoryDir);
         Files.writeString(memoryDir.resolve(category + ".txt"), content != null ? content : "");
     }
@@ -355,7 +359,7 @@ public class AgentConfigService {
      * Delete a memory file.
      */
     public void deleteMemoryFile(String agentId, String category) throws IOException {
-        Path filePath = getAgentConfigDir(agentId).resolve("memory").resolve(category + ".txt");
+        Path filePath = getGooseMemoryDir(agentId).resolve(category + ".txt");
         try {
             Files.delete(filePath);
         } catch (java.nio.file.NoSuchFileException e) {
