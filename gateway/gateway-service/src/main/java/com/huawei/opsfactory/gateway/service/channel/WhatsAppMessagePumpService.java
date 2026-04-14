@@ -3,6 +3,7 @@ package com.huawei.opsfactory.gateway.service.channel;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.huawei.opsfactory.gateway.service.channel.model.ChannelDetail;
 import com.huawei.opsfactory.gateway.service.channel.model.ChannelReplyResult;
+import com.huawei.opsfactory.gateway.service.channel.model.ChannelSelfTestResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -27,13 +28,16 @@ public class WhatsAppMessagePumpService {
     private final ChannelConfigService channelConfigService;
     private final ChannelDedupService channelDedupService;
     private final SessionBridgeService sessionBridgeService;
+    private final WhatsAppWebLoginService whatsAppWebLoginService;
 
     public WhatsAppMessagePumpService(ChannelConfigService channelConfigService,
                                       ChannelDedupService channelDedupService,
-                                      SessionBridgeService sessionBridgeService) {
+                                      SessionBridgeService sessionBridgeService,
+                                      WhatsAppWebLoginService whatsAppWebLoginService) {
         this.channelConfigService = channelConfigService;
         this.channelDedupService = channelDedupService;
         this.sessionBridgeService = sessionBridgeService;
+        this.whatsAppWebLoginService = whatsAppWebLoginService;
     }
 
     @Scheduled(fixedDelay = 2000)
@@ -64,6 +68,53 @@ public class WhatsAppMessagePumpService {
         } catch (IOException e) {
             log.warn("Failed to scan WhatsApp inbox for {}: {}", channelId, e.getMessage());
         }
+    }
+
+    public ChannelSelfTestResult runSelfTest(String channelId, String text) {
+        ChannelDetail channel = channelConfigService.getChannel(channelId);
+        if (channel == null) {
+            throw new IllegalArgumentException("Channel '" + channelId + "' not found");
+        }
+        if (text == null || text.isBlank()) {
+            throw new IllegalArgumentException("Self-test text is required");
+        }
+
+        var loginState = whatsAppWebLoginService.getLoginState(channelId);
+        if (!"connected".equals(loginState.status())) {
+            throw new IllegalStateException("WhatsApp channel is not connected. Reconnect before running self-test.");
+        }
+
+        String selfPhone = loginState.selfPhone();
+        if (selfPhone == null || selfPhone.isBlank()) {
+            throw new IllegalStateException("WhatsApp self phone is unavailable. Connect the channel first.");
+        }
+
+        ChannelReplyResult reply = sessionBridgeService.sendConversationText(
+                        channel.id(),
+                        "default",
+                        selfPhone,
+                        selfPhone,
+                        null,
+                        "direct",
+                        text.trim()
+                )
+                .block(Duration.ofMinutes(5));
+
+        if (reply == null) {
+            throw new IllegalStateException("Self-test did not produce a reply");
+        }
+        if (reply.replyText() != null && !reply.replyText().isBlank()) {
+            writeOutboxCommand(channel, selfPhone, reply.replyText());
+        }
+        channelConfigService.recordEvent(channel.id(), "info", "whatsapp.self_test",
+                "Queued self-chat test reply for " + selfPhone);
+        return new ChannelSelfTestResult(
+                channel.id(),
+                selfPhone,
+                reply.agentId(),
+                reply.sessionId(),
+                reply.replyText()
+        );
     }
 
     @SuppressWarnings("unchecked")

@@ -3,10 +3,13 @@ package com.huawei.opsfactory.gateway.controller;
 import com.huawei.opsfactory.gateway.filter.UserContextFilter;
 import com.huawei.opsfactory.gateway.service.channel.ChannelAdapterRegistry;
 import com.huawei.opsfactory.gateway.service.channel.ChannelConfigService;
+import com.huawei.opsfactory.gateway.service.channel.WhatsAppMessagePumpService;
 import com.huawei.opsfactory.gateway.service.channel.WhatsAppWebLoginService;
 import com.huawei.opsfactory.gateway.service.channel.model.ChannelDetail;
 import com.huawei.opsfactory.gateway.service.channel.model.ChannelConnectivityResult;
 import com.huawei.opsfactory.gateway.service.channel.model.ChannelLoginState;
+import com.huawei.opsfactory.gateway.service.channel.model.ChannelSelfTestRequest;
+import com.huawei.opsfactory.gateway.service.channel.model.ChannelSelfTestResult;
 import com.huawei.opsfactory.gateway.service.channel.model.ChannelUpsertRequest;
 import com.huawei.opsfactory.gateway.service.channel.model.ChannelVerificationResult;
 import org.slf4j.Logger;
@@ -37,13 +40,16 @@ public class ChannelAdminController {
     private final ChannelConfigService channelConfigService;
     private final ChannelAdapterRegistry channelAdapterRegistry;
     private final WhatsAppWebLoginService whatsAppWebLoginService;
+    private final WhatsAppMessagePumpService whatsAppMessagePumpService;
 
     public ChannelAdminController(ChannelConfigService channelConfigService,
                                   ChannelAdapterRegistry channelAdapterRegistry,
-                                  WhatsAppWebLoginService whatsAppWebLoginService) {
+                                  WhatsAppWebLoginService whatsAppWebLoginService,
+                                  WhatsAppMessagePumpService whatsAppMessagePumpService) {
         this.channelConfigService = channelConfigService;
         this.channelAdapterRegistry = channelAdapterRegistry;
         this.whatsAppWebLoginService = whatsAppWebLoginService;
+        this.whatsAppMessagePumpService = whatsAppMessagePumpService;
     }
 
     @GetMapping
@@ -271,6 +277,27 @@ public class ChannelAdminController {
                         null
                 );
                 return ResponseEntity.ok(Map.<String, Object>of("success", true, "state", fallbackState));
+            }
+        }).subscribeOn(Schedulers.boundedElastic());
+    }
+
+    @PostMapping("/{channelId}/self-test")
+    public Mono<ResponseEntity<Map<String, Object>>> runSelfTest(@PathVariable String channelId,
+                                                                 @RequestBody ChannelSelfTestRequest request,
+                                                                 ServerWebExchange exchange) {
+        UserContextFilter.requireAdmin(exchange);
+        return Mono.fromCallable(() -> {
+            try {
+                ChannelSelfTestResult result = whatsAppMessagePumpService.runSelfTest(channelId, request.text());
+                return ResponseEntity.ok(Map.<String, Object>of("success", true, "result", result));
+            } catch (IllegalArgumentException e) {
+                return ResponseEntity.badRequest().body(errorBody(e.getMessage()));
+            } catch (IllegalStateException e) {
+                return ResponseEntity.badRequest().body(errorBody(e.getMessage()));
+            } catch (Exception e) {
+                log.error("Failed to run self-test for channel {}", channelId, e);
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                        .body(errorBody("Failed to run WhatsApp self-test"));
             }
         }).subscribeOn(Schedulers.boundedElastic());
     }
