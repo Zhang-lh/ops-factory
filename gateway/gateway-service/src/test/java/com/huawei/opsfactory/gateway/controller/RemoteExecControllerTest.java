@@ -33,6 +33,9 @@ public class RemoteExecControllerTest {
     private RemoteExecutionService remoteExecutionService;
 
     @MockBean
+    private com.huawei.opsfactory.gateway.service.CommandWhitelistService commandWhitelistService;
+
+    @MockBean
     private com.huawei.opsfactory.gateway.process.PrewarmService prewarmService;
 
     @MockBean

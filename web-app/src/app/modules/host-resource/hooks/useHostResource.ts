@@ -11,11 +11,12 @@ export function useHostResource() {
     const [allHosts, setAllHosts] = useState<Host[]>([])
     const [loading, setLoading] = useState(false)
 
-    const fetchHosts = useCallback(async (clusterId?: string, groupId?: string) => {
+    const fetchHosts = useCallback(async (clusterId?: string, groupId?: string, businessServiceId?: string) => {
         setLoading(true)
         try {
             const params = new URLSearchParams()
-            if (clusterId) params.set('clusterId', clusterId)
+            if (businessServiceId) params.set('businessServiceId', businessServiceId)
+            else if (clusterId) params.set('clusterId', clusterId)
             else if (groupId) params.set('groupId', groupId)
             const qs = params.toString()
             const res = await fetch(`${apiBase()}${qs ? '?' + qs : ''}`, { headers: gatewayHeaders(userId) })

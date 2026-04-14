@@ -84,8 +84,14 @@ public class HostGroupService {
     /**
      * Build tree structure: top-level groups → sub-groups → clusters (leaf nodes).
      * Clusters are attached based on their groupId matching a group's id.
+     * Business services are attached to their groupId node.
      */
     public Map<String, Object> getTree(List<Map<String, Object>> groups, List<Map<String, Object>> clusters) {
+        return getTree(groups, clusters, List.of());
+    }
+
+    public Map<String, Object> getTree(List<Map<String, Object>> groups, List<Map<String, Object>> clusters,
+                                        List<Map<String, Object>> businessServices) {
         Map<String, String> groupNameMap = new LinkedHashMap<>();
         for (Map<String, Object> g : groups) {
             groupNameMap.put((String) g.get("id"), (String) g.get("name"));
@@ -97,6 +103,7 @@ public class HostGroupService {
             Map<String, Object> node = new LinkedHashMap<>(group);
             node.put("children", new ArrayList<Map<String, Object>>());
             node.put("clusters", new ArrayList<Map<String, Object>>());
+            node.put("businessServices", new ArrayList<Map<String, Object>>());
             groupNodeMap.put((String) group.get("id"), node);
         }
 
@@ -107,6 +114,16 @@ public class HostGroupService {
                 @SuppressWarnings("unchecked")
                 List<Map<String, Object>> clusterList = (List<Map<String, Object>>) groupNodeMap.get(groupId).get("clusters");
                 clusterList.add(cluster);
+            }
+        }
+
+        // Attach business services to their groups
+        for (Map<String, Object> bs : businessServices) {
+            String groupId = (String) bs.get("groupId");
+            if (groupId != null && groupNodeMap.containsKey(groupId)) {
+                @SuppressWarnings("unchecked")
+                List<Map<String, Object>> bsList = (List<Map<String, Object>>) groupNodeMap.get(groupId).get("businessServices");
+                bsList.add(bs);
             }
         }
 
@@ -205,6 +222,45 @@ public class HostGroupService {
             return false;
         } catch (IOException e) {
             log.error("Failed to delete group file: {}", file, e);
+            return false;
+        }
+    }
+
+    /**
+     * Force-delete a group with cascade: deletes business services, recursively force-deletes
+     * sub-groups, force-deletes clusters (which cascade-delete hosts), then deletes the group.
+     */
+    public boolean forceDeleteGroup(String id, ClusterService clusterService,
+                                     HostService hostService, BusinessServiceService businessServiceService) {
+        // 1. Delete business services under this group
+        for (Map<String, Object> bs : businessServiceService.listBusinessServices(id, null)) {
+            businessServiceService.deleteBusinessService((String) bs.get("id"));
+            log.info("Force-deleted business service {} in group {}", bs.get("id"), id);
+        }
+
+        // 2. Recursively force-delete sub-groups
+        for (Map<String, Object> g : listGroups()) {
+            if (id.equals(g.get("parentId"))) {
+                forceDeleteGroup((String) g.get("id"), clusterService, hostService, businessServiceService);
+            }
+        }
+
+        // 3. Force-delete all clusters in this group
+        for (Map<String, Object> c : clusterService.listClusters(id, null)) {
+            clusterService.forceDeleteCluster((String) c.get("id"), hostService);
+        }
+
+        // 4. Delete the group file itself
+        Path file = groupsDir.resolve(id + ".json");
+        try {
+            if (Files.exists(file)) {
+                Files.delete(file);
+                log.info("Force-deleted host group: id={}", id);
+                return true;
+            }
+            return false;
+        } catch (IOException e) {
+            log.error("Failed to force-delete group file: {}", file, e);
             return false;
         }
     }

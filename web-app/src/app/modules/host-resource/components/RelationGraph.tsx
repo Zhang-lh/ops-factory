@@ -3,6 +3,9 @@ import ReactECharts from 'echarts-for-react'
 import type { EChartsOption } from 'echarts'
 import type { GraphData, GraphNode } from '../../../../types/host'
 
+const BS_NODE_COLOR = '#6366f1'    // indigo
+const BS_EDGE_COLOR = '#a5b4fc'    // light indigo
+
 const CLUSTER_TYPE_COLORS: Record<string, string> = {
     NSLB: '#5470c6',
     RCPA: '#91cc75',
@@ -192,15 +195,17 @@ export default function RelationGraph({ data, focusedHostId, hopFocusId, onNodeC
             const pos = positions.get(n.id) ?? { x: dims.w / 2, y: dims.h / 2 }
             const isDownstream = focusedHostId ? downstreamNodes.has(n.id) : n.id === highlightId
             const isSource = n.id === focusedHostId
+            const isBs = n.nodeType === 'business-service'
             return {
             id: n.id,
             name: n.name,
             x: pos.x,
             y: pos.y,
-            symbolSize: isSource ? 46 : isDownstream ? 38 : 32,
+            symbol: isBs ? 'diamond' as const : 'circle' as const,
+            symbolSize: isBs ? (isSource ? 50 : 40) : (isSource ? 46 : isDownstream ? 38 : 32),
             fixed: false,
             itemStyle: {
-                color: CLUSTER_TYPE_COLORS[(n.clusterType ?? '').toUpperCase()] || DEFAULT_COLOR,
+                color: isBs ? BS_NODE_COLOR : CLUSTER_TYPE_COLORS[(n.clusterType ?? '').toUpperCase()] || DEFAULT_COLOR,
                 borderColor: isDownstream ? '#1e293b' : undefined,
                 borderWidth: isDownstream ? 2 : 0,
                 opacity: focusedHostId && !isDownstream ? 0.4 : 1,
@@ -208,11 +213,16 @@ export default function RelationGraph({ data, focusedHostId, hopFocusId, onNodeC
             label: {
                 show: true,
                 fontSize: isSource ? 12 : isDownstream ? 11 : 10,
+                fontWeight: isBs ? 'bold' as const : 'normal' as const,
                 position: 'bottom' as const,
             },
             tooltip: {
                 formatter: () => {
-                    const parts = [`<b>${n.name}</b>`, `IP: ${n.ip}`]
+                    if (isBs) {
+                        return `<b>${n.name}</b><br/>Business Service`
+                    }
+                    const parts = [`<b>${n.name}</b>`]
+                    if (n.ip) parts.push(`IP: ${n.ip}`)
                     if (n.clusterType) parts.push(`Type: ${n.clusterType}`)
                     if (n.clusterName) parts.push(`Cluster: ${n.clusterName}`)
                     if (n.purpose) parts.push(`Purpose: ${n.purpose}`)
@@ -223,6 +233,7 @@ export default function RelationGraph({ data, focusedHostId, hopFocusId, onNodeC
 
         const edges = displayData.edges.map((e, i) => {
             const isDownstream = downstreamEdges.has(i)
+            const isBsEdge = e.type === 'business-entry'
             return {
                 source: e.source,
                 target: e.target,
@@ -230,9 +241,12 @@ export default function RelationGraph({ data, focusedHostId, hopFocusId, onNodeC
                     curveness: 0.15,
                     ...(focusedHostId ? {
                         width: isDownstream ? 3 : 1,
-                        color: isDownstream ? '#5470c6' : '#d0d5dd',
+                        color: isDownstream ? (isBsEdge ? BS_NODE_COLOR : '#5470c6') : '#d0d5dd',
                         opacity: isDownstream ? 1 : 0.4,
                         type: isDownstream ? 'dashed' as const : 'solid' as const,
+                    } : isBsEdge ? {
+                        type: 'dashed' as const,
+                        color: BS_EDGE_COLOR,
                     } : {}),
                 },
                 label: { show: !focusedHostId || isDownstream, formatter: e.description || '', fontSize: 10 },

@@ -1,5 +1,6 @@
 package com.huawei.opsfactory.gateway.controller;
 
+import com.huawei.opsfactory.gateway.service.BusinessServiceService;
 import com.huawei.opsfactory.gateway.service.ClusterService;
 import com.huawei.opsfactory.gateway.service.HostDiscoveryService;
 import com.huawei.opsfactory.gateway.service.HostService;
@@ -28,11 +29,14 @@ public class HostController {
     private final HostService hostService;
     private final ClusterService clusterService;
     private final HostDiscoveryService hostDiscoveryService;
+    private final BusinessServiceService businessServiceService;
 
-    public HostController(HostService hostService, ClusterService clusterService, HostDiscoveryService hostDiscoveryService) {
+    public HostController(HostService hostService, ClusterService clusterService,
+                          HostDiscoveryService hostDiscoveryService, BusinessServiceService businessServiceService) {
         this.hostService = hostService;
         this.clusterService = clusterService;
         this.hostDiscoveryService = hostDiscoveryService;
+        this.businessServiceService = businessServiceService;
     }
 
     @GetMapping
@@ -40,12 +44,15 @@ public class HostController {
             @RequestParam(value = "tags", required = false) String tags,
             @RequestParam(value = "clusterId", required = false) String clusterId,
             @RequestParam(value = "groupId", required = false) String groupId,
+            @RequestParam(value = "businessServiceId", required = false) String businessServiceId,
             ServerWebExchange exchange) {
         UserContextFilter.requireAdmin(exchange);
 
         return Mono.fromCallable(() -> {
             List<Map<String, Object>> hosts;
-            if (clusterId != null && !clusterId.isEmpty()) {
+            if (businessServiceId != null && !businessServiceId.isEmpty()) {
+                hosts = businessServiceService.getHostsForBusinessService(businessServiceId);
+            } else if (clusterId != null && !clusterId.isEmpty()) {
                 hosts = hostService.listHostsByCluster(clusterId);
             } else if (groupId != null && !groupId.isEmpty()) {
                 hosts = hostService.listHostsByGroup(groupId, clusterService);

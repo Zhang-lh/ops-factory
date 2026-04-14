@@ -53,8 +53,9 @@ export function useHostGroups() {
         throw new Error(data.error || 'Failed to update group')
     }, [userId, fetchGroups])
 
-    const deleteGroup = useCallback(async (id: string) => {
-        const res = await fetch(`${apiBase()}/${id}`, {
+    const deleteGroup = useCallback(async (id: string, force?: boolean) => {
+        const params = force ? '?force=true' : ''
+        const res = await fetch(`${apiBase()}/${id}${params}`, {
             method: 'DELETE',
             headers: gatewayHeaders(userId),
         })
@@ -63,7 +64,9 @@ export function useHostGroups() {
             await fetchGroups()
             return true
         }
-        throw new Error(data.error || 'Failed to delete group')
+        const err = new Error(data.error || 'Failed to delete group')
+        ;(err as any).status = res.status
+        throw err
     }, [userId, fetchGroups])
 
     const fetchTree = useCallback(async () => {

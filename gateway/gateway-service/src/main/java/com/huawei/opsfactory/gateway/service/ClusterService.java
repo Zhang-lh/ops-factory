@@ -188,6 +188,35 @@ public class ClusterService {
         }
     }
 
+    /**
+     * Force-delete a cluster: deletes all hosts in the cluster first, then the cluster itself.
+     * Host deletion cascades to their relations automatically.
+     * @param hostService used to delete hosts in this cluster
+     * @return true if deleted
+     */
+    public boolean forceDeleteCluster(String id, HostService hostService) {
+        // Delete all hosts (which cascade-deletes their relations)
+        List<Map<String, Object>> hosts = hostService.listHostsByCluster(id);
+        for (Map<String, Object> host : hosts) {
+            hostService.deleteHost((String) host.get("id"));
+            log.info("Force-deleted host {} in cluster {}", host.get("id"), id);
+        }
+
+        // Delete the cluster file itself
+        Path file = clustersDir.resolve(id + ".json");
+        try {
+            if (Files.exists(file)) {
+                Files.delete(file);
+                log.info("Force-deleted cluster: id={}, removed {} hosts", id, hosts.size());
+                return true;
+            }
+            return false;
+        } catch (IOException e) {
+            log.error("Failed to force-delete cluster file: {}", file, e);
+            return false;
+        }
+    }
+
     // ── File I/O Helpers ─────────────────────────────────────────────
 
     private Map<String, Object> readFile(Path file) {

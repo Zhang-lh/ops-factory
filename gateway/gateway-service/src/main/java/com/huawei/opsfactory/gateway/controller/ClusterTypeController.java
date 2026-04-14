@@ -1,9 +1,6 @@
 package com.huawei.opsfactory.gateway.controller;
 
-import com.huawei.opsfactory.gateway.service.BusinessServiceService;
-import com.huawei.opsfactory.gateway.service.ClusterService;
-import com.huawei.opsfactory.gateway.service.HostGroupService;
-import com.huawei.opsfactory.gateway.service.HostService;
+import com.huawei.opsfactory.gateway.service.ClusterTypeService;
 import com.huawei.opsfactory.gateway.filter.UserContextFilter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,57 +16,39 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/gateway/host-groups")
-public class HostGroupController {
+@RequestMapping("/gateway/cluster-types")
+public class ClusterTypeController {
 
-    private static final Logger log = LoggerFactory.getLogger(HostGroupController.class);
+    private static final Logger log = LoggerFactory.getLogger(ClusterTypeController.class);
 
-    private final HostGroupService hostGroupService;
-    private final ClusterService clusterService;
-    private final BusinessServiceService businessServiceService;
-    private final HostService hostService;
+    private final ClusterTypeService clusterTypeService;
 
-    public HostGroupController(HostGroupService hostGroupService, ClusterService clusterService,
-                               BusinessServiceService businessServiceService, HostService hostService) {
-        this.hostGroupService = hostGroupService;
-        this.clusterService = clusterService;
-        this.businessServiceService = businessServiceService;
-        this.hostService = hostService;
+    public ClusterTypeController(ClusterTypeService clusterTypeService) {
+        this.clusterTypeService = clusterTypeService;
     }
 
     @GetMapping
-    public Mono<Map<String, Object>> listGroups(ServerWebExchange exchange) {
+    public Mono<Map<String, Object>> listClusterTypes(ServerWebExchange exchange) {
         UserContextFilter.requireAdmin(exchange);
         return Mono.fromCallable(() -> {
-            List<Map<String, Object>> groups = hostGroupService.listGroups();
+            List<Map<String, Object>> types = clusterTypeService.listClusterTypes();
             Map<String, Object> result = new LinkedHashMap<>();
-            result.put("groups", groups);
+            result.put("clusterTypes", types);
             return result;
         }).subscribeOn(Schedulers.boundedElastic());
     }
 
-    @GetMapping("/tree")
-    public Mono<Map<String, Object>> getTree(ServerWebExchange exchange) {
-        UserContextFilter.requireAdmin(exchange);
-        return Mono.fromCallable(() -> {
-            List<Map<String, Object>> groups = hostGroupService.listGroups();
-            List<Map<String, Object>> clusters = clusterService.listClusters(null, null);
-            List<Map<String, Object>> businessServices = businessServiceService.listBusinessServices(null, null);
-            return hostGroupService.getTree(groups, clusters, businessServices);
-        }).subscribeOn(Schedulers.boundedElastic());
-    }
-
     @GetMapping("/{id}")
-    public Mono<ResponseEntity<Map<String, Object>>> getGroup(
+    public Mono<ResponseEntity<Map<String, Object>>> getClusterType(
             @PathVariable("id") String id,
             ServerWebExchange exchange) {
         UserContextFilter.requireAdmin(exchange);
         return Mono.fromCallable(() -> {
             try {
-                Map<String, Object> group = hostGroupService.getGroup(id);
+                Map<String, Object> ct = clusterTypeService.getClusterType(id);
                 Map<String, Object> body = new LinkedHashMap<>();
                 body.put("success", true);
-                body.put("group", group);
+                body.put("clusterType", ct);
                 return ResponseEntity.ok(body);
             } catch (IllegalArgumentException e) {
                 Map<String, Object> body = new LinkedHashMap<>();
@@ -81,19 +60,19 @@ public class HostGroupController {
     }
 
     @PostMapping
-    public Mono<ResponseEntity<Map<String, Object>>> createGroup(
+    public Mono<ResponseEntity<Map<String, Object>>> createClusterType(
             @RequestBody Map<String, Object> request,
             ServerWebExchange exchange) {
         UserContextFilter.requireAdmin(exchange);
         return Mono.fromCallable(() -> {
             try {
-                Map<String, Object> group = hostGroupService.createGroup(request);
+                Map<String, Object> ct = clusterTypeService.createClusterType(request);
                 Map<String, Object> body = new LinkedHashMap<>();
                 body.put("success", true);
-                body.put("group", group);
+                body.put("clusterType", ct);
                 return ResponseEntity.status(HttpStatus.CREATED).body(body);
             } catch (Exception e) {
-                log.error("Failed to create host group", e);
+                log.error("Failed to create cluster type", e);
                 Map<String, Object> body = new LinkedHashMap<>();
                 body.put("success", false);
                 body.put("error", e.getMessage());
@@ -103,17 +82,17 @@ public class HostGroupController {
     }
 
     @PutMapping("/{id}")
-    public Mono<ResponseEntity<Map<String, Object>>> updateGroup(
+    public Mono<ResponseEntity<Map<String, Object>>> updateClusterType(
             @PathVariable("id") String id,
             @RequestBody Map<String, Object> request,
             ServerWebExchange exchange) {
         UserContextFilter.requireAdmin(exchange);
         return Mono.fromCallable(() -> {
             try {
-                Map<String, Object> group = hostGroupService.updateGroup(id, request);
+                Map<String, Object> ct = clusterTypeService.updateClusterType(id, request);
                 Map<String, Object> body = new LinkedHashMap<>();
                 body.put("success", true);
-                body.put("group", group);
+                body.put("clusterType", ct);
                 return ResponseEntity.ok(body);
             } catch (IllegalArgumentException e) {
                 Map<String, Object> body = new LinkedHashMap<>();
@@ -121,7 +100,7 @@ public class HostGroupController {
                 body.put("error", e.getMessage());
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
             } catch (Exception e) {
-                log.error("Failed to update host group {}", id, e);
+                log.error("Failed to update cluster type {}", id, e);
                 Map<String, Object> body = new LinkedHashMap<>();
                 body.put("success", false);
                 body.put("error", e.getMessage());
@@ -131,34 +110,21 @@ public class HostGroupController {
     }
 
     @DeleteMapping("/{id}")
-    public Mono<ResponseEntity<Map<String, Object>>> deleteGroup(
+    public Mono<ResponseEntity<Map<String, Object>>> deleteClusterType(
             @PathVariable("id") String id,
-            @RequestParam(value = "force", required = false, defaultValue = "false") boolean force,
             ServerWebExchange exchange) {
         UserContextFilter.requireAdmin(exchange);
         return Mono.fromCallable(() -> {
-            try {
-                boolean deleted;
-                if (force) {
-                    deleted = hostGroupService.forceDeleteGroup(id, clusterService, hostService, businessServiceService);
-                } else {
-                    deleted = hostGroupService.deleteGroup(id, clusterService);
-                }
-                if (!deleted) {
-                    Map<String, Object> body = new LinkedHashMap<>();
-                    body.put("success", false);
-                    body.put("error", "Host group not found: " + id);
-                    return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
-                }
-                Map<String, Object> body = new LinkedHashMap<>();
-                body.put("success", true);
-                return ResponseEntity.ok(body);
-            } catch (IllegalStateException e) {
+            boolean deleted = clusterTypeService.deleteClusterType(id);
+            if (!deleted) {
                 Map<String, Object> body = new LinkedHashMap<>();
                 body.put("success", false);
-                body.put("error", e.getMessage());
-                return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
+                body.put("error", "Cluster type not found: " + id);
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
             }
+            Map<String, Object> body = new LinkedHashMap<>();
+            body.put("success", true);
+            return ResponseEntity.ok(body);
         }).subscribeOn(Schedulers.boundedElastic());
     }
 }

@@ -11,6 +11,6 @@
   "hostTags" : [ ],
   "level" : "sub",
   "category" : "NSLB",
-  "tags" : [ ],
+  "tags" : [ "HAPROXY" ],
   "requiredTools" : [ ]
 }

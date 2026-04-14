@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { HostGroup, Cluster } from '../../../../types/host'
+import type { HostGroup, Cluster, BusinessService } from '../../../../types/host'
 
-export type TreeNodeType = 'group' | 'subgroup' | 'cluster'
+export type TreeNodeType = 'group' | 'subgroup' | 'business-service' | 'cluster'
 
 export type TreeNode = {
     id: string
@@ -10,7 +10,7 @@ export type TreeNode = {
     name: string
     subtitle?: string
     children?: TreeNode[]
-    raw?: HostGroup | Cluster
+    raw?: HostGroup | Cluster | BusinessService
 }
 
 type Props = {
@@ -75,6 +75,8 @@ function TreeNodeItem({ node, depth, selectedId, selectedType, onSelect, onEdit,
 
     const iconClass = node.type === 'group' || node.type === 'subgroup'
         ? 'hr-tree-icon-folder'
+        : node.type === 'business-service'
+        ? 'hr-tree-icon-business-service'
         : 'hr-tree-icon-cluster'
 
     return (

@@ -277,17 +277,7 @@ public class HostRelationService {
         // Build nodes
         List<Map<String, Object>> nodes = new ArrayList<>();
         for (Map<String, Object> h : hostMap.values()) {
-            Map<String, Object> node = new LinkedHashMap<>();
-            node.put("id", h.get("id"));
-            node.put("name", h.get("name"));
-            node.put("ip", h.get("ip"));
-            String hostClusterId = h.get("clusterId") != null ? h.get("clusterId").toString() : null;
-            Map<String, Object> cluster = hostClusterId != null ? clusterMap.get(hostClusterId) : null;
-            node.put("clusterType", cluster != null ? cluster.get("type") : null);
-            node.put("clusterName", cluster != null ? cluster.get("name") : null);
-            node.put("purpose", h.get("purpose"));
-            node.put("groupId", cluster != null ? cluster.get("groupId") : null);
-            nodes.add(node);
+            nodes.add(buildHostNode(h, clusterMap));
         }
 
         // Build edges
@@ -304,6 +294,90 @@ public class HostRelationService {
         result.put("nodes", nodes);
         result.put("edges", edges);
         return result;
+    }
+
+    /**
+     * Get 1-hop neighbors (upstream + downstream) for a given host.
+     */
+    public Map<String, Object> getNeighbors(String hostId) {
+        // 1. Validate host exists
+        Map<String, Object> host = hostService.getHost(hostId);
+
+        // 2. Query all relations involving this host
+        List<Map<String, Object>> relations = listRelations(hostId, null, null);
+
+        // 3. Build cluster lookup table
+        Map<String, Map<String, Object>> clusterMap = new LinkedHashMap<>();
+        for (Map<String, Object> c : clusterService.listClusters(null, null)) {
+            clusterMap.put((String) c.get("id"), c);
+        }
+
+        // 4. Build current host node
+        Map<String, Object> hostNode = buildHostNode(host, clusterMap);
+
+        // 5. Iterate relations, collect upstream and downstream neighbors
+        List<Map<String, Object>> upstream = new ArrayList<>();
+        List<Map<String, Object>> downstream = new ArrayList<>();
+
+        for (Map<String, Object> rel : relations) {
+            String sourceId = (String) rel.get("sourceHostId");
+            String targetId = (String) rel.get("targetHostId");
+            String direction;
+            String neighborId;
+
+            if (hostId.equals(sourceId)) {
+                // Current host is source → neighbor is downstream
+                direction = "outgoing";
+                neighborId = targetId;
+            } else {
+                // Current host is target → neighbor is upstream
+                direction = "incoming";
+                neighborId = sourceId;
+            }
+
+            try {
+                Map<String, Object> neighborHost = hostService.getHost(neighborId);
+                Map<String, Object> neighborNode = buildHostNode(neighborHost, clusterMap);
+
+                Map<String, Object> entry = new LinkedHashMap<>();
+                entry.put("host", neighborNode);
+                entry.put("direction", direction);
+                entry.put("relationId", rel.get("id"));
+                entry.put("relationDescription", rel.get("description"));
+
+                if ("incoming".equals(direction)) {
+                    upstream.add(entry);
+                } else {
+                    downstream.add(entry);
+                }
+            } catch (Exception ignored) {
+                // Neighbor host may have been deleted
+            }
+        }
+
+        // 6. Assemble result
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("host", hostNode);
+        result.put("upstream", upstream);
+        result.put("downstream", downstream);
+        result.put("totalNeighbors", upstream.size() + downstream.size());
+        return result;
+    }
+
+    private Map<String, Object> buildHostNode(Map<String, Object> h,
+            Map<String, Map<String, Object>> clusterMap) {
+        Map<String, Object> node = new LinkedHashMap<>();
+        node.put("id", h.get("id"));
+        node.put("name", h.get("name"));
+        node.put("ip", h.get("ip"));
+        String hostClusterId = h.get("clusterId") != null ? h.get("clusterId").toString() : null;
+        Map<String, Object> cluster = hostClusterId != null ? clusterMap.get(hostClusterId) : null;
+        node.put("clusterType", cluster != null ? cluster.get("type") : null);
+        node.put("clusterName", cluster != null ? cluster.get("name") : null);
+        node.put("purpose", h.get("purpose"));
+        node.put("groupId", cluster != null ? cluster.get("groupId") : null);
+        node.put("tags", h.get("tags"));
+        return node;
     }
 
     // ── File I/O Helpers ─────────────────────────────────────────────

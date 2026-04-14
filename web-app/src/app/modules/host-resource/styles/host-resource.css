@@ -158,6 +158,10 @@
     background: var(--color-success, #10b981);
 }
 
+.hr-tree-icon-business-service {
+    background: #6366f1;
+}
+
 .hr-tree-label {
     white-space: nowrap;
     overflow: hidden;
@@ -591,4 +595,162 @@
     to {
         stroke-dashoffset: -16;
     }
+}
+
+/* ── Tabs ────────────────────────────────────────────────── */
+
+.hr-tabs {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border-color, #e2e8f0);
+    padding: 0 var(--spacing-4, 16px);
+    flex-shrink: 0;
+    background: var(--surface-background, #fff);
+}
+
+.hr-tabs-left {
+    display: flex;
+    gap: 0;
+}
+
+.hr-tabs-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2, 8px);
+}
+
+.hr-tab {
+    padding: 10px 20px;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--text-secondary, #64748b);
+    cursor: pointer;
+    border: none;
+    background: transparent;
+    border-bottom: 2px solid transparent;
+    transition: color 0.15s, border-color 0.15s;
+}
+
+.hr-tab:hover {
+    color: var(--text-primary, #1e293b);
+}
+
+.hr-tab-active {
+    color: var(--color-primary, #3b82f6);
+    border-bottom-color: var(--color-primary, #3b82f6);
+}
+
+/* ── Type Definition Cards ──────────────────────────────── */
+
+.hr-type-def-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--spacing-4, 16px);
+    padding: var(--spacing-4, 16px);
+}
+
+.hr-type-def-card {
+    background: var(--surface-background, #fff);
+    border: 1px solid var(--border-color, #e2e8f0);
+    border-radius: 8px;
+    padding: var(--spacing-4, 16px);
+    display: flex;
+    flex-direction: column;
+    transition: box-shadow 0.15s, border-color 0.15s;
+}
+
+.hr-type-def-card:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    border-color: var(--color-primary-soft, #93c5fd);
+}
+
+.hr-type-def-card-header {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2, 8px);
+    margin-bottom: var(--spacing-2, 8px);
+}
+
+.hr-type-def-card-color {
+    width: 12px;
+    height: 12px;
+    border-radius: 3px;
+    flex-shrink: 0;
+}
+
+.hr-type-def-card-name {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: var(--text-primary, #1e293b);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.hr-type-def-card-desc {
+    font-size: 0.8125rem;
+    color: var(--text-secondary, #64748b);
+    line-height: 1.4;
+    margin-bottom: var(--spacing-2, 8px);
+}
+
+.hr-type-def-card-knowledge-label {
+    font-size: 0.6875rem;
+    color: var(--text-secondary, #94a3b8);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-top: 1px solid var(--border-color, #e2e8f0);
+    padding-top: var(--spacing-2, 8px);
+    margin-bottom: var(--spacing-1, 4px);
+}
+
+.hr-type-def-card-knowledge {
+    font-size: 0.75rem;
+    color: var(--text-secondary, #64748b);
+    line-height: 1.4;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    flex: 1;
+}
+
+.hr-type-def-card-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--spacing-1, 4px);
+    margin-top: var(--spacing-3, 12px);
+    padding-top: var(--spacing-2, 8px);
+    border-top: 1px solid var(--border-color, #e2e8f0);
+}
+
+/* ── Type Tab Content ─────────────────────────────────── */
+
+.hr-type-tab-content {
+    flex: 1;
+    overflow-y: auto;
+    min-height: 0;
+}
+
+.hr-type-tab-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--spacing-4, 16px);
+    border-bottom: 1px solid var(--border-color, #e2e8f0);
+}
+
+.hr-type-tab-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: var(--spacing-8, 32px) var(--spacing-4, 16px);
+    color: var(--text-secondary, #64748b);
+    gap: var(--spacing-3, 12px);
+}
+
+.hr-type-tab-empty-text {
+    font-size: 0.875rem;
 }

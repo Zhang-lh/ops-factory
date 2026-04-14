@@ -81,8 +81,9 @@ export function useClusters(groupId?: string, type?: string) {
         throw new Error(data.error || 'Failed to update cluster')
     }, [userId, fetchAllClusters])
 
-    const deleteCluster = useCallback(async (id: string) => {
-        const res = await fetch(`${apiBase()}/${id}`, {
+    const deleteCluster = useCallback(async (id: string, force?: boolean) => {
+        const params = force ? '?force=true' : ''
+        const res = await fetch(`${apiBase()}/${id}${params}`, {
             method: 'DELETE',
             headers: gatewayHeaders(userId),
         })
@@ -91,7 +92,9 @@ export function useClusters(groupId?: string, type?: string) {
             await fetchAllClusters()
             return true
         }
-        throw new Error(data.error || 'Failed to delete cluster')
+        const err = new Error(data.error || 'Failed to delete cluster')
+        ;(err as any).status = res.status
+        throw err
     }, [userId, fetchAllClusters])
 
     return {
