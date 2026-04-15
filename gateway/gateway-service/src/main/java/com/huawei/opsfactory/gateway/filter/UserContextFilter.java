@@ -21,6 +21,7 @@ import reactor.core.publisher.Mono;
 public class UserContextFilter implements WebFilter {
 
     private static final Logger log = LoggerFactory.getLogger(UserContextFilter.class);
+    private static final String CHANNEL_WEBHOOK_PREFIX = "/gateway/channels/webhooks/";
 
     public static final String USER_ID_ATTR = "userId";
     public static final String USER_ROLE_ATTR = "userRole";
@@ -40,6 +41,10 @@ public class UserContextFilter implements WebFilter {
     public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
         ServerHttpRequest request = exchange.getRequest();
         String path = request.getPath().value();
+
+        if (path.startsWith(CHANNEL_WEBHOOK_PREFIX)) {
+            return chain.filter(exchange);
+        }
 
         String userId = request.getHeaders().getFirst(GatewayConstants.HEADER_USER_ID);
         if (userId == null || userId.isBlank()) {

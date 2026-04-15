@@ -58,6 +58,7 @@ gateway/users/
 
 # Gateway runtime
 gateway/data/
+gateway/channels/
 
 # Knowledge service runtime
 knowledge-service/config.yaml

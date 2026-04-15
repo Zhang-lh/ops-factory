@@ -60,6 +60,7 @@ residentInstances:
     - {userId: robby, agentIds: ['*']}
 agents:
 - {id: universal-agent, name: Universal Agent}
+- {id: fo-copilot, name: FO Copilot}
 - {id: kb-agent, name: KB Agent}
 - {id: supervisor-agent, name: Supervisor Agent}
 - {id: qos-agent, name: QoS Agent}

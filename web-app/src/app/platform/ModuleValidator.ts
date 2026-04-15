@@ -8,6 +8,7 @@ const validIcons = new Set<IconKey>([
     'history',
     'inbox',
     'files',
+    'channels',
     'diagnosis',
     'businessIntelligence',
     'agents',
@@ -61,4 +62,3 @@ export function validateModules(modules: AppModule[]) {
         }
     }
 }
-

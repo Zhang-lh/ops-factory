@@ -18,6 +18,7 @@ import reactor.core.publisher.Mono;
 public class AuthWebFilter implements WebFilter {
 
     private static final Logger log = LoggerFactory.getLogger(AuthWebFilter.class);
+    private static final String CHANNEL_WEBHOOK_PREFIX = "/gateway/channels/webhooks/";
 
     private final GatewayProperties properties;
 
@@ -31,6 +32,10 @@ public class AuthWebFilter implements WebFilter {
 
         // OPTIONS preflight passes through
         if ("OPTIONS".equalsIgnoreCase(request.getMethodValue())) {
+            return chain.filter(exchange);
+        }
+
+        if (request.getURI().getPath().startsWith(CHANNEL_WEBHOOK_PREFIX)) {
             return chain.filter(exchange);
         }
 

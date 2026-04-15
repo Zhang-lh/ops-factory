@@ -70,6 +70,17 @@ function FilesIcon() {
     )
 }
 
+function ChannelsIcon() {
+    return (
+        <IconFrame strokeWidth={1.85}>
+            <path d="M6.35 5.6h6.95a2.25 2.25 0 0 1 2.25 2.25v4.1a2.25 2.25 0 0 1-2.25 2.25H9.8l-3 2.2v-2.2h-.45a2.25 2.25 0 0 1-2.25-2.25v-4.1A2.25 2.25 0 0 1 6.35 5.6z" />
+            <path d="M10.7 9.8h6a2.2 2.2 0 0 1 2.2 2.2v3.65a2.2 2.2 0 0 1-2.2 2.2h-.35v1.65l-2.55-1.65H12.8a2.2 2.2 0 0 1-2.2-2.2" />
+            <path d="M7.45 9.95h4.65" />
+            <path d="M13 13.85h2.85" />
+        </IconFrame>
+    )
+}
+
 function BusinessIntelligenceIcon() {
     return (
         <IconFrame strokeWidth={1.85}>
@@ -162,6 +173,7 @@ const ICONS: Record<IconKey, () => ReactNode> = {
     history: HistoryIcon,
     inbox: InboxIcon,
     files: FilesIcon,
+    channels: ChannelsIcon,
     diagnosis: WorkflowIcon,
     businessIntelligence: BusinessIntelligenceIcon,
     agents: AgentsIcon,
