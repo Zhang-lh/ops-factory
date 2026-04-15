@@ -1539,6 +1539,7 @@
     "applySelected": "Apply Selected",
     "discoveryPlanFailed": "Failed to generate discovery commands",
     "discoveryExecFailed": "Discovery execution failed",
+    "initiateCall": "Initiate Call",
     "export": "Export",
     "import": "Import",
     "importing": "Importing... ({current}/{total})",
