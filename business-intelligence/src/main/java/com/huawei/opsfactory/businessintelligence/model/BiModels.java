@@ -27,7 +27,21 @@ public final class BiModels {
         String id,
         String title,
         String type,
-        List<ChartDatum> items
+        List<ChartDatum> items,
+        ChartConfig config
+    ) {
+        // Backward compatible constructor
+        public ChartSection(String id, String title, String type, List<ChartDatum> items) {
+            this(id, title, type, items, null);
+        }
+    }
+
+    public record ChartConfig(
+        List<String> series,       // Series names for multi-series charts
+        Map<String, List<ChartDatum>> seriesData,  // Data for each series
+        List<String> colors,       // Custom colors
+        String xAxisLabel,
+        String yAxisLabel
     ) {
     }
 

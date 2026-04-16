@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -26,18 +27,27 @@ public class BusinessIntelligenceController {
     }
 
     @GetMapping("/overview")
-    public Snapshot getOverview() {
-        return businessIntelligenceService.getOverview();
+    public Snapshot getOverview(
+        @RequestParam(value = "startDate", required = false) String startDate,
+        @RequestParam(value = "endDate", required = false) String endDate
+    ) {
+        return businessIntelligenceService.getOverview(startDate, endDate);
     }
 
     @PostMapping("/refresh")
-    public Snapshot refresh() {
-        return businessIntelligenceService.refresh();
+    public Snapshot refresh(
+        @RequestParam(value = "startDate", required = false) String startDate,
+        @RequestParam(value = "endDate", required = false) String endDate
+    ) {
+        return businessIntelligenceService.refresh(startDate, endDate);
     }
 
     @GetMapping("/tabs/{tabId}")
-    public TabContent getTab(@PathVariable("tabId") String tabId) {
-        return businessIntelligenceService.getTab(tabId);
+    public TabContent getTab(
+        @PathVariable("tabId") String tabId,
+        @RequestParam(value = "granularity", required = false) String granularity
+    ) {
+        return businessIntelligenceService.getTab(tabId, granularity);
     }
 
     @GetMapping("/export.xlsx")

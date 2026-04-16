@@ -4,6 +4,7 @@ import com.huawei.opsfactory.businessintelligence.config.BusinessIntelligenceRun
 import com.huawei.opsfactory.businessintelligence.datasource.BiDataProvider;
 import com.huawei.opsfactory.businessintelligence.datasource.BiRawData;
 import com.huawei.opsfactory.businessintelligence.model.BiModels;
+import com.huawei.opsfactory.businessintelligence.model.BiModels.ChartConfig;
 import com.huawei.opsfactory.businessintelligence.model.BiModels.ChartDatum;
 import com.huawei.opsfactory.businessintelligence.model.BiModels.ChartSection;
 import com.huawei.opsfactory.businessintelligence.model.BiModels.MetricCard;
@@ -22,19 +23,22 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -105,7 +109,11 @@ public class BusinessIntelligenceService {
         this.runtimeProperties = runtimeProperties;
     }
 
-    public Snapshot getOverview() {
+    public Snapshot getOverview(String startDate, String endDate) {
+        // Always refresh when date range is specified
+        if (startDate != null || endDate != null) {
+            return refresh(startDate, endDate);
+        }
         Snapshot snapshot = cache.get();
         if (snapshot != null && runtimeProperties.isCacheEnabled()) {
             log.debug(
@@ -115,29 +123,42 @@ public class BusinessIntelligenceService {
             );
             return snapshot;
         }
-        return refresh();
+        return refresh(null, null);
     }
 
-    public synchronized Snapshot refresh() {
+    public Snapshot getOverview() {
+        return getOverview(null, null);
+    }
+
+    public synchronized Snapshot refresh(String startDate, String endDate) {
         long startedAt = System.currentTimeMillis();
         try {
             BiRawData rawData = dataProvider.load();
-            Snapshot snapshot = buildSnapshot(rawData);
-            cache.set(snapshot);
+            // Filter data by date range if specified
+            BiRawData filteredData = filterByDateRange(rawData, startDate, endDate);
+            Snapshot snapshot = buildSnapshot(filteredData);
+            // Only cache if no date filter is applied
+            if (startDate == null && endDate == null) {
+                cache.set(snapshot);
+            }
             log.info(
-                "Refreshed business intelligence snapshot incidents={} incidentSlaCriteria={} changes={} requests={} problems={} tabCount={} durationMs={}",
-                rawData.incidents().size(),
-                rawData.incidentSlaCriteria().size(),
-                rawData.changes().size(),
-                rawData.requests().size(),
-                rawData.problems().size(),
+                "Refreshed business intelligence snapshot incidents={} incidentSlaCriteria={} changes={} requests={} problems={} tabCount={} startDate={} endDate={} durationMs={}",
+                filteredData.incidents().size(),
+                filteredData.incidentSlaCriteria().size(),
+                filteredData.changes().size(),
+                filteredData.requests().size(),
+                filteredData.problems().size(),
                 snapshot.tabs().size(),
+                startDate,
+                endDate,
                 System.currentTimeMillis() - startedAt
             );
             return snapshot;
         } catch (RuntimeException ex) {
             log.error(
-                "Failed to refresh business intelligence snapshot durationMs={}",
+                "Failed to refresh business intelligence snapshot startDate={} endDate={} durationMs={}",
+                startDate,
+                endDate,
                 System.currentTimeMillis() - startedAt,
                 ex
             );
@@ -145,18 +166,84 @@ public class BusinessIntelligenceService {
         }
     }
 
-    public TabContent getTab(String tabId) {
-        Snapshot snapshot = getOverview();
+    public synchronized Snapshot refresh() {
+        return refresh(null, null);
+    }
+
+    private BiRawData filterByDateRange(BiRawData rawData, String startDate, String endDate) {
+        if (startDate == null && endDate == null) {
+            return rawData;
+        }
+
+        LocalDate start = startDate != null ? LocalDate.parse(startDate) : null;
+        LocalDate end = endDate != null ? LocalDate.parse(endDate) : null;
+
+        // Filter incidents
+        List<Map<String, String>> filteredIncidents = rawData.incidents().stream()
+            .filter(row -> isWithinDateRange(row.get("Begin Date"), start, end))
+            .collect(Collectors.toList());
+
+        // Filter incident SLA criteria (keep all, as they are reference data)
+        List<Map<String, String>> filteredIncidentSlaCriteria = rawData.incidentSlaCriteria();
+
+        // Filter changes
+        List<Map<String, String>> filteredChanges = rawData.changes().stream()
+            .filter(row -> isWithinDateRange(row.get("Planned Start"), start, end))
+            .collect(Collectors.toList());
+
+        // Filter requests
+        List<Map<String, String>> filteredRequests = rawData.requests().stream()
+            .filter(row -> isWithinDateRange(row.get("Requested Date"), start, end))
+            .collect(Collectors.toList());
+
+        // Filter problems
+        List<Map<String, String>> filteredProblems = rawData.problems().stream()
+            .filter(row -> isWithinDateRange(row.get("Logged Date"), start, end))
+            .collect(Collectors.toList());
+
+        return new BiRawData(filteredIncidents, filteredIncidentSlaCriteria, filteredChanges, filteredRequests, filteredProblems);
+    }
+
+    private boolean isWithinDateRange(String dateStr, LocalDate start, LocalDate end) {
+        if (dateStr == null || dateStr.isBlank()) {
+            return true;
+        }
+        LocalDateTime dateTime = parseDate(dateStr);
+        if (dateTime == null) {
+            return true;
+        }
+        LocalDate date = dateTime.toLocalDate();
+        if (start != null && date.isBefore(start)) {
+            return false;
+        }
+        if (end != null && date.isAfter(end)) {
+            return false;
+        }
+        return true;
+    }
+
+    public TabContent getTab(String tabId, String granularity) {
+        // For incident-analysis with granularity, rebuild dynamically
+        if ("incident-analysis".equals(tabId) && granularity != null) {
+            BiRawData rawData = dataProvider.load();
+            return buildIncidentAnalysis(rawData, granularity);
+        }
+        // For other tabs or default granularity, use cached snapshot
+        Snapshot snapshot = getOverview(null, null);
         TabContent content = snapshot.tabContents().get(tabId);
         if (content == null) {
             throw new IllegalArgumentException("Unknown tab: " + tabId);
         }
-        log.debug("Resolved business intelligence tab tabId={} label={}", tabId, content.label());
+        log.debug("Resolved business intelligence tab tabId={} label={} granularity={}", tabId, content.label(), granularity);
         return content;
     }
 
+    public TabContent getTab(String tabId) {
+        return getTab(tabId, null);
+    }
+
     public byte[] exportCurrentWorkbook() {
-        Snapshot snapshot = getOverview();
+        Snapshot snapshot = getOverview(null, null);
         long startedAt = System.currentTimeMillis();
         try (XSSFWorkbook workbook = new XSSFWorkbook();
              ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
@@ -248,36 +335,49 @@ public class BusinessIntelligenceService {
         return new TabContent(
             "sla-analysis",
             "SLA分析",
-            "以响应与解决双维度观察事件履约状态、风险分层与违约对象。",
+            "多维度观察事件SLA履约情况，并进行违约情况分析。",
             null,
             summary,
             List.of(
                 card("sla-overall", "综合达成率", summary.hero().overallComplianceRate(), toneFromRate(summary.hero().overallComplianceRate())),
                 card("sla-response", "响应达成率", summary.hero().responseComplianceRate(), summary.response().tone()),
                 card("sla-resolution", "解决达成率", summary.hero().resolutionComplianceRate(), summary.resolution().tone()),
-                card("sla-breached", "违约总数", summary.hero().breachedCount(), summary.hero().breachedCount() > 0 ? "warning" : "success"),
-                card("sla-high-priority", "P1/P2达成率", summary.hero().highPriorityComplianceRate(), toneFromRate(summary.hero().highPriorityComplianceRate()))
+                card("sla-high-priority", "P1/P2达成率", summary.hero().highPriorityComplianceRate(), toneFromRate(summary.hero().highPriorityComplianceRate())),
+                card("sla-response-breached", "响应违约数", summary.violationBreakdown().responseBreached(), summary.violationBreakdown().responseBreached() > 0 ? "warning" : "success"),
+                card("sla-resolution-breached", "解决违约数", summary.violationBreakdown().resolutionBreached(), summary.violationBreakdown().resolutionBreached() > 0 ? "warning" : "success")
             ),
             List.of(
-                chart("priority-resolution", "优先级解决达成率", summary.priorityRows().stream()
-                    .map(row -> new ChartDatum(row.priority(), parsePercentage(row.resolutionComplianceRate())))
-                    .toList()),
-                chart("violation-breakdown", "违约类型分布", List.of(
-                    new ChartDatum("响应违约", summary.violationBreakdown().responseBreached()),
-                    new ChartDatum("解决违约", summary.violationBreakdown().resolutionBreached()),
-                    new ChartDatum("双违约", summary.violationBreakdown().bothBreached())
-                ))
+                lineChart("sla-trend", "SLA达成率趋势", buildSlaWeeklyTrendData(incidents),
+                    List.of("响应达成率", "解决达成率", "P1/P2达成率"),
+                    List.of("#10b981", "#5b8db8", "#f59e0b")),
+                new ChartSection("priority-comparison", "优先级SLA达成率对比", "grouped-bar",
+                    summary.priorityRows().stream()
+                        .map(row -> new ChartDatum(
+                            row.priority() + "|" + String.format("%.1f", parsePercentage(row.responseComplianceRate())) + "|" + String.format("%.1f", parsePercentage(row.resolutionComplianceRate())),
+                            parsePercentage(row.responseComplianceRate())))
+                        .toList(),
+                    new ChartConfig(List.of("响应达成率", "解决达成率"), null, List.of("#10b981", "#5b8db8"), "优先级", "达成率(%)")),
+                pieChart("violation-by-priority", "违约优先级分布",
+                    incidents.stream()
+                        .filter(IncidentSlaRecord::anyBreached)
+                        .collect(Collectors.groupingBy(IncidentSlaRecord::priority, LinkedHashMap::new, Collectors.counting()))
+                        .entrySet().stream()
+                        .sorted(Map.Entry.<String, Long>comparingByValue().reversed())
+                        .map(e -> new ChartDatum(e.getKey(), e.getValue()))
+                        .toList(),
+                    List.of("#ef4444", "#f59e0b", "#eab308", "#10b981")),
+                pieChart("violation-by-category", "违约事件类型分布",
+                    incidents.stream()
+                        .filter(IncidentSlaRecord::anyBreached)
+                        .collect(Collectors.groupingBy(r -> defaultLabel(r.category(), "未标注"), LinkedHashMap::new, Collectors.counting()))
+                        .entrySet().stream()
+                        .sorted(Map.Entry.<String, Long>comparingByValue().reversed())
+                        .limit(8)
+                        .map(e -> new ChartDatum(e.getKey(), e.getValue()))
+                        .toList(),
+                    List.of("#5b8db8", "#10b981", "#f59e0b", "#ef4444", "#8b7fc7", "#c97082", "#5e9bb5", "#7ca65a"))
             ),
             List.of(
-                table("sla-priority-table", "优先级履约分层", List.of("优先级", "工单量", "响应达成率", "解决达成率", "违约数", "平均解决时长"), summary.priorityRows().stream()
-                    .map(row -> List.of(
-                        row.priority(),
-                        String.valueOf(row.totalCount()),
-                        row.responseComplianceRate(),
-                        row.resolutionComplianceRate(),
-                        String.valueOf(row.breachedCount()),
-                        row.averageResolutionDuration()
-                    )).toList()),
                 table("sla-violation-samples", "违约样本", List.of("编号", "标题", "优先级", "类别", "处理人", "响应时长", "解决时长", "违约类型"), summary.violationSamples().stream()
                     .map(sample -> List.of(
                         sample.orderNumber(),
@@ -294,56 +394,218 @@ public class BusinessIntelligenceService {
     }
 
     private TabContent buildIncidentAnalysis(BiRawData rawData) {
+        return buildIncidentAnalysis(rawData, "weekly");
+    }
+
+    private TabContent buildIncidentAnalysis(BiRawData rawData, String granularity) {
+        List<Map<String, String>> incidents = rawData.incidents();
+        long totalCount = incidents.size();
+        long p1p2Count = incidents.stream().filter(row -> matchesAny(clean(row.get("Priority")), List.of("P1", "P2"))).count();
+        long openCount = incidents.stream().filter(row -> !matchesAny(clean(row.get("Order Status")), List.of("Completed", "Resolved", "Closed"))).count();
+
+        // Use calculated SLA from IncidentSlaRecord instead of raw "SLA Compliant" field
+        List<IncidentSlaRecord> slaRecords = buildIncidentSlaRecords(rawData);
+        long slaMetCount = slaRecords.stream().filter(IncidentSlaRecord::overallMet).count();
+        long slaTotalCount = slaRecords.size();
+
+        double avgMttrHours = average(incidents, "Resolution Time(m)") / 60.0;
+        double avgP1p2MttrHours = incidents.stream()
+            .filter(row -> matchesAny(clean(row.get("Priority")), List.of("P1", "P2")))
+            .mapToDouble(row -> parseDouble(row.get("Resolution Time(m)")))
+            .filter(v -> v > 0)
+            .average().orElse(0) / 60.0;
+
+        // Build trend data based on granularity
+        List<ChartDatum> volumeTrend = buildVolumeTrend(incidents, slaRecords, granularity);
+        List<ChartDatum> mttrTrend = buildMttrTrend(incidents, granularity);
+
         return new TabContent(
             "incident-analysis",
             "事件分析",
-            "展示事件量、优先级、类别和处理人分布。",
+            "基于事件工单数据，分析事件管理的关键KPI、趋势变化以及类型分布。",
             null,
             null,
             List.of(
-                card("incident-total", "事件总数", rawData.incidents().size(), "neutral"),
-                card("incident-high-priority", "P1/P2 事件", rawData.incidents().stream().filter(row -> matchesAny(clean(row.get("Priority")), List.of("P1", "P2"))).count(), "warning"),
-                card("incident-open", "未解决事件", rawData.incidents().stream().filter(row -> !"Resolved".equalsIgnoreCase(clean(row.get("Order Status")))).count(), "warning")
+                card("incident-total", "事件总数", formatNumber(totalCount), "neutral"),
+                card("incident-p1p2", "P1/P2 事件", formatNumber(p1p2Count), p1p2Count > totalCount * 0.15 ? "warning" : "success"),
+                card("incident-open", "未解决事件", formatNumber(openCount), openCount > totalCount * 0.3 ? "warning" : "success"),
+                card("incident-sla", "SLA 达成率", percentage(slaMetCount, slaTotalCount), toneFromScore(percentageValue(slaMetCount, slaTotalCount), 0.9, 0.75)),
+                card("incident-p1p2-mttr", "P1/P2 MTTR", formatHours(avgP1p2MttrHours), toneFromInverse(avgP1p2MttrHours, 8, 24)),
+                card("incident-mttr", "平均 MTTR", formatHours(avgMttrHours), toneFromInverse(avgMttrHours, 24, 48))
             ),
             List.of(
-                chart("incident-priority-chart", "优先级分布", topCounts(rawData.incidents(), "Priority", 6)),
-                chart("incident-category-chart", "类别分布", topCounts(rawData.incidents(), "Category", 8))
+                comboChart("incident-volume-trend", "事件单量趋势", volumeTrend,
+                    List.of("事件单量", "SLA达成率(%)"), List.of("#5b8db8", "#10b981")),
+                lineChart("incident-mttr-trend", "处理时长趋势", mttrTrend,
+                    List.of("平均MTTR", "P1/P2 MTTR"), List.of("#5b8db8", "#ef4444")),
+                pieChart("incident-priority-pie", "优先级分布", topCounts(incidents, "Priority", 4),
+                    List.of("#ef4444", "#f59e0b", "#eab308", "#10b981")),
+                pieChart("incident-category-pie", "事件类型分布", topCounts(incidents, "Category", 8),
+                    List.of("#5b8db8", "#10b981", "#f59e0b", "#ef4444", "#8b7fc7", "#c97082", "#5e9bb5", "#7ca65a"))
             ),
             List.of(
-                table("incident-resolver-table", "处理人工作量", List.of("处理人", "事件数"), rowsFromChart(topCounts(rawData.incidents(), "Resolver", 10))),
-                table("incident-recent-table", "近期事件样本", List.of("编号", "标题", "优先级", "状态"), rawData.incidents().stream().limit(10)
-                    .map(row -> List.of(
+                table("incident-resolver-table", "处理人工作量 TOP10", List.of("处理人", "事件数"), rowsFromChart(topCounts(incidents, "Resolver", 10))),
+                table("incident-recent-table", "事件样本", List.of("编号", "标题", "优先级", "处理人", "时长", "SLA"), incidents.stream()
+                    .sorted((a, b) -> {
+                        int priorityCompare = priorityIndex(clean(a.get("Priority"))) - priorityIndex(clean(b.get("Priority")));
+                        if (priorityCompare != 0) return priorityCompare;
+                        return Double.compare(parseDouble(b.get("Resolution Time(m)")), parseDouble(a.get("Resolution Time(m)")));
+                    })
+                    .limit(15)
+                    .<List<String>>map(row -> List.of(
                         defaultLabel(row.get("Order Number"), "—"),
-                        defaultLabel(row.get("Order Name"), "—"),
+                        truncate(defaultLabel(row.get("Order Name"), "—"), 35),
                         defaultLabel(row.get("Priority"), "—"),
-                        defaultLabel(row.get("Order Status"), "—")
+                        defaultLabel(row.get("Resolver"), "—"),
+                        formatMinutes(parseDouble(row.get("Resolution Time(m)"))),
+                        isYes(row.get("SLA Compliant")) ? "✓" : "✗"
                     )).toList())
             )
         );
     }
 
+    private int priorityIndex(String priority) {
+        return switch (priority.toUpperCase()) {
+            case "P1" -> 1;
+            case "P2" -> 2;
+            case "P3" -> 3;
+            case "P4" -> 4;
+            default -> 5;
+        };
+    }
+
+    private List<ChartDatum> buildVolumeTrend(List<Map<String, String>> incidents, List<IncidentSlaRecord> slaRecords, String granularity) {
+        Map<String, Long> totalByPeriod = new LinkedHashMap<>();
+        Map<String, Long> slaMetByPeriod = new LinkedHashMap<>();
+
+        for (Map<String, String> row : incidents) {
+            LocalDateTime beginDate = parseDate(row.get("Begin Date"));
+            if (beginDate == null) continue;
+
+            String periodLabel = formatPeriodLabel(beginDate, granularity);
+            totalByPeriod.merge(periodLabel, 1L, Long::sum);
+        }
+
+        for (IncidentSlaRecord record : slaRecords) {
+            if (record.beginDate() == null) continue;
+            String periodLabel = formatPeriodLabel(record.beginDate(), granularity);
+            if (record.overallMet()) {
+                slaMetByPeriod.merge(periodLabel, 1L, Long::sum);
+            }
+        }
+
+        Set<String> allPeriods = new TreeSet<>(totalByPeriod.keySet());
+
+        List<ChartDatum> result = new ArrayList<>();
+        for (String period : allPeriods) {
+            long total = totalByPeriod.getOrDefault(period, 0L);
+            long slaMet = slaMetByPeriod.getOrDefault(period, 0L);
+            double slaRate = total > 0 ? (slaMet * 100.0 / total) : 0;
+            result.add(new ChartDatum(period + "|" + total + "|" + String.format("%.1f", slaRate), total));
+        }
+        return result;
+    }
+
+    private List<ChartDatum> buildMttrTrend(List<Map<String, String>> incidents, String granularity) {
+        Map<String, List<Double>> mttrByPeriod = new LinkedHashMap<>();
+        Map<String, List<Double>> p1p2MttrByPeriod = new LinkedHashMap<>();
+
+        for (Map<String, String> row : incidents) {
+            LocalDateTime beginDate = parseDate(row.get("Begin Date"));
+            if (beginDate == null) continue;
+
+            String periodLabel = formatPeriodLabel(beginDate, granularity);
+            double resolutionMinutes = parseDouble(row.get("Resolution Time(m)"));
+            if (resolutionMinutes <= 0) continue;
+
+            String priority = clean(row.get("Priority"));
+            boolean isP1P2 = "P1".equalsIgnoreCase(priority) || "P2".equalsIgnoreCase(priority);
+
+            mttrByPeriod.computeIfAbsent(periodLabel, k -> new ArrayList<>()).add(resolutionMinutes);
+            if (isP1P2) {
+                p1p2MttrByPeriod.computeIfAbsent(periodLabel, k -> new ArrayList<>()).add(resolutionMinutes);
+            }
+        }
+
+        Set<String> allPeriods = new TreeSet<>();
+        allPeriods.addAll(mttrByPeriod.keySet());
+        allPeriods.addAll(p1p2MttrByPeriod.keySet());
+
+        List<ChartDatum> result = new ArrayList<>();
+        for (String period : allPeriods) {
+            List<Double> mttrs = mttrByPeriod.getOrDefault(period, List.of());
+            List<Double> p1p2Mttrs = p1p2MttrByPeriod.getOrDefault(period, List.of());
+            double avgMttr = mttrs.isEmpty() ? 0 : mttrs.stream().mapToDouble(Double::doubleValue).average().orElse(0) / 60.0;
+            double avgP1p2Mttr = p1p2Mttrs.isEmpty() ? 0 : p1p2Mttrs.stream().mapToDouble(Double::doubleValue).average().orElse(0) / 60.0;
+            result.add(new ChartDatum(period + "|" + String.format("%.1f", avgMttr) + "|" + String.format("%.1f", avgP1p2Mttr), avgMttr));
+        }
+        return result;
+    }
+
+    private String formatPeriodLabel(LocalDateTime dateTime, String granularity) {
+        if ("monthly".equals(granularity)) {
+            return dateTime.format(DateTimeFormatter.ofPattern("yyyy-MM"));
+        } else {
+            // Weekly: format as "月份-周数" (e.g., "4月-1" for first week of April)
+            int month = dateTime.getMonthValue();
+            int dayOfMonth = dateTime.getDayOfMonth();
+            int weekInMonth = (dayOfMonth - 1) / 7 + 1;
+            return month + "月-" + weekInMonth;
+        }
+    }
+
+    private ChartSection lineChart(String id, String title, List<ChartDatum> items, List<String> seriesNames, List<String> colors) {
+        return new ChartSection(id, title, "line", items, new ChartConfig(seriesNames, null, colors, "时间", "数量"));
+    }
+
+    private ChartSection comboChart(String id, String title, List<ChartDatum> items, List<String> seriesNames, List<String> colors) {
+        return new ChartSection(id, title, "combo", items, new ChartConfig(seriesNames, null, colors, "时间", "数量"));
+    }
+
+    private ChartSection pieChart(String id, String title, List<ChartDatum> items, List<String> colors) {
+        return new ChartSection(id, title, "pie", items, new ChartConfig(null, null, colors, null, null));
+    }
+
     private TabContent buildChangeAnalysis(BiRawData rawData) {
-        long successCount = countByValue(rawData.changes(), "Success", "Yes");
-        long emergencyCount = countByValue(rawData.changes(), "Change Type", "Emergency");
-        long incidentCount = countByValue(rawData.changes(), "Incident Caused", "Yes");
+        List<Map<String, String>> changes = rawData.changes();
+        long successCount = countByValue(changes, "Success", "Yes");
+        long emergencyCount = countByValue(changes, "Change Type", "Emergency");
+        long incidentCount = countByValue(changes, "Incident Caused", "Yes");
+        int total = changes.size();
+
         return new TabContent(
             "change-analysis",
             "变更分析",
-            "展示变更成功率、紧急变更占比和失败样本。",
+            "展示变更成功率趋势、类型分布、风险等级和计划满足度。",
             null,
             null,
             List.of(
-                card("change-total", "变更总数", rawData.changes().size(), "neutral"),
-                card("change-success", "成功率", percentage(successCount, rawData.changes().size()), "success"),
+                card("change-total", "变更总数", total, "neutral"),
+                card("change-success", "成功率", percentage(successCount, total), "success"),
                 card("change-emergency", "紧急变更", emergencyCount, emergencyCount > 0 ? "warning" : "success"),
                 card("change-incident", "引发事件的变更", incidentCount, incidentCount > 0 ? "warning" : "success")
             ),
             List.of(
-                chart("change-type-chart", "变更类型", topCounts(rawData.changes(), "Change Type", 6)),
-                chart("change-status-chart", "变更状态", topCounts(rawData.changes(), "Status", 8))
+                // Row 1: combo chart - weekly change success rate trend
+                comboChart("change-success-trend", "变更成功率趋势", buildChangeWeeklyTrendData(changes),
+                    List.of("变更数量", "成功率", "引发事件变更"), List.of("#5b8db8", "#10b981", "#ef4444")),
+                // Row 2: pie chart (change type distribution)
+                pieChart("change-type-pie", "变更等级分布", topCounts(changes, "Change Type", 6),
+                    List.of("#5b8db8", "#10b981", "#f59e0b", "#ef4444", "#8b7fc7", "#c97082")),
+                // Row 2: stacked bar (category success/failure distribution)
+                new ChartSection("change-category-stacked", "变更类别分布", "stacked-bar",
+                    buildChangeCategoryDistribution(changes),
+                    new ChartConfig(List.of("成功", "失败"), null, List.of("#5b8db8", "#ef4444"), "变更类别", "数量")),
+                // Row 3: bar chart (risk level distribution for incident-causing changes)
+                pieChart("change-risk-level", "变更引发故障分布", buildRiskLevelDistribution(changes),
+                    List.of("#5b8db8", "#10b981", "#f59e0b", "#ef4444", "#8b7fc7", "#c97082")),
+                // Row 3: stacked bar (plan deviation by change type)
+                new ChartSection("change-plan-deviation", "变更计划满足分布", "stacked-bar",
+                    buildPlanDeviation(changes),
+                    new ChartConfig(List.of("提前完成", "按时完成", "延期完成"), null, List.of("#10b981", "#5b8db8", "#ef4444"), "变更类型", "数量"))
             ),
             List.of(
-                table("change-failed-table", "失败或回退样本", List.of("编号", "标题", "状态", "是否成功", "是否回退"), rawData.changes().stream()
+                table("change-failed-table", "失败或回退样本", List.of("编号", "标题", "状态", "是否成功", "是否回退"), changes.stream()
                     .filter(row -> !isYes(row.get("Success")) || isYes(row.get("Backout Performed")))
                     .limit(10)
                     .map(row -> List.of(
@@ -357,59 +619,277 @@ public class BusinessIntelligenceService {
         );
     }
 
+    private List<ChartDatum> buildChangeWeeklyTrendData(List<Map<String, String>> changes) {
+        Map<String, Long> totalByPeriod = new LinkedHashMap<>();
+        Map<String, Long> successByPeriod = new LinkedHashMap<>();
+        Map<String, Long> causedByPeriod = new LinkedHashMap<>();
+
+        for (Map<String, String> row : changes) {
+            LocalDateTime date = parseDate(row.get("Planned Start"));
+            if (date == null) {
+                date = parseDate(row.get("Requested Date"));
+            }
+            if (date == null) continue;
+
+            String periodLabel = formatPeriodLabel(date, "weekly");
+            totalByPeriod.merge(periodLabel, 1L, Long::sum);
+            if (isYes(row.get("Success"))) {
+                successByPeriod.merge(periodLabel, 1L, Long::sum);
+            }
+            if (isYes(row.get("Incident Caused"))) {
+                causedByPeriod.merge(periodLabel, 1L, Long::sum);
+            }
+        }
+
+        Set<String> allPeriods = new TreeSet<>(totalByPeriod.keySet());
+
+        List<ChartDatum> result = new ArrayList<>();
+        for (String period : allPeriods) {
+            long total = totalByPeriod.getOrDefault(period, 0L);
+            long success = successByPeriod.getOrDefault(period, 0L);
+            double successRate = total > 0 ? (success * 100.0 / total) : 0;
+            long caused = causedByPeriod.getOrDefault(period, 0L);
+            result.add(new ChartDatum(period + "|" + total + "|" + String.format("%.1f", successRate) + "|" + caused, total));
+        }
+        return result;
+    }
+
+    private List<ChartDatum> buildChangeCategoryDistribution(List<Map<String, String>> changes) {
+        return changes.stream()
+            .collect(Collectors.groupingBy(
+                row -> defaultLabel(row.get("Category"), "未标注"),
+                LinkedHashMap::new, Collectors.toList()))
+            .entrySet().stream()
+            .sorted((a, b) -> Integer.compare(b.getValue().size(), a.getValue().size()))
+            .limit(8)
+            .map(entry -> {
+                long success = entry.getValue().stream().filter(row -> isYes(row.get("Success"))).count();
+                long failure = entry.getValue().size() - success;
+                return new ChartDatum(entry.getKey() + "|" + success + "|" + failure, success);
+            })
+            .toList();
+    }
+
+    private List<ChartDatum> buildRiskLevelDistribution(List<Map<String, String>> changes) {
+        return changes.stream()
+            .filter(row -> isYes(row.get("Incident Caused")))
+            .collect(Collectors.groupingBy(
+                row -> defaultLabel(row.get("Risk Level"), "未标注"),
+                LinkedHashMap::new, Collectors.counting()))
+            .entrySet().stream()
+            .sorted(Map.Entry.<String, Long>comparingByValue().reversed())
+            .limit(6)
+            .map(entry -> new ChartDatum(entry.getKey(), entry.getValue()))
+            .toList();
+    }
+
+    private List<ChartDatum> buildPlanDeviation(List<Map<String, String>> changes) {
+        return changes.stream()
+            .filter(row -> {
+                String plannedEnd = row.get("Planned End");
+                String actualEnd = row.get("Actual End");
+                return plannedEnd != null && !plannedEnd.isBlank() && actualEnd != null && !actualEnd.isBlank();
+            })
+            .collect(Collectors.groupingBy(
+                row -> defaultLabel(row.get("Change Type"), "未标注"),
+                LinkedHashMap::new, Collectors.toList()))
+            .entrySet().stream()
+            .limit(6)
+            .map(entry -> {
+                long early = 0, onTime = 0, late = 0;
+                for (Map<String, String> row : entry.getValue()) {
+                    LocalDateTime plannedEnd = parseDate(row.get("Planned End"));
+                    LocalDateTime actualEnd = parseDate(row.get("Actual End"));
+                    if (plannedEnd == null || actualEnd == null) continue;
+                    long diffHours = java.time.Duration.between(plannedEnd, actualEnd).toHours();
+                    if (diffHours < -1) early++;
+                    else if (diffHours <= 1) onTime++;
+                    else late++;
+                }
+                return new ChartDatum(entry.getKey() + "|" + early + "|" + onTime + "|" + late, early + onTime + late);
+            })
+            .toList();
+    }
+
     private TabContent buildRequestAnalysis(BiRawData rawData) {
-        long fulfilled = countByValue(rawData.requests(), "Status", "Fulfilled");
-        long slaMet = countByValue(rawData.requests(), "SLA Met", "Yes");
-        double averageCsat = average(rawData.requests(), "Satisfaction Score");
+        List<Map<String, String>> requests = rawData.requests();
+        long fulfilled = countByValue(requests, "Status", "Fulfilled");
+        long slaMet = countByValue(requests, "SLA Met", "Yes");
+        double averageCsat = average(requests, "Satisfaction Score");
+        int total = requests.size();
+
         return new TabContent(
             "request-analysis",
             "请求分析",
-            "展示请求履约、SLA 和满意度概况。",
+            "展示请求趋势、SLA达标率、满意度和高频请求分布。",
             null,
             null,
             List.of(
-                card("request-total", "请求总数", rawData.requests().size(), "neutral"),
+                card("request-total", "请求总数", total, "neutral"),
                 card("request-fulfilled", "已完成请求", fulfilled, "success"),
-                card("request-sla", "SLA 达成率", percentage(slaMet, rawData.requests().size()), "success"),
+                card("request-sla", "SLA 达成率", percentage(slaMet, total), "success"),
                 card("request-csat", "平均满意度", formatNumber(averageCsat), averageCsat >= 4 ? "success" : "warning")
             ),
             List.of(
-                chart("request-type-chart", "请求类型", topCounts(rawData.requests(), "Request Type", 8)),
-                chart("request-dept-chart", "部门分布", topCounts(rawData.requests(), "Requester Dept", 8))
+                // Row 1: combo chart - weekly request volume trend
+                comboChart("request-volume-trend", "请求单量趋势", buildRequestWeeklyTrendData(requests),
+                    List.of("请求单量", "平均满意度"), List.of("#5b8db8", "#10b981")),
+                // Row 2: combo chart - SLA rate & avg fulfillment time by category
+                comboChart("request-sla-time", "SLA达成率与平均耗时", buildRequestSlaByCategoryData(requests),
+                    List.of("平均耗时(h)", "SLA达成率"), List.of("#5b8db8", "#10b981")),
+                // Row 3 left: pie chart - request type distribution
+                pieChart("request-type-pie", "请求类型分布", topCounts(requests, "Request Type", 6),
+                    List.of("#5b8db8", "#10b981", "#f59e0b", "#ef4444", "#8b7fc7", "#c97082")),
+                // Row 3 right: bar chart - department consumption ranking
+                new ChartSection("request-dept-ranking", "部门请求单数排名", "column", topCounts(requests, "Requester Dept", 8), new ChartConfig(null, null, List.of("#5b8db8"), "部门", "请求数")),
+                // Row 4 left: pie chart - satisfaction distribution
+                pieChart("request-satisfaction-pie", "满意度分布", buildSatisfactionDistribution(requests),
+                    List.of("#ef4444", "#f59e0b", "#10b981", "#5b8db8")),
+                // Row 4 right: bar chart - high-frequency request category TOP8
+                new ChartSection("request-category-top", "高频请求目录", "column", topCounts(requests, "Category", 8), new ChartConfig(null, null, List.of("#5b8db8"), "类别", "数量"))
             ),
             List.of(
-                table("request-assignee-table", "处理人工作量", List.of("处理人", "请求数"), rowsFromChart(topCounts(rawData.requests(), "Assignee", 10)))
+                table("request-low-csat-table", "低满意度样本", List.of("编号", "标题", "类别", "满足时间", "满意度", "反馈"), requests.stream()
+                    .filter(row -> {
+                        double score = parseDouble(row.get("Satisfaction Score"));
+                        return score > 0 && score <= 3;
+                    })
+                    .sorted((a, b) -> Double.compare(parseDouble(a.get("Satisfaction Score")), parseDouble(b.get("Satisfaction Score"))))
+                    .limit(15)
+                    .map(row -> List.of(
+                        defaultLabel(row.get("Request Number"), "—"),
+                        truncate(defaultLabel(row.get("Request Title"), "—"), 35),
+                        defaultLabel(row.get("Category"), "—"),
+                        defaultLabel(row.get("Fulfillment Time(h)"), "—"),
+                        defaultLabel(row.get("Satisfaction Score"), "—"),
+                        truncate(defaultLabel(row.get("Feedback"), "—"), 40)
+                    )).toList())
             )
         );
     }
 
+    private List<ChartDatum> buildRequestWeeklyTrendData(List<Map<String, String>> requests) {
+        Map<String, Long> totalByPeriod = new LinkedHashMap<>();
+        Map<String, List<Double>> csatByPeriod = new LinkedHashMap<>();
+
+        for (Map<String, String> row : requests) {
+            LocalDateTime date = parseDate(row.get("Requested Date"));
+            if (date == null) continue;
+
+            String periodLabel = formatPeriodLabel(date, "weekly");
+            totalByPeriod.merge(periodLabel, 1L, Long::sum);
+
+            double score = parseDouble(row.get("Satisfaction Score"));
+            if (score > 0) {
+                csatByPeriod.computeIfAbsent(periodLabel, k -> new ArrayList<>()).add(score);
+            }
+        }
+
+        Set<String> allPeriods = new TreeSet<>(totalByPeriod.keySet());
+
+        List<ChartDatum> result = new ArrayList<>();
+        for (String period : allPeriods) {
+            long total = totalByPeriod.getOrDefault(period, 0L);
+            List<Double> scores = csatByPeriod.getOrDefault(period, List.of());
+            double avgCsat = scores.isEmpty() ? 0 : scores.stream().mapToDouble(Double::doubleValue).average().orElse(0);
+            result.add(new ChartDatum(period + "|" + total + "|" + String.format("%.2f", avgCsat), total));
+        }
+        return result;
+    }
+
+    private List<ChartDatum> buildRequestSlaByCategoryData(List<Map<String, String>> requests) {
+        return requests.stream()
+            .collect(Collectors.groupingBy(
+                row -> defaultLabel(row.get("Category"), "未标注"),
+                LinkedHashMap::new, Collectors.toList()))
+            .entrySet().stream()
+            .sorted((a, b) -> Integer.compare(b.getValue().size(), a.getValue().size()))
+            .limit(8)
+            .map(entry -> {
+                List<Map<String, String>> rows = entry.getValue();
+                long slaCount = rows.stream().filter(row -> isYes(row.get("SLA Met"))).count();
+                double slaRate = percentageValue(slaCount, rows.size()) * 100.0;
+                double avgTime = rows.stream()
+                    .mapToDouble(row -> parseDouble(row.get("Fulfillment Time(h)")))
+                    .filter(v -> v > 0)
+                    .average().orElse(0);
+                return new ChartDatum(
+                    entry.getKey() + "|" + String.format("%.1f", avgTime) + "|" + String.format("%.1f", slaRate),
+                    avgTime);
+            })
+            .toList();
+    }
+
+    private List<ChartDatum> buildSatisfactionDistribution(List<Map<String, String>> requests) {
+        Map<String, Long> dist = new LinkedHashMap<>();
+        dist.put("非常不满意(1-2)", 0L);
+        dist.put("不满意(3)", 0L);
+        dist.put("满意(4)", 0L);
+        dist.put("非常满意(5)", 0L);
+
+        for (Map<String, String> row : requests) {
+            double score = parseDouble(row.get("Satisfaction Score"));
+            if (score <= 2) dist.merge("非常不满意(1-2)", 1L, Long::sum);
+            else if (score <= 3) dist.merge("不满意(3)", 1L, Long::sum);
+            else if (score <= 4) dist.merge("满意(4)", 1L, Long::sum);
+            else dist.merge("非常满意(5)", 1L, Long::sum);
+        }
+
+        return dist.entrySet().stream()
+            .filter(e -> e.getValue() > 0)
+            .map(e -> new ChartDatum(e.getKey(), e.getValue()))
+            .toList();
+    }
+
     private TabContent buildProblemAnalysis(BiRawData rawData) {
-        long closed = rawData.problems().stream().filter(row -> matchesAny(clean(row.get("Status")), List.of("Resolved", "Closed"))).count();
-        long rcaComplete = rawData.problems().stream().filter(row -> !clean(row.get("Root Cause")).isBlank()).count();
-        long knownError = countByValue(rawData.problems(), "Known Error", "Yes");
+        List<Map<String, String>> problems = rawData.problems();
+        long closed = problems.stream().filter(row -> matchesAny(clean(row.get("Status")), List.of("Resolved", "Closed"))).count();
+        long rcaComplete = problems.stream().filter(row -> !clean(row.get("Root Cause")).isBlank()).count();
+        long knownError = countByValue(problems, "Known Error", "No");
+        int total = problems.size();
+
         return new TabContent(
             "problem-analysis",
             "问题分析",
-            "展示问题闭环、根因分析和已知错误分布。",
+            "展示问题趋势、根因分析、解决方案健康度和根因类别分布。",
             null,
             null,
             List.of(
-                card("problem-total", "问题总数", rawData.problems().size(), "neutral"),
+                card("problem-total", "问题总数", total, "neutral"),
                 card("problem-closed", "已关闭问题", closed, "success"),
                 card("problem-rca", "已完成 RCA", rcaComplete, "success"),
-                card("problem-known-error", "已知错误", knownError, "warning")
+                card("problem-known-error", "未知错误", knownError, "warning")
             ),
             List.of(
-                chart("problem-status-chart", "问题状态", topCounts(rawData.problems(), "Status", 8)),
-                chart("problem-category-chart", "根因类别", topCounts(rawData.problems(), "Root Cause Category", 8))
+                // Row 1: combo chart - weekly problem volume + cumulative unresolved
+                comboChart("problem-volume-trend", "问题单量趋势", buildProblemWeeklyTrendData(problems),
+                    List.of("问题单量", "累积未解决"), List.of("#5b8db8", "#ef4444")),
+                // Row 2 left: pie chart - root cause category distribution
+                pieChart("problem-root-cause-pie", "问题根因类型分布", topCounts(problems, "Root Cause Category", 6),
+                    List.of("#5b8db8", "#10b981", "#f59e0b", "#ef4444", "#8b7fc7", "#c97082")),
+                // Row 2 right: column chart - incident count by root cause category
+                new ChartSection("problem-incident-ranking", "问题引发故障数排名", "column",
+                    buildProblemIncidentRanking(problems),
+                    new ChartConfig(null, null, List.of("#5b8db8"), "根因类别", "故障数")),
+                // Row 3 left: pie chart - status distribution
+                pieChart("problem-status-pie", "问题状态分布", topCounts(problems, "Status", 6),
+                    List.of("#10b981", "#5b8db8", "#f59e0b", "#ef4444", "#8b7fc7", "#c97082")),
+                // Row 3 right: stacked bar - resolution health
+                new ChartSection("problem-resolution-health", "已关闭问题单的解决方案健康度分析", "stacked-bar",
+                    buildResolutionHealth(problems),
+                    new ChartConfig(List.of("已永久修复", "有临时方案", "未解决"), null, List.of("#10b981", "#5b8db8", "#ef4444"), "根因类别", "数量")),
+                // Row 4: grouped bar - tech debt distribution
+                new ChartSection("problem-tech-debt", "系统模块薄弱点分析", "grouped-bar",
+                    buildTechDebtDistribution(problems),
+                    new ChartConfig(topRootCauseCategories(problems, 4), null, List.of("#5b8db8", "#10b981", "#f59e0b", "#ef4444"), "Category", "数量"))
             ),
             List.of(
-                table("problem-open-table", "未关闭问题", List.of("编号", "标题", "状态", "关联事件"), rawData.problems().stream()
+                table("problem-open-table", "未关闭问题", List.of("编号", "标题", "状态", "关联事件"), problems.stream()
                     .filter(row -> !matchesAny(clean(row.get("Status")), List.of("Resolved", "Closed")))
                     .limit(10)
                     .map(row -> List.of(
                         defaultLabel(row.get("Problem Number"), "—"),
-                        defaultLabel(row.get("Problem Title"), "—"),
+                        truncate(defaultLabel(row.get("Problem Title"), "—"), 35),
                         defaultLabel(row.get("Status"), "—"),
                         defaultLabel(row.get("Related Incidents"), "0")
                     )).toList())
@@ -417,40 +897,444 @@ public class BusinessIntelligenceService {
         );
     }
 
+    private List<ChartDatum> buildProblemWeeklyTrendData(List<Map<String, String>> problems) {
+        // Group by week: count total and track cumulative unresolved
+        List<Map<String, String>> sorted = new ArrayList<>(problems);
+        sorted.sort((a, b) -> {
+            LocalDateTime da = parseDate(a.get("Logged Date"));
+            LocalDateTime db = parseDate(b.get("Logged Date"));
+            if (da == null && db == null) return 0;
+            if (da == null) return 1;
+            if (db == null) return -1;
+            return da.compareTo(db);
+        });
+
+        Map<String, Long> totalByPeriod = new LinkedHashMap<>();
+        Map<String, Long> resolvedByPeriod = new LinkedHashMap<>();
+
+        for (Map<String, String> row : sorted) {
+            LocalDateTime date = parseDate(row.get("Logged Date"));
+            if (date == null) continue;
+            String period = formatPeriodLabel(date, "weekly");
+            totalByPeriod.merge(period, 1L, Long::sum);
+            if (matchesAny(clean(row.get("Status")), List.of("Resolved", "Closed"))) {
+                resolvedByPeriod.merge(period, 1L, Long::sum);
+            }
+        }
+
+        Set<String> allPeriods = new TreeSet<>(totalByPeriod.keySet());
+        long cumulativeUnresolved = 0;
+        List<ChartDatum> result = new ArrayList<>();
+        for (String period : allPeriods) {
+            long total = totalByPeriod.getOrDefault(period, 0L);
+            long resolved = resolvedByPeriod.getOrDefault(period, 0L);
+            cumulativeUnresolved += (total - resolved);
+            result.add(new ChartDatum(period + "|" + total + "|" + cumulativeUnresolved, total));
+        }
+        return result;
+    }
+
+    private List<ChartDatum> buildProblemIncidentRanking(List<Map<String, String>> problems) {
+        return problems.stream()
+            .filter(row -> !clean(row.get("Related Incidents")).isBlank())
+            .collect(Collectors.groupingBy(
+                row -> defaultLabel(row.get("Root Cause Category"), "未标注"),
+                LinkedHashMap::new, Collectors.toList()))
+            .entrySet().stream()
+            .map(entry -> {
+                long incidentCount = entry.getValue().stream()
+                    .mapToLong(row -> parseLong(row.get("Related Incidents")))
+                    .sum();
+                return new ChartDatum(entry.getKey(), incidentCount);
+            })
+            .sorted((a, b) -> Double.compare(b.value(), a.value()))
+            .limit(8)
+            .toList();
+    }
+
+    private List<ChartDatum> buildResolutionHealth(List<Map<String, String>> problems) {
+        return problems.stream()
+            .filter(row -> matchesAny(clean(row.get("Status")), List.of("Resolved", "Closed")))
+            .collect(Collectors.groupingBy(
+                row -> defaultLabel(row.get("Root Cause Category"), "未标注"),
+                LinkedHashMap::new, Collectors.toList()))
+            .entrySet().stream()
+            .limit(6)
+            .map(entry -> {
+                long green = 0, blue = 0, red = 0;
+                for (Map<String, String> row : entry.getValue()) {
+                    boolean workaround = isYes(row.get("Workaround Available"));
+                    boolean permanentFix = isYes(row.get("Permanent Fix Implemented"));
+                    if (workaround && permanentFix) green++;
+                    else if (workaround && !permanentFix) blue++;
+                    else red++;
+                }
+                return new ChartDatum(entry.getKey() + "|" + green + "|" + blue + "|" + red, green + blue + red);
+            })
+            .toList();
+    }
+
+    private List<String> topCategories(List<Map<String, String>> problems, int limit) {
+        return problems.stream()
+            .map(row -> defaultLabel(row.get("Category"), "未标注"))
+            .collect(Collectors.groupingBy(Function.identity(), LinkedHashMap::new, Collectors.counting()))
+            .entrySet().stream()
+            .sorted(Map.Entry.<String, Long>comparingByValue().reversed())
+            .limit(limit)
+            .map(Map.Entry::getKey)
+            .toList();
+    }
+
+    private List<String> topRootCauseCategories(List<Map<String, String>> problems, int limit) {
+        return problems.stream()
+            .map(row -> defaultLabel(row.get("Root Cause Category"), "未标注"))
+            .collect(Collectors.groupingBy(Function.identity(), LinkedHashMap::new, Collectors.counting()))
+            .entrySet().stream()
+            .sorted(Map.Entry.<String, Long>comparingByValue().reversed())
+            .limit(limit)
+            .map(Map.Entry::getKey)
+            .toList();
+    }
+
+    private List<ChartDatum> buildTechDebtDistribution(List<Map<String, String>> problems) {
+        List<String> topCats = topCategories(problems, 4);
+        List<String> rccSeries = topRootCauseCategories(problems, 4);
+
+        return topCats.stream()
+            .map(cat -> {
+                long[] counts = new long[rccSeries.size()];
+                List<Map<String, String>> matching = problems.stream()
+                    .filter(row -> defaultLabel(row.get("Category"), "未标注").equals(cat))
+                    .toList();
+                for (Map<String, String> row : matching) {
+                    String rcc = defaultLabel(row.get("Root Cause Category"), "未标注");
+                    int idx = rccSeries.indexOf(rcc);
+                    if (idx >= 0) counts[idx]++;
+                }
+                StringBuilder label = new StringBuilder(cat);
+                for (long count : counts) {
+                    label.append("|").append(count);
+                }
+                return new ChartDatum(label.toString(), matching.size());
+            })
+            .toList();
+    }
+
     private TabContent buildCrossProcess(BiRawData rawData) {
-        long changeIncidentCount = countByValue(rawData.changes(), "Incident Caused", "Yes");
-        long relatedProblemIncidents = rawData.problems().stream().mapToLong(row -> parseLong(row.get("Related Incidents"))).sum();
-        long linkedChanges = rawData.changes().stream().filter(row -> !clean(row.get("Related Incidents")).isBlank()).count();
+        List<Map<String, String>> changes = rawData.changes();
+        List<Map<String, String>> incidents = rawData.incidents();
+        List<Map<String, String>> problems = rawData.problems();
+        List<Map<String, String>> requests = rawData.requests();
+
+        int totalChanges = changes.size();
+        int totalIncidents = incidents.size();
+
+        // KPI 1: Change-Caused Incident Rate
+        long causedCount = countByValue(changes, "Incident Caused", "Yes");
+        double causedRate = totalChanges > 0 ? (causedCount * 100.0 / totalChanges) : 0;
+
+        // KPI 2: P1/P2 incidents within 48h post-change
+        long p1p2Count = changes.stream()
+            .filter(ch -> isYes(ch.get("Incident Caused")))
+            .flatMap(ch -> findIncidentsWithin48h(incidents, parseDate(ch.get("Actual End"))).stream())
+            .map(inc -> inc.get("Order Number"))
+            .distinct()
+            .count();
+
+        // KPI 3: Request-to-Incident Ratio
+        double requestRatio = totalIncidents > 0 ? (double) requests.size() / totalIncidents : 0;
+
+        // KPI 4: System Fragility Score (0-100, higher=healthier)
+        double changeFailureWeight = (causedRate / 100.0) * 40;
+        double avgAging = problems.stream()
+            .filter(row -> !matchesAny(clean(row.get("Status")), List.of("Resolved", "Closed")))
+            .mapToLong(row -> {
+                LocalDateTime logged = parseDate(row.get("Logged Date"));
+                return logged != null ? java.time.Duration.between(logged, LocalDateTime.now()).toDays() : 0;
+            }).average().orElse(0);
+        double agingWeight = Math.min(avgAging / 90.0, 1.0) * 30;
+        double ratioWeight = Math.min(requestRatio / 8.0, 1.0) * 30;
+        double fragilityScore = Math.round(100 - (changeFailureWeight + agingWeight + ratioWeight));
+
+        String causedTone = causedRate < 5 ? "success" : causedRate < 10 ? "warning" : "danger";
+        String p1p2Tone = p1p2Count == 0 ? "success" : "warning";
+        String ratioTone = requestRatio < 3 ? "success" : requestRatio < 5 ? "warning" : "danger";
+        String fragTone = fragilityScore > 75 ? "success" : fragilityScore > 50 ? "warning" : "danger";
+
         return new TabContent(
             "cross-process",
             "跨流程关联",
-            "展示变更、事件和问题之间的关联规模。",
+            "展示变更、事件、请求和问题之间的深度关联与风险传导路径。",
             null,
             null,
             List.of(
-                card("cross-change-incident", "引发事件的变更", changeIncidentCount, changeIncidentCount > 0 ? "warning" : "success"),
-                card("cross-problem-incident", "问题关联事件数", relatedProblemIncidents, "neutral"),
-                card("cross-linked-changes", "有事件关联的变更", linkedChanges, "neutral")
+                card("cross-change-incident-rate", "变更致事件率", formatNumber(causedRate) + "%", causedTone),
+                card("cross-48h-p1p2", "48h窗口P1/P2事件", p1p2Count, p1p2Tone),
+                card("cross-request-incident-ratio", "请求-事件比", formatNumber(requestRatio), ratioTone),
+                card("cross-fragility-score", "系统脆弱性评分", (int) fragilityScore + "分", fragTone)
             ),
             List.of(
-                chart("cross-overview-chart", "跨流程关联规模", List.of(
-                    new ChartDatum("变更引发事件", changeIncidentCount),
-                    new ChartDatum("问题关联事件", relatedProblemIncidents),
-                    new ChartDatum("有事件关联的变更", linkedChanges)
-                ))
+                comboChart("cross-change-incident-trend", "变更致事件趋势",
+                    buildChangeIncidentTrendData(rawData),
+                    List.of("变更数量", "致事件P1/P2数"), List.of("#5b8db8", "#ef4444")),
+                new ChartSection("cross-change-heatmap", "变更风险热力图", "heatmap",
+                    buildChangeHeatmapData(rawData),
+                    new ChartConfig(List.of("变更密度", "事件热点"), null, List.of("#5b8db8", "#ef4444"), "时段", "星期")),
+                new ChartSection("cross-tech-debt-bubble", "系统脆弱性气泡图", "bubble",
+                    buildTechDebtBubbleData(rawData),
+                    new ChartConfig(topRootCauseCategories(problems, 6), null, List.of("#5b8db8", "#10b981", "#f59e0b", "#ef4444", "#8b7fc7", "#c97082"), "平均积压天数", "未关闭问题数")),
+                comboChart("cross-request-incident-overlap", "请求与事件时间重叠",
+                    buildRequestIncidentOverlap(rawData),
+                    List.of("请求数", "事件数"), List.of("#5b8db8", "#ef4444"))
             ),
             List.of(
-                table("cross-change-table", "变更与事件关联样本", List.of("变更编号", "标题", "相关事件", "是否引发事件"), rawData.changes().stream()
-                    .filter(row -> !clean(row.get("Related Incidents")).isBlank() || isYes(row.get("Incident Caused")))
-                    .limit(10)
-                    .map(row -> List.of(
-                        defaultLabel(row.get("Change Number"), "—"),
-                        defaultLabel(row.get("Change Title"), "—"),
-                        defaultLabel(row.get("Related Incidents"), "—"),
-                        defaultLabel(row.get("Incident Caused"), "—")
-                    )).toList())
+                table("cross-change-incident-detail", "变更致事件关联明细",
+                    List.of("变更编号", "变更标题", "完成时间", "48h内P1/P2事件", "风险等级"),
+                    changes.stream()
+                        .filter(ch -> isYes(ch.get("Incident Caused")))
+                        .limit(15)
+                        .map(ch -> {
+                            LocalDateTime actualEnd = parseDate(ch.get("Actual End"));
+                            String linkedIncidents = findIncidentsWithin48h(incidents, actualEnd).stream()
+                                .map(inc -> defaultLabel(inc.get("Order Number"), ""))
+                                .filter(s -> !s.isBlank())
+                                .reduce((a, b) -> a + "," + b)
+                                .orElse("—");
+                            return List.of(
+                                defaultLabel(ch.get("Change Number"), "—"),
+                                truncate(defaultLabel(ch.get("Change Title"), "—"), 30),
+                                actualEnd != null ? actualEnd.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")) : "—",
+                                linkedIncidents,
+                                defaultLabel(ch.get("Risk Level"), "—")
+                            );
+                        }).toList()),
+                table("cross-aging-problems", "老化问题清单",
+                    List.of("问题编号", "根因类别", "老化天数", "关联事件数", "优先级", "状态"),
+                    problems.stream()
+                        .map(row -> {
+                            LocalDateTime logged = parseDate(row.get("Logged Date"));
+                            long agingDays = 0;
+                            if (logged != null) {
+                                LocalDateTime resolved = parseDate(row.get("Resolution Date"));
+                                LocalDateTime end = resolved != null ? resolved : LocalDateTime.now();
+                                agingDays = java.time.Duration.between(logged, end).toDays();
+                            }
+                            return new Object[]{row, agingDays};
+                        })
+                        .sorted((a, b) -> Long.compare((long) b[1], (long) a[1]))
+                        .limit(15)
+                        .map(obj -> {
+                            Map<String, String> row = (Map<String, String>) obj[0];
+                            long agingDays = (long) obj[1];
+                            return List.of(
+                                defaultLabel(row.get("Problem Number"), "—"),
+                                defaultLabel(row.get("Root Cause Category"), "未标注"),
+                                String.valueOf(agingDays),
+                                defaultLabel(row.get("Related Incidents"), "0"),
+                                defaultLabel(row.get("Priority"), "—"),
+                                defaultLabel(row.get("Status"), "—")
+                            );
+                        }).toList()),
+                table("cross-request-surge", "请求激增预警",
+                    List.of("请求类别", "本周请求数", "上周请求数", "环比增长", "同期事件数"),
+                    buildRequestSurgeData(rawData))
             )
         );
+    }
+
+    private List<Map<String, String>> findIncidentsWithin48h(List<Map<String, String>> incidents, LocalDateTime changeEnd) {
+        if (changeEnd == null) return List.of();
+        return incidents.stream()
+            .filter(inc -> {
+                LocalDateTime incBegin = parseDate(inc.get("Begin Date"));
+                if (incBegin == null) return false;
+                String priority = clean(inc.get("Priority"));
+                if (!"P1".equalsIgnoreCase(priority) && !"P2".equalsIgnoreCase(priority)) return false;
+                long hours = java.time.Duration.between(changeEnd, incBegin).toHours();
+                return hours > 0 && hours <= 48;
+            })
+            .collect(Collectors.toList());
+    }
+
+    private List<ChartDatum> buildChangeIncidentTrendData(BiRawData rawData) {
+        List<Map<String, String>> changes = rawData.changes();
+        List<Map<String, String>> incidents = rawData.incidents();
+
+        Map<String, Long> changeByWeek = new LinkedHashMap<>();
+        Map<String, Long> causedByWeek = new LinkedHashMap<>();
+
+        for (Map<String, String> ch : changes) {
+            LocalDateTime date = parseDate(ch.get("Planned Start"));
+            if (date == null) date = parseDate(ch.get("Actual End"));
+            if (date == null) continue;
+            String week = formatPeriodLabel(date, "weekly");
+            changeByWeek.merge(week, 1L, Long::sum);
+            if (isYes(ch.get("Incident Caused"))) {
+                LocalDateTime actualEnd = parseDate(ch.get("Actual End"));
+                long p1p2 = findIncidentsWithin48h(incidents, actualEnd).size();
+                causedByWeek.merge(week, p1p2, Long::sum);
+            }
+        }
+
+        Set<String> allWeeks = new TreeSet<>(changeByWeek.keySet());
+        List<ChartDatum> result = new ArrayList<>();
+        for (String week : allWeeks) {
+            long total = changeByWeek.getOrDefault(week, 0L);
+            long caused = causedByWeek.getOrDefault(week, 0L);
+            result.add(new ChartDatum(week + "|" + total + "|" + caused, total));
+        }
+        return result;
+    }
+
+    private List<ChartDatum> buildChangeHeatmapData(BiRawData rawData) {
+        List<Map<String, String>> changes = rawData.changes();
+        List<Map<String, String>> incidents = rawData.incidents();
+
+        // Build 7x24 grid: key = "dow|hour", value = [changeCount, incidentCount]
+        Map<String, long[]> grid = new LinkedHashMap<>();
+        for (int dow = 1; dow <= 7; dow++) {
+            for (int hour = 0; hour < 24; hour++) {
+                grid.put(dow + "|" + hour, new long[]{0, 0});
+            }
+        }
+
+        for (Map<String, String> ch : changes) {
+            LocalDateTime date = parseDate(ch.get("Actual Start"));
+            if (date == null) continue;
+            int dow = date.getDayOfWeek().getValue(); // 1=Mon, 7=Sun
+            int hour = date.getHour();
+            String key = dow + "|" + hour;
+            grid.get(key)[0]++;
+            if (isYes(ch.get("Incident Caused"))) {
+                LocalDateTime actualEnd = parseDate(ch.get("Actual End"));
+                List<Map<String, String>> linked = findIncidentsWithin48h(incidents, actualEnd);
+                for (Map<String, String> inc : linked) {
+                    LocalDateTime incBegin = parseDate(inc.get("Begin Date"));
+                    if (incBegin == null) continue;
+                    int incDow = incBegin.getDayOfWeek().getValue();
+                    int incHour = incBegin.getHour();
+                    grid.get(incDow + "|" + incHour)[1]++;
+                }
+            }
+        }
+
+        return grid.entrySet().stream()
+            .map(e -> new ChartDatum(
+                e.getKey() + "|" + e.getValue()[0] + "|" + e.getValue()[1],
+                e.getValue()[0]))
+            .toList();
+    }
+
+    private List<ChartDatum> buildTechDebtBubbleData(BiRawData rawData) {
+        List<Map<String, String>> problems = rawData.problems();
+
+        // Group problems by CI Affected
+        Map<String, List<Map<String, String>>> byCi = problems.stream()
+            .collect(Collectors.groupingBy(
+                row -> defaultLabel(row.get("CI Affected"), "未标注"),
+                LinkedHashMap::new, Collectors.toList()));
+
+        List<ChartDatum> result = new ArrayList<>();
+        for (Map.Entry<String, List<Map<String, String>>> entry : byCi.entrySet()) {
+            String ci = entry.getKey();
+            List<Map<String, String>> probs = entry.getValue();
+
+            // Count open problems and compute average aging for open ones
+            long openCount = probs.stream()
+                .filter(row -> !matchesAny(clean(row.get("Status")), List.of("Resolved", "Closed")))
+                .count();
+            double avgAging = probs.stream()
+                .filter(row -> !matchesAny(clean(row.get("Status")), List.of("Resolved", "Closed")))
+                .mapToLong(row -> {
+                    LocalDateTime logged = parseDate(row.get("Logged Date"));
+                    if (logged == null) return 0;
+                    LocalDateTime resolved = parseDate(row.get("Resolution Date"));
+                    LocalDateTime end = resolved != null ? resolved : LocalDateTime.now();
+                    return java.time.Duration.between(logged, end).toDays();
+                }).average().orElse(0);
+
+            // Sum of all related incidents
+            long totalIncidents = probs.stream()
+                .mapToLong(row -> parseLong(row.get("Related Incidents")))
+                .sum();
+
+            // Dominant root cause category
+            String dominantRcc = probs.stream()
+                .collect(Collectors.groupingBy(r -> defaultLabel(r.get("Root Cause Category"), "未标注"), Collectors.counting()))
+                .entrySet().stream()
+                .max(Map.Entry.comparingByValue())
+                .map(Map.Entry::getKey).orElse("未标注");
+
+            // Label: "ciName|dominantRcc|avgAging|openCount|totalIncidents"
+            String label = ci + "|" + dominantRcc + "|" + String.format("%.1f", avgAging) + "|" + openCount + "|" + totalIncidents;
+            result.add(new ChartDatum(label, totalIncidents));
+        }
+
+        // Sort by total incidents descending, take top 20
+        result.sort((a, b) -> Double.compare(b.value(), a.value()));
+        return result.stream().limit(20).toList();
+    }
+
+    private List<ChartDatum> buildRequestIncidentOverlap(BiRawData rawData) {
+        Map<String, Long> requestByWeek = new LinkedHashMap<>();
+        for (Map<String, String> req : rawData.requests()) {
+            LocalDateTime date = parseDate(req.get("Requested Date"));
+            if (date == null) continue;
+            String week = formatPeriodLabel(date, "weekly");
+            requestByWeek.merge(week, 1L, Long::sum);
+        }
+
+        Map<String, Long> incidentByWeek = new LinkedHashMap<>();
+        for (Map<String, String> inc : rawData.incidents()) {
+            LocalDateTime date = parseDate(inc.get("Begin Date"));
+            if (date == null) continue;
+            String week = formatPeriodLabel(date, "weekly");
+            incidentByWeek.merge(week, 1L, Long::sum);
+        }
+
+        Set<String> allWeeks = new TreeSet<>();
+        allWeeks.addAll(requestByWeek.keySet());
+        allWeeks.addAll(incidentByWeek.keySet());
+
+        List<ChartDatum> result = new ArrayList<>();
+        for (String week : allWeeks) {
+            long reqCount = requestByWeek.getOrDefault(week, 0L);
+            long incCount = incidentByWeek.getOrDefault(week, 0L);
+            result.add(new ChartDatum(week + "|" + reqCount + "|" + incCount, reqCount));
+        }
+        return result;
+    }
+
+    private List<List<String>> buildRequestSurgeData(BiRawData rawData) {
+        LocalDateTime now = LocalDateTime.now();
+        String thisWeek = formatPeriodLabel(now, "weekly");
+        String lastWeek = formatPeriodLabel(now.minusDays(7), "weekly");
+
+        Map<String, Long> thisWeekReqs = rawData.requests().stream()
+            .filter(r -> parseDate(r.get("Requested Date")) != null && formatPeriodLabel(parseDate(r.get("Requested Date")), "weekly").equals(thisWeek))
+            .collect(Collectors.groupingBy(r -> defaultLabel(r.get("Category"), "未标注"), Collectors.counting()));
+
+        Map<String, Long> lastWeekReqs = rawData.requests().stream()
+            .filter(r -> parseDate(r.get("Requested Date")) != null && formatPeriodLabel(parseDate(r.get("Requested Date")), "weekly").equals(lastWeek))
+            .collect(Collectors.groupingBy(r -> defaultLabel(r.get("Category"), "未标注"), Collectors.counting()));
+
+        long thisWeekIncidents = rawData.incidents().stream()
+            .filter(inc -> parseDate(inc.get("Begin Date")) != null && formatPeriodLabel(parseDate(inc.get("Begin Date")), "weekly").equals(thisWeek))
+            .count();
+
+        Set<String> allCats = new TreeSet<>(thisWeekReqs.keySet());
+        allCats.addAll(lastWeekReqs.keySet());
+
+        return allCats.stream()
+            .map(cat -> {
+                long tw = thisWeekReqs.getOrDefault(cat, 0L);
+                long lw = lastWeekReqs.getOrDefault(cat, 0L);
+                String growth = lw > 0 ? String.format("%.0f%%", (tw - lw) * 100.0 / lw) : (tw > 0 ? "+∞" : "0%");
+                return List.of(cat, String.valueOf(tw), String.valueOf(lw), growth, String.valueOf(thisWeekIncidents));
+            })
+            .sorted((a, b) -> Long.compare(Long.parseLong(b.get(1)), Long.parseLong(a.get(1))))
+            .limit(10)
+            .toList();
     }
 
     private TabContent buildPersonnelEfficiency(BiRawData rawData) {
@@ -740,6 +1624,27 @@ public class BusinessIntelligenceService {
             .toList();
     }
 
+    private List<ChartDatum> buildSlaWeeklyTrendData(List<IncidentSlaRecord> incidents) {
+        return incidents.stream()
+            .filter(record -> record.beginDate() != null)
+            .collect(Collectors.groupingBy(
+                record -> formatPeriodLabel(record.beginDate(), "weekly"),
+                LinkedHashMap::new, Collectors.toList()))
+            .entrySet().stream()
+            .sorted(Map.Entry.comparingByKey())
+            .map(entry -> {
+                List<IncidentSlaRecord> rows = entry.getValue();
+                List<IncidentSlaRecord> p1p2Rows = rows.stream().filter(r -> matchesAny(r.priority(), List.of("P1", "P2"))).toList();
+                double p1p2Rate = percentageValue(p1p2Rows.stream().filter(IncidentSlaRecord::overallMet).count(), p1p2Rows.size()) * 100.0;
+                double responseRate = percentageValue(rows.stream().filter(IncidentSlaRecord::responseMet).count(), rows.size()) * 100.0;
+                double resolutionRate = percentageValue(rows.stream().filter(IncidentSlaRecord::resolutionMet).count(), rows.size()) * 100.0;
+                return new ChartDatum(
+                    entry.getKey() + "|" + String.format("%.1f", responseRate) + "|" + String.format("%.1f", resolutionRate) + "|" + String.format("%.1f", p1p2Rate),
+                    responseRate
+                );
+            }).toList();
+    }
+
     private String buildSlaSummarySentence(double responseRate, double resolutionRate, List<BiModels.SlaPriorityRow> priorityRows, List<BiModels.SlaRiskRow> categoryRisks) {
         BiModels.SlaPriorityRow weakestPriority = priorityRows.stream()
             .min(Comparator.comparingDouble(row -> parsePercentage(row.resolutionComplianceRate())))
@@ -874,6 +1779,13 @@ public class BusinessIntelligenceService {
     private String defaultLabel(String value, String fallback) {
         String normalized = clean(value);
         return normalized.isBlank() ? fallback : normalized;
+    }
+
+    private String truncate(String value, int maxLength) {
+        if (value == null || value.length() <= maxLength) {
+            return value;
+        }
+        return value.substring(0, maxLength - 3) + "...";
     }
 
     private double scoreHigherBetter(double value, double goodThreshold, double warningThreshold) {

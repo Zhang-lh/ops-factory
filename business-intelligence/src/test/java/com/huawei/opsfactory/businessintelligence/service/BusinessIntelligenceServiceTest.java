@@ -22,8 +22,8 @@ class BusinessIntelligenceServiceTest {
         AtomicInteger loads = new AtomicInteger();
         BusinessIntelligenceService service = new BusinessIntelligenceService(new CountingProvider(loads), runtimeProperties(true));
 
-        Snapshot first = service.getOverview();
-        Snapshot second = service.getOverview();
+        Snapshot first = service.getOverview(null, null);
+        Snapshot second = service.getOverview(null, null);
 
         assertEquals(1, loads.get());
         assertEquals(first, second);
@@ -36,7 +36,7 @@ class BusinessIntelligenceServiceTest {
         AtomicInteger loads = new AtomicInteger();
         BusinessIntelligenceService service = new BusinessIntelligenceService(new CountingProvider(loads), runtimeProperties(true));
 
-        Snapshot refreshed = service.refresh();
+        Snapshot refreshed = service.refresh(null, null);
         byte[] workbookBytes = service.exportCurrentWorkbook();
 
         assertEquals(1, loads.get());
@@ -49,7 +49,7 @@ class BusinessIntelligenceServiceTest {
 
         assertArrayEquals(
             refreshed.tabs().stream().map(tab -> tab.id()).toArray(),
-            service.getOverview().tabs().stream().map(tab -> tab.id()).toArray()
+            service.getOverview(null, null).tabs().stream().map(tab -> tab.id()).toArray()
         );
     }
 
