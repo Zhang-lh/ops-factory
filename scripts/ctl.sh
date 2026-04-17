@@ -23,7 +23,6 @@ set -euo pipefail
 # Service toggles (env vars):
 #   ENABLE_ONLYOFFICE=false ./ctl.sh startup   # skip OnlyOffice
 #   ENABLE_LANGFUSE=false   ./ctl.sh startup   # skip Langfuse
-#   ENABLE_BUSINESS_INTELLIGENCE=false ./ctl.sh startup   # skip Business Intelligence
 #   ENABLE_EXPORTER=false   ./ctl.sh startup   # skip Exporter
 # ==============================================================================
 
@@ -33,9 +32,8 @@ ROOT_DIR="$(dirname "${SCRIPT_DIR}")"
 # === Service toggles (optional services, set to false to skip) ===
 ENABLE_ONLYOFFICE="${ENABLE_ONLYOFFICE:-true}"
 ENABLE_LANGFUSE="${ENABLE_LANGFUSE:-true}"
-ENABLE_BUSINESS_INTELLIGENCE="${ENABLE_BUSINESS_INTELLIGENCE:-true}"
 ENABLE_EXPORTER="${ENABLE_EXPORTER:-true}"
-# gateway and webapp are mandatory — no toggles
+# all other services are mandatory — no toggles
 
 # === Sub-script paths ===
 CTL_GATEWAY="${ROOT_DIR}/gateway/scripts/ctl.sh"
@@ -56,14 +54,24 @@ log_ok()    { echo -e "${GREEN}[OK]${NC}    $1"; }
 log_fail()  { echo -e "${RED}[FAIL]${NC}  $1"; }
 
 # === Helpers ===
-run_if_enabled() {
-    local toggle="$1" name="$2" script="$3"
-    shift 3
-    if [ "${toggle}" = "true" ]; then
-        "${script}" "$@"
-    else
-        log_info "${name} disabled (toggle=false)"
-    fi
+component_name() {
+    case "$1" in
+        onlyoffice) echo "OnlyOffice" ;;
+        langfuse) echo "Langfuse" ;;
+        gateway) echo "Gateway" ;;
+        knowledge) echo "Knowledge" ;;
+        business-intelligence) echo "Business Intelligence" ;;
+        exporter) echo "Exporter" ;;
+        control-center) echo "Control Center" ;;
+        webapp) echo "Webapp" ;;
+    esac
+}
+
+is_optional_component() {
+    case "$1" in
+        onlyoffice|langfuse|exporter) return 0 ;;
+        *) return 1 ;;
+    esac
 }
 
 # === Component validation ===
@@ -82,17 +90,54 @@ validate_component() {
 # Usage: startup_one <component> [--background]
 startup_one() {
     local comp="$1"
-    local bg_flag="${2:-}"
+    shift
     case "${comp}" in
-        onlyoffice) run_if_enabled "${ENABLE_ONLYOFFICE}" "OnlyOffice" "${CTL_ONLYOFFICE}" startup ${bg_flag} ;;
-        langfuse)   run_if_enabled "${ENABLE_LANGFUSE}" "Langfuse" "${CTL_LANGFUSE}" startup ${bg_flag} ;;
-        gateway)    "${CTL_GATEWAY}" startup ${bg_flag} ;;
-        knowledge)  "${CTL_KNOWLEDGE}" startup ${bg_flag} ;;
-        business-intelligence) run_if_enabled "${ENABLE_BUSINESS_INTELLIGENCE}" "Business Intelligence" "${CTL_BUSINESS_INTELLIGENCE}" startup ${bg_flag} ;;
-        exporter)   run_if_enabled "${ENABLE_EXPORTER}" "Exporter" "${CTL_EXPORTER}" startup ${bg_flag} ;;
-        control-center) "${CTL_CONTROL_CENTER}" startup ${bg_flag} ;;
-        webapp)     "${CTL_WEBAPP}" startup ${bg_flag} ;;
+        onlyoffice)
+            if [ "${ENABLE_ONLYOFFICE}" != "true" ]; then
+                log_info "OnlyOffice disabled (toggle=false)"
+                return 0
+            fi
+            "${CTL_ONLYOFFICE}" startup "$@"
+            ;;
+        langfuse)
+            if [ "${ENABLE_LANGFUSE}" != "true" ]; then
+                log_info "Langfuse disabled (toggle=false)"
+                return 0
+            fi
+            "${CTL_LANGFUSE}" startup "$@"
+            ;;
+        gateway)    "${CTL_GATEWAY}" startup "$@" ;;
+        knowledge)  "${CTL_KNOWLEDGE}" startup "$@" ;;
+        business-intelligence) "${CTL_BUSINESS_INTELLIGENCE}" startup "$@" ;;
+        exporter)
+            if [ "${ENABLE_EXPORTER}" != "true" ]; then
+                log_info "Exporter disabled (toggle=false)"
+                return 0
+            fi
+            "${CTL_EXPORTER}" startup "$@"
+            ;;
+        control-center) "${CTL_CONTROL_CENTER}" startup "$@" ;;
+        webapp)     "${CTL_WEBAPP}" startup "$@" ;;
     esac
+}
+
+startup_with_policy() {
+    local comp="$1"
+    shift
+
+    if startup_one "${comp}" "$@"; then
+        return 0
+    fi
+
+    local name
+    name="$(component_name "${comp}")"
+    if is_optional_component "${comp}"; then
+        log_warn "${name} failed to start, continuing because it is optional"
+        return 0
+    fi
+
+    log_error "${name} failed to start, aborting because it is mandatory"
+    return 1
 }
 
 shutdown_one() {
@@ -121,9 +166,7 @@ status_one() {
         gateway)  "${CTL_GATEWAY}" status  || return 1 ;;
         knowledge) "${CTL_KNOWLEDGE}" status || return 1 ;;
         business-intelligence)
-            if [ "${ENABLE_BUSINESS_INTELLIGENCE}" = "true" ]; then
-                "${CTL_BUSINESS_INTELLIGENCE}" status || return 1
-            fi ;;
+            "${CTL_BUSINESS_INTELLIGENCE}" status || return 1 ;;
         exporter)
             if [ "${ENABLE_EXPORTER}" = "true" ]; then
                 "${CTL_EXPORTER}" status || return 1
@@ -144,28 +187,28 @@ do_startup() {
         log_info "Starting all services in background..."
 
         # 1. OnlyOffice (optional)
-        run_if_enabled "${ENABLE_ONLYOFFICE}" "OnlyOffice" "${CTL_ONLYOFFICE}" startup
+        startup_with_policy onlyoffice
 
         # 2. Langfuse (optional)
-        run_if_enabled "${ENABLE_LANGFUSE}" "Langfuse" "${CTL_LANGFUSE}" startup
+        startup_with_policy langfuse
 
         # 3. Gateway (mandatory, background)
-        "${CTL_GATEWAY}" startup --background
+        startup_with_policy gateway --background
 
         # 4. Knowledge-service (mandatory, background)
-        "${CTL_KNOWLEDGE}" startup --background
+        startup_with_policy knowledge --background
 
-        # 5. Business Intelligence (optional, background)
-        run_if_enabled "${ENABLE_BUSINESS_INTELLIGENCE}" "Business Intelligence" "${CTL_BUSINESS_INTELLIGENCE}" startup --background
+        # 5. Business Intelligence (mandatory, background)
+        startup_with_policy business-intelligence --background
 
         # 6. Exporter (optional, background)
-        run_if_enabled "${ENABLE_EXPORTER}" "Exporter" "${CTL_EXPORTER}" startup --background
+        startup_with_policy exporter --background
 
         # 7. Control Center (mandatory, background)
-        "${CTL_CONTROL_CENTER}" startup --background
+        startup_with_policy control-center --background
 
         # 8. Webapp (mandatory, background)
-        "${CTL_WEBAPP}" startup --background
+        startup_with_policy webapp --background
     else
         for comp in "${components[@]}"; do
             validate_component "${comp}"
@@ -176,7 +219,7 @@ do_startup() {
         done
         log_info "Starting in background: ${components[*]}..."
         for comp in "${components[@]}"; do
-            startup_one "${comp}" --background
+            startup_with_policy "${comp}" --background || return 1
         done
     fi
 }
@@ -262,7 +305,7 @@ Components (multiple allowed):
   langfuse    Langfuse observability platform (Docker) [optional]
   gateway     Gateway + goosed agents                  [mandatory]
   knowledge   Knowledge ingestion / retrieval service  [mandatory]
-  business-intelligence  Business intelligence service [optional]
+  business-intelligence  Business intelligence service [mandatory]
   exporter    Prometheus metrics exporter              [optional]
   control-center  Control Center service               [mandatory]
   webapp      Web application (Vite dev server)        [mandatory]
@@ -276,7 +319,6 @@ Examples:
 Service toggles (env vars):
   ENABLE_ONLYOFFICE=true|false  (default: true)
   ENABLE_LANGFUSE=true|false    (default: true)
-  ENABLE_BUSINESS_INTELLIGENCE=true|false  (default: true)
   ENABLE_EXPORTER=true|false    (default: true)
 
 Options:

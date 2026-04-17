@@ -192,7 +192,6 @@ Run the mandatory platform stack without optional integrations:
 ```bash
 ENABLE_ONLYOFFICE=false \
 ENABLE_LANGFUSE=false \
-ENABLE_BUSINESS_INTELLIGENCE=false \
 ENABLE_EXPORTER=false \
 ./scripts/ctl.sh startup all
 ```
