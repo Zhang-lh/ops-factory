@@ -1701,6 +1701,13 @@
     color: var(--color-text-secondary);
 }
 
+.sop-workflow-text-truncate {
+    max-width: 300px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 .sop-workflow-code-pill,
 .sop-workflow-count-pill,
 .sop-workflow-meta-tag {

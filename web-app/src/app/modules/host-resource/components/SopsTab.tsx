@@ -775,10 +775,10 @@ function SopExpandableRow({ sop, onEdit, onDelete, onToggleEnabled }: {
                         <span style={{ fontWeight: 700 }}>{sop.name}</span>
                     </button>
                 </td>
-                <td className="sop-workflow-muted-text">
+                <td className="sop-workflow-muted-text sop-workflow-text-truncate" title={sop.description || ''}>
                     {sop.description || '—'}
                 </td>
-                <td>
+                <td className="sop-workflow-text-truncate" title={sop.triggerCondition || ''}>
                     {sop.triggerCondition || '—'}
                 </td>
                 <td style={{ textAlign: 'center' }}>
