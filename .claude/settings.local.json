@@ -5,7 +5,7 @@
       "mcp__web-search-prime__web_search_prime",
       "mcp__web-reader__webReader",
       "WebSearch",
-      "WebFetch(domain:github.com)"
+      "Bash(bash:*)"
     ]
   }
 }
