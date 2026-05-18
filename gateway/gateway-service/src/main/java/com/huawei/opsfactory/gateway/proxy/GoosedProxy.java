@@ -258,6 +258,11 @@ public class GoosedProxy {
                 upstream.statusCode(), agentId, sessionId);
             response.setStatusCode(upstream.statusCode());
             copyUpstreamHeaders(upstream.headers().asHttpHeaders(), response.getHeaders());
+            // Inject SSE anti-proxy headers to prevent intermediate proxies (NSLB, Nginx, etc.)
+            // from buffering or caching the event stream, which causes tail events (Finish,
+            // OutputFiles) to be lost when the proxy closes the connection prematurely.
+            response.getHeaders().set(HttpHeaders.CACHE_CONTROL, "no-cache");
+            response.getHeaders().set("X-Accel-Buffering", "no");
             Flux<DataBuffer> body =
                 transformSessionEventStream(
                     upstream.bodyToFlux(DataBuffer.class)
