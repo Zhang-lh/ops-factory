@@ -2258,6 +2258,7 @@
     "importDialogTitle": "导入资源",
     "importStep1": "第一步：选择导入类型",
     "importStep2": "第二步：选择 CSV 文件",
+    "importEncodingHint": "注意：CSV 文件必须是 UTF-8 编码。如果您的文件使用 GBK 或其他编码，请先转换为 UTF-8（例如使用记事本：文件 → 另存为 → 编码选择 UTF-8）。",
     "importStart": "开始导入",
     "importContinue": "继续导入",
     "importClose": "关闭",

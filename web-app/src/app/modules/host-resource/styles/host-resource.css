@@ -2340,6 +2340,16 @@
     color: var(--color-primary, #3b82f6);
 }
 
+.hr-import-encoding-hint {
+    font-size: 0.75rem;
+    color: var(--text-secondary, #64748b);
+    padding: var(--spacing-2, 8px);
+    background: var(--color-fill-tertiary, #fef3c7);
+    border: 1px solid var(--color-warning-border, #fde68a);
+    border-radius: 6px;
+    line-height: 1.4;
+}
+
 .hr-import-progress {
     display: flex;
     flex-direction: column;

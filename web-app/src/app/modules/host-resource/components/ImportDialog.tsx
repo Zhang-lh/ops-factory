@@ -47,6 +47,9 @@ export default function ImportDialog({ open, onClose, importing, progress, onImp
 
     const handleImport = async () => {
         if (!selectedType || !selectedFile) return
+        // Read file as text with UTF-8 encoding
+        // Note: For non-UTF-8 CSV files (like GBK), please convert them to UTF-8 first
+        // using a tool like Notepad++ or VSCode (File -> Save with Encoding -> UTF-8)
         const text = await selectedFile.text()
         const res = await onImport(selectedType, text)
         setResult(res)
@@ -131,6 +134,9 @@ export default function ImportDialog({ open, onClose, importing, progress, onImp
                 <div className="hr-import-step">
                     <div className="hr-import-step-label">
                         {t('hostResource.importStep2')}
+                    </div>
+                    <div className="hr-import-encoding-hint">
+                        {t('hostResource.importEncodingHint')}
                     </div>
                     <div className="hr-import-file-area">
                         <input
