@@ -1,6 +1,10 @@
 # Operation Intelligence runtime configuration
 # Spring Boot loads this file directly via OI_CONFIG_PATH.
 
+spring:
+  profiles:
+    active: prod                        # env override: OI_SPRING_PROFILE (set to 'prod' in production)
+
 server:
   port: 8096                            # env override: OI_PORT
 

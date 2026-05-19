@@ -492,11 +492,156 @@ describe('Error handling', () => {
     expect(data).toHaveProperty('detail')
     expect(data.status).toBe(400)
   })
-
   it('returns 401 unauthorized without body', async () => {
     const res = await fetch(`${oi.baseUrl}/operation-intelligence/qos/getEnvironments`)
     expect(res.status).toBe(401)
     // AuthWebFilter returns no body for 401, so JSON parse should fail
     await expect(res.json()).rejects.toThrow()
+  })
+})
+
+// =============================================================================
+// 8. Production Environment - Error Detail Suppression
+// =============================================================================
+describe('Production environment - error detail suppression', () => {
+  let prodOi: OiHandle | null = null
+
+  beforeAll(async () => {
+    const port = await freePort()
+    const baseUrl = `http://127.0.0.1:${port}`
+    const healthUrl = `${baseUrl}/actuator/health`
+
+    const testConfigPath = join(tmpdir(), `oi-prod-test-config-${port}.yaml`)
+    const testConfig = {
+      spring: { profiles: { active: 'prod' } },
+      server: { port },
+      'operation-intelligence': {
+        'secret-key': SECRET_KEY,
+        'cors-origin': '*',
+        qos: {
+          enabled: false,
+          'dv-environments': [
+            {
+              'env-code': 'TEST.env',
+              'env-name': 'Test Environment',
+              'agent-solution-type': 'TestApp',
+              'product-type-name': 'TestApp',
+              'server-url': 'https://127.0.0.1:26335',
+              'utm-user': 'admin',
+              'utm-password': 'test',
+              'crt-content': '',
+              'crt-file-name': 'client.jks',
+              'strict-ssl': false,
+            },
+          ],
+        },
+        logging: { 'access-log-enabled': false },
+      },
+    }
+    writeFileSync(testConfigPath, stringify(testConfig), 'utf-8')
+
+    const jarPath = join(OI_DIR, 'target', 'operation-intelligence.jar')
+    if (!existsSync(jarPath)) {
+      throw new Error(
+        `JAR not found at ${jarPath}. Build it first:\n  cd operation-intelligence && ${MVN} -DskipTests package`,
+      )
+    }
+
+    const child = spawn('java', [
+      `-Dserver.port=${port}`,
+      '-jar', jarPath,
+    ], {
+      cwd: OI_DIR,
+      env: { ...process.env, OI_CONFIG_PATH: testConfigPath },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    })
+
+    const logs: string[] = []
+    child.stdout?.on('data', (d: Buffer) => {
+      const line = d.toString().trim()
+      if (line) logs.push(`[oi:prod:out] ${line}`)
+    })
+    child.stderr?.on('data', (d: Buffer) => {
+      const line = d.toString().trim()
+      if (line) logs.push(`[oi:prod:err] ${line}`)
+    })
+
+    // Wait for health check to pass
+    const maxWait = 40_000
+    const start = Date.now()
+    let ready = false
+    while (Date.now() - start < maxWait) {
+      try {
+        const res = await fetch(healthUrl, { signal: AbortSignal.timeout(1500) })
+        if (res.ok) { ready = true; break }
+      } catch { /* not ready */ }
+      await new Promise(r => setTimeout(r, 500))
+    }
+
+    if (!ready) {
+      child.kill('SIGTERM')
+      throw new Error(`operation-intelligence (prod) did not start within ${maxWait / 1000}s\nLogs:\n${logs.join('\n')}`)
+    }
+
+    const fetchWithAuth = (path: string, init?: RequestInit) =>
+      fetch(`${baseUrl}${path}`, {
+        ...init,
+        headers: {
+          'x-secret-key': SECRET_KEY,
+          'Content-Type': 'application/json',
+          ...init?.headers,
+        },
+      })
+
+    prodOi = {
+      port,
+      baseUrl,
+      secretKey: SECRET_KEY,
+      process: child,
+      logs,
+      fetch: fetchWithAuth,
+      stop: async () => {
+        child.kill('SIGTERM')
+        await new Promise<void>(resolve => {
+          child.on('close', () => resolve())
+          setTimeout(() => { child.kill('SIGKILL'); resolve() }, 5000)
+        })
+        try { unlinkSync(testConfigPath) } catch { /* ignore */ }
+      },
+    }
+  }, 180_000)
+
+  afterAll(async () => {
+    if (prodOi) await prodOi.stop()
+  }, 15_000)
+
+  it('400 error in prod does NOT include detail field', async () => {
+    const res = await prodOi!.fetch('/operation-intelligence/qos/getHealthIndicator', {
+      method: 'POST',
+      body: JSON.stringify({}),
+    })
+    expect(res.status).toBe(400)
+    const data = await res.json()
+    // In production, detail should not be included
+    expect(data.detail).toBeUndefined()
+    expect(data.status).toBe(400)
+    expect(data.error).toBe('Bad Request')
+  })
+
+  it('400 error in prod only includes standard fields', async () => {
+    const res = await prodOi!.fetch('/operation-intelligence/qos/getHealthIndicator', {
+      method: 'POST',
+      body: JSON.stringify({ startTime: 1000, endTime: 2000 }),
+    })
+    expect(res.status).toBe(400)
+    const data = await res.json()
+    // Standard fields that should always be present
+    expect(data).toHaveProperty('status')
+    expect(data).toHaveProperty('error')
+    expect(data).toHaveProperty('path')
+    expect(data).toHaveProperty('timestamp')
+    expect(data).toHaveProperty('requestId')
+    // detail should NOT be present in production
+    expect(data).not.toHaveProperty('detail')
   })
 })
