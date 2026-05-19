@@ -460,7 +460,7 @@ function SopFormModal({
 
                 <div className="sop-workflow-modal-grid">
                     <div className="form-group">
-                        <label className="form-label">{t('remoteDiagnosis.sops.name')}</label>
+                        <label className="form-label">{t('remoteDiagnosis.sops.name')} <span className="form-required">*</span></label>
                         <input
                             className="form-input"
                             type="text"

@@ -68,17 +68,105 @@ export function useResourceImport(deps: ImportDeps) {
 
     const importCsv = useCallback(async (type: ImportType, csvText: string): Promise<ImportResult> => {
         const rows = csvToObjects(csvText)
-        if (rows.length === 0) {
-            return { success: 0, failed: 0, errors: [{ row: 0, message: 'No data rows found' }] }
-        }
+            if (rows.length === 0) {
+                return { success: 0, failed: 0, errors: [{ row: 0, message: 'No data rows found' }] }
+            }
 
-        setImporting(true)
-        setProgress({ current: 0, total: rows.length, phase: type })
+            // Validate CSV type matches selected import type
+            const firstRowKeys = new Set(Object.keys(rows[0]).map(k => k.toLowerCase()))
 
-        const errors: ImportError[] = []
-        let success = 0
+            // Required fields for each type
+            const typeRequiredFields: Record<ImportType, string[]> = {
+                ClusterTypes: ['name', 'code'],
+                BusinessTypes: ['name', 'code'],
+                HostGroups: ['name'],
+                Clusters: ['name', 'type'],
+                Hosts: ['name', 'ip', 'username'],
+                BusinessServices: ['name', 'code'],
+                Relations: ['sourcenode', 'destnode'],
+                SOPs: ['name'],
+                Whitelist: ['pattern'],
+            }
 
-        // Build lookup maps from current data
+            // Unique fields to help distinguish types
+            const typeUniqueFields: Record<ImportType, string[]> = {
+                ClusterTypes: ['commandprefix', 'envvariables'],
+                BusinessTypes: [], // Distinguished from ClusterTypes by NOT having commandprefix/envvariables
+                HostGroups: ['parentgroup'],
+                Clusters: ['type', 'group'],
+                Hosts: ['ip', 'port', 'username', 'authtype', 'credential'],
+                BusinessServices: ['businesstype'],
+                Relations: ['sourcenode', 'destnode'],
+                SOPs: ['version', 'triggercondition', 'enabled', 'mode'],
+                Whitelist: ['pattern'],
+            }
+
+            // Check required fields
+            const required = typeRequiredFields[type]
+            const missingRequired = required.filter(field => !firstRowKeys.has(field.toLowerCase()))
+            if (missingRequired.length > 0) {
+                return {
+                    success: 0,
+                    failed: rows.length,
+                    errors: [{
+                        row: 0,
+                        message: `Invalid CSV file for ${type}. Missing required columns: ${missingRequired.join(', ')}.`
+                    }]
+                }
+            }
+
+            // Special handling for ClusterTypes vs BusinessTypes (both have 'name' and 'code')
+            if (type === 'ClusterTypes') {
+                // ClusterTypes should NOT have businesstype
+                if (firstRowKeys.has('businesstype')) {
+                    return {
+                        success: 0, failed: rows.length,
+                        errors: [{ row: 0, message: 'CSV file appears to be for: BusinessTypes. Please select the correct import type.' }]
+                    }
+                }
+                // ClusterTypes should have commandprefix (optional) or envvariables (optional)
+                if (!firstRowKeys.has('commandprefix') && !firstRowKeys.has('envvariables')) {
+                    return {
+                        success: 0, failed: rows.length,
+                        errors: [{ row: 0, message: 'CSV file appears to be for: BusinessTypes. Please select the correct import type.' }]
+                    }
+                }
+            } else if (type === 'BusinessTypes') {
+                // BusinessTypes should NOT have commandprefix, envvariables, or businesstype
+                if (firstRowKeys.has('commandprefix') || firstRowKeys.has('envvariables')) {
+                    return {
+                        success: 0, failed: rows.length,
+                        errors: [{ row: 0, message: 'CSV file appears to be for: ClusterTypes. Please select the correct import type.' }]
+                    }
+                }
+            } else {
+                // For other types, check if file has unique fields of other types
+                const unexpectedFields = Object.entries(typeUniqueFields)
+                    .filter(([checkType, fields]) => checkType !== type)
+                    .filter(([checkType]) => typeUniqueFields[checkType].length > 0)
+                    .filter(([, fields]) => fields.some(field => firstRowKeys.has(field.toLowerCase())))
+
+                if (unexpectedFields.length > 0) {
+                    const suggestions = unexpectedFields.map(([checkType]) => checkType).join(' or ')
+                    return {
+                        success: 0,
+                        failed: rows.length,
+                        errors: [{
+                            row: 0,
+                            message: `CSV file appears to be for: ${suggestions}. Please select the correct import type.`
+                        }]
+                    }
+                }
+            }
+
+            setImporting(true)
+            setProgress({ current: 0, total: rows.length, phase: type })
+
+            try {
+                const errors: ImportError[] = []
+                let success = 0
+
+                // Build lookup maps from current data
         const groupNameToId = new Map(deps.groups.map(g => [g.name, g.id]))
         const groupCodeToId = new Map(deps.groups.map(g => [g.code ?? '', g.id]))
         const clusterNameToId = new Map(deps.clusters.map(c => [c.name, c.id]))
@@ -303,9 +391,19 @@ export function useResourceImport(deps: ImportDeps) {
             ])
         } catch { /* non-critical refresh failure */ }
 
-        setImporting(false)
-        setProgress(null)
-        return { success, failed: errors.length, errors }
+            setImporting(false)
+            setProgress(null)
+            return { success, failed: errors.length, errors }
+        } catch (err) {
+            const msg = err instanceof Error ? err.message : String(err)
+            setImporting(false)
+            setProgress(null)
+            return {
+                success: 0,
+                failed: rows.length,
+                errors: [{ row: 0, message: `Import failed: ${msg}` }]
+            }
+        }
     }, [deps])
 
     return { importing, progress, importCsv }

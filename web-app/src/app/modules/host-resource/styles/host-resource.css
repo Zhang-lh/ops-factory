@@ -2422,3 +2422,8 @@
     justify-content: flex-end;
     gap: var(--spacing-2, 8px);
 }
+
+.form-required {
+    color: var(--color-error, #ef4444);
+    margin-left: 2px;
+}

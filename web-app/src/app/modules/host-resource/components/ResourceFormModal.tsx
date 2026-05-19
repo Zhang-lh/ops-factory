@@ -311,6 +311,12 @@ export default function ResourceFormModal({
                 if (!hostName.trim() || !hostIp.trim()) { setError(t('hostResource.nameAndIpRequired')); setSaving(false); return }
                 if (!isValidIp(hostIp)) { setError(t('hostResource.ipInvalid')); setSaving(false); return }
                 if (hostBusinessIp.trim() && !isValidIp(hostBusinessIp)) { setError(t('hostResource.businessIpInvalid')); setSaving(false); return }
+                if (hostUsername && !/^[\x00-\x7F]*$/.test(hostUsername)) {
+                    setError(t('hostResource.usernameInvalidChars')); setSaving(false); return
+                }
+                if (hostCredential && hostCredential !== '***' && !/^[\x00-\x7F]*$/.test(hostCredential)) {
+                    setError(t('hostResource.credentialInvalidChars')); setSaving(false); return
+                }
                 const editingHostId = editingItem?.type === 'host' ? editingItem.data.id : null
                 const trimmedHostName = hostName.trim()
                 const duplicate = hosts.some(h => h.name?.toLowerCase() === trimmedHostName.toLowerCase() && h.id !== editingHostId)
