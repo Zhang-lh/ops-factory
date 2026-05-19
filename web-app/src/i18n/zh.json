@@ -4,6 +4,7 @@
     "confirm": "确认",
     "confirmTitle": "确认操作",
     "delete": "删除",
+    "actions": "操作",
     "showing": "显示第 {{start}}-{{end}} 条，共 {{total}} 条",
     "perPage": "条/页",
     "previousPage": "上一页",
@@ -2081,13 +2082,15 @@
       "sopEnabled": "启用",
       "sopDisabled": "已禁用",
       "toggleSuccess": "SOP「{{name}}」{{status}}",
-      "status": "状态"
+      "status": "状态",
+      "actions": "操作"
     },
     "whitelist": {
       "title": "命令白名单",
       "subtitle": "管理允许执行的远程命令",
       "pattern": "命令",
       "description": "描述",
+      "status": "状态",
       "enabled": "启用",
       "disabled": "已禁用",
       "addCommand": "新增命令",
@@ -2107,7 +2110,9 @@
       "importDuplicate": "成功导入 {{imported}} 条命令，{{duplicates}} 条重复已跳过",
       "duplicatePattern": "命令已存在重复",
       "patternPlaceholder": "例如 ps、nslb list",
-      "patternHint": "单个命令（如 ps）匹配该命令的所有用法；带参数（如 nslb list）仅匹配以该前缀开头的命令。"
+      "patternHint": "单个命令（如 ps）匹配该命令的所有用法；带参数（如 nslb list）仅匹配以该前缀开头的命令。",
+      "enabledSuccess": "命令「{{pattern}}」已启用",
+      "disabledSuccess": "命令「{{pattern}}」已禁用"
     }
   },
   "hostResource": {

@@ -270,9 +270,9 @@ export function WhitelistTab() {
                 await updateCommand(cmd.pattern, { ...cmd, enabled: !cmd.enabled })
                 showToast(
                     'success',
-                    cmd.enabled
-                        ? t('remoteDiagnosis.whitelist.disabled')
-                        : t('remoteDiagnosis.whitelist.enabled'),
+                    !cmd.enabled
+                        ? t('remoteDiagnosis.whitelist.enabledSuccess', { pattern: cmd.pattern })
+                        : t('remoteDiagnosis.whitelist.disabledSuccess', { pattern: cmd.pattern }),
                 )
                 await fetchCommands()
             } catch (err) {
@@ -390,9 +390,9 @@ export function WhitelistTab() {
                                         <th>{t('remoteDiagnosis.whitelist.pattern')}</th>
                                         <th>{t('remoteDiagnosis.whitelist.description')}</th>
                                         <th style={{ textAlign: 'center' }}>
-                                            {t('remoteDiagnosis.whitelist.enabled')}
+                                            {t('remoteDiagnosis.whitelist.status')}
                                         </th>
-                                        <th style={{ textAlign: 'right' }}>操作</th>
+                                        <th style={{ textAlign: 'right' }}>{t('common.actions')}</th>
                                     </tr>
                                 </thead>
                                 <tbody>

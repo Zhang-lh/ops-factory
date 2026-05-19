@@ -4,6 +4,7 @@
     "confirm": "Confirm",
     "confirmTitle": "Confirm",
     "delete": "Delete",
+    "actions": "Actions",
     "showing": "Showing {{start}}-{{end}} of {{total}}",
     "perPage": "per page",
     "previousPage": "Previous page",
@@ -2081,13 +2082,15 @@
       "sopEnabled": "Enabled",
       "sopDisabled": "Disabled",
       "toggleSuccess": "SOP \"{{name}}\" {{status}}",
-      "status": "Status"
+      "status": "Status",
+      "actions": "Actions"
     },
     "whitelist": {
       "title": "Trustlist Commands",
       "subtitle": "Manage allowed remote commands",
       "pattern": "Command",
       "description": "Description",
+      "status": "Status",
       "enabled": "Enabled",
       "disabled": "Disabled",
       "addCommand": "Add Command",
@@ -2107,7 +2110,9 @@
       "importDuplicate": "Imported {{imported}} commands, {{duplicates}} duplicates skipped",
       "duplicatePattern": "Command pattern already exists",
       "patternPlaceholder": "e.g. ps, nslb list",
-      "patternHint": "Single word (e.g. ps) matches any usage; with arguments (e.g. nslb list) matches only commands starting with that prefix."
+      "patternHint": "Single word (e.g. ps) matches any usage; with arguments (e.g. nslb list) matches only commands starting with that prefix.",
+      "enabledSuccess": "Command \"{{pattern}}\" enabled",
+      "disabledSuccess": "Command \"{{pattern}}\" disabled"
     }
   },
   "hostResource": {

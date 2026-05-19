@@ -772,14 +772,14 @@ function SopExpandableRow({ sop, onEdit, onDelete, onToggleEnabled }: {
                         >
                             <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clipRule="evenodd" />
                         </svg>
-                        <span style={{ fontWeight: 700 }}>{sop.name}</span>
+                        <span style={{ fontWeight: 700 }}>{sop.name.trim()}</span>
                     </button>
                 </td>
                 <td className="sop-workflow-muted-text sop-workflow-text-truncate" title={sop.description || ''}>
-                    {sop.description || '—'}
+                    {sop.description?.trim() || '—'}
                 </td>
                 <td className="sop-workflow-text-truncate" title={sop.triggerCondition || ''}>
-                    {sop.triggerCondition || '—'}
+                    {sop.triggerCondition?.trim() || '—'}
                 </td>
                 <td style={{ textAlign: 'center' }}>
                     <span className={`sop-workflow-node-type ${isNL ? 'sop-workflow-node-type-nl' : ''}`}>
@@ -1036,7 +1036,7 @@ export function SopsTab() {
                     throw new Error(msg)
                 }
                 showToast('success', t('remoteDiagnosis.sops.toggleSuccess', {
-                    name: sop.name,
+                    name: sop.name.trim(),
                     status: enabled ? t('remoteDiagnosis.sops.sopEnabled') : t('remoteDiagnosis.sops.sopDisabled'),
                 }))
                 await fetchSops()
@@ -1128,7 +1128,7 @@ export function SopsTab() {
                                         <th style={{ textAlign: 'center' }}>
                                             {t('remoteDiagnosis.sops.status')}
                                         </th>
-                                        <th style={{ textAlign: 'right' }}>操作</th>
+                                        <th style={{ textAlign: 'right' }}>{t('remoteDiagnosis.sops.actions')}</th>
                                     </tr>
                                 </thead>
                                 <tbody>
