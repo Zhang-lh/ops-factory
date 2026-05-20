@@ -73,7 +73,7 @@ export function CreateAgentModal({
     }, [name, id, isValidId, userId, t, onCreated, onClose])
 
     return (
-        <div className="modal-overlay" onClick={onClose}>
+        <div className="modal-overlay">
             <div className="modal" onClick={(event) => event.stopPropagation()}>
                 <div className="modal-header">
                     <h2 className="modal-title">{t('agents.createAgentTitle')}</h2>
@@ -88,7 +88,7 @@ export function CreateAgentModal({
                     )}
 
                     <div className="form-group">
-                        <label className="form-label">{t('agents.agentName')}</label>
+                        <label className="form-label">{t('agents.agentName')} <span className="form-required">*</span></label>
                         <input
                             className="form-input"
                             type="text"

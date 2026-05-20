@@ -13,6 +13,8 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 
+import com.huawei.opsfactory.operationintelligence.config.OperationIntelligenceProperties;
+
 class DvClientTest {
 
     private DvClient client;
@@ -21,11 +23,14 @@ class DvClientTest {
 
     private DvAuthService authService;
 
+    private OperationIntelligenceProperties properties;
+
     @BeforeEach
     void setUp() {
         sslFactory = new DvSslContextFactory();
         authService = new DvAuthService(sslFactory);
-        client = new DvClient(authService, sslFactory);
+        properties = new OperationIntelligenceProperties();
+        client = new DvClient(authService, sslFactory, properties);
     }
 
     @Test
@@ -88,7 +93,7 @@ class DvClientTest {
 
     @Test
     void executeWithRetry_alwaysFails_throws() {
-        DvClient noSleepClient = new DvClient(authService, sslFactory) {
+        DvClient noSleepClient = new DvClient(authService, sslFactory, properties) {
             @Override
             void sleepBeforeRetry(long delayMs) {
                 /* no-op for testing */ }

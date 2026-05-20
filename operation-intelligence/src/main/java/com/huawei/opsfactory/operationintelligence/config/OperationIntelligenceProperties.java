@@ -32,6 +32,8 @@ public class OperationIntelligenceProperties {
 
     private Qos qos = new Qos();
 
+    private CallChain callChain = new CallChain();
+
     private Logging logging = new Logging();
 
     /**
@@ -122,6 +124,24 @@ public class OperationIntelligenceProperties {
      */
     public void setLogging(Logging logging) {
         this.logging = logging;
+    }
+
+    /**
+     * Gets the call chain.
+     *
+     * @return the result
+     */
+    public CallChain getCallChain() {
+        return callChain;
+    }
+
+    /**
+     * Sets the call chain.
+     *
+     * @param callChain the callChain
+     */
+    public void setCallChain(CallChain callChain) {
+        this.callChain = callChain;
     }
 
     /**
@@ -734,6 +754,202 @@ public class OperationIntelligenceProperties {
          */
         public void setAccessLogEnabled(boolean accessLogEnabled) {
             this.accessLogEnabled = accessLogEnabled;
+        }
+    }
+
+    public static class CallChain {
+        private boolean enabled = true;
+        private int querySize = 100;
+        private int queryLimit = 10000;
+        private long requestTimeoutMs = 60000;
+        private long maxTimeRangeMs = 1800000;
+        private long rotationIntervalMs = 3600000;
+        private long normalizeDataRetentionDays = 90;
+        private TimeSplit timeSplit = new TimeSplit();
+
+        /**
+         * Checks whether the enabled.
+         *
+         * @return the result
+         */
+        public boolean isEnabled() {
+            return enabled;
+        }
+
+        /**
+         * Sets the enabled.
+         *
+         * @param enabled the enabled
+         */
+        public void setEnabled(boolean enabled) {
+            this.enabled = enabled;
+        }
+
+        /**
+         * Gets the query size.
+         *
+         * @return the query size
+         */
+        public int getQuerySize() {
+            return querySize;
+        }
+
+        /**
+         * Sets the query size.
+         *
+         * @param querySize the query size
+         */
+        public void setQuerySize(int querySize) {
+            this.querySize = querySize;
+        }
+
+        /**
+         * Gets the query limit.
+         *
+         * @return the query limit
+         */
+        public int getQueryLimit() {
+            return queryLimit;
+        }
+
+        /**
+         * Sets the query limit.
+         *
+         * @param queryLimit the query limit
+         */
+        public void setQueryLimit(int queryLimit) {
+            this.queryLimit = queryLimit;
+        }
+
+        /**
+         * Gets the request timeout ms.
+         *
+         * @return the request timeout ms
+         */
+        public long getRequestTimeoutMs() {
+            return requestTimeoutMs;
+        }
+
+        /**
+         * Sets the request timeout ms.
+         *
+         * @param requestTimeoutMs the request timeout ms
+         */
+        public void setRequestTimeoutMs(long requestTimeoutMs) {
+            this.requestTimeoutMs = requestTimeoutMs;
+        }
+
+        /**
+         * Gets the rotation interval ms.
+         *
+         * @return the rotation interval ms
+         */
+        public long getRotationIntervalMs() {
+            return rotationIntervalMs;
+        }
+
+        /**
+         * Sets the rotation interval ms.
+         *
+         * @param rotationIntervalMs the rotationIntervalMs
+         */
+        public void setRotationIntervalMs(long rotationIntervalMs) {
+            this.rotationIntervalMs = rotationIntervalMs;
+        }
+
+        /**
+         * Gets the normalize data retention days.
+         *
+         * @return the normalize data retention days
+         */
+        public long getNormalizeDataRetentionDays() {
+            return normalizeDataRetentionDays;
+        }
+
+        /**
+         * Sets the normalize data retention days.
+         *
+         * @param normalizeDataRetentionDays the normalizeDataRetentionDays
+         */
+        public void setNormalizeDataRetentionDays(long normalizeDataRetentionDays) {
+            this.normalizeDataRetentionDays = normalizeDataRetentionDays;
+        }
+
+        /**
+         * Gets the max time range ms.
+         *
+         * @return the max time range ms
+         */
+        public long getMaxTimeRangeMs() {
+            return maxTimeRangeMs;
+        }
+
+        /**
+         * Sets the max time range ms.
+         *
+         * @param maxTimeRangeMs the maxTimeRangeMs
+         */
+        public void setMaxTimeRangeMs(long maxTimeRangeMs) {
+            this.maxTimeRangeMs = maxTimeRangeMs;
+        }
+
+        /**
+         * Gets the time split.
+         *
+         * @return the time split
+         */
+        public TimeSplit getTimeSplit() {
+            return timeSplit;
+        }
+
+        /**
+         * Sets the time split.
+         *
+         * @param timeSplit the time split
+         */
+        public void setTimeSplit(TimeSplit timeSplit) {
+            this.timeSplit = timeSplit;
+        }
+
+        public static class TimeSplit {
+            private long initialMinutes = 15;
+            private List<Long> degradeMinutes = List.of(10L, 5L);
+
+            /**
+             * Gets the initial minutes.
+             *
+             * @return the initial minutes
+             */
+            public long getInitialMinutes() {
+                return initialMinutes;
+            }
+
+            /**
+             * Sets the initial minutes.
+             *
+             * @param initialMinutes the initialMinutes
+             */
+            public void setInitialMinutes(long initialMinutes) {
+                this.initialMinutes = initialMinutes;
+            }
+
+            /**
+             * Gets the degrade minutes.
+             *
+             * @return the degrade minutes
+             */
+            public List<Long> getDegradeMinutes() {
+                return degradeMinutes;
+            }
+
+            /**
+             * Sets the degrade minutes.
+             *
+             * @param degradeMinutes the degradeMinutes
+             */
+            public void setDegradeMinutes(List<Long> degradeMinutes) {
+                this.degradeMinutes = degradeMinutes;
+            }
         }
     }
 }

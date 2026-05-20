@@ -198,11 +198,12 @@ export default function HostResourcePage() {
                     .map(hid => allHosts.find(h => h.id === hid)?.name)
                     .filter(Boolean)
                     .join(', ')
+                const businessType = bs.businessTypeId ? businessTypesHook.businessTypes.find(bt => bt.id === bs.businessTypeId) : null
                 childNodes.push({
                     id: bs.id,
                     type: 'business-service' as TreeNodeType,
                     name: bs.name,
-                    subtitle: hostNames || bs.code,
+                    subtitle: hostNames || (businessType?.name || bs.code),
                     raw: bs,
                 })
             }

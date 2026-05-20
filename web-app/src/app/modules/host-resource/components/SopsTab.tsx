@@ -412,7 +412,12 @@ function SopFormModal({
                 payload.tags = sopTags
                 payload.nodes = []
             } else {
-                payload.nodes = nodes
+                // Filter out variables without name and transitions without condition
+                payload.nodes = nodes.map(node => ({
+                    ...node,
+                    variables: (node.variables ?? []).filter(v => v.name.trim().length > 0),
+                    transitions: (node.transitions ?? []).filter(t => t.condition.trim().length > 0),
+                }))
             }
             await onSave(payload)
         } catch (err) {
@@ -460,7 +465,7 @@ function SopFormModal({
 
                 <div className="sop-workflow-modal-grid">
                     <div className="form-group">
-                        <label className="form-label">{t('remoteDiagnosis.sops.name')}</label>
+                        <label className="form-label">{t('remoteDiagnosis.sops.name')} <span className="form-required">*</span></label>
                         <input
                             className="form-input"
                             type="text"
@@ -772,14 +777,14 @@ function SopExpandableRow({ sop, onEdit, onDelete, onToggleEnabled }: {
                         >
                             <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clipRule="evenodd" />
                         </svg>
-                        <span style={{ fontWeight: 700 }}>{sop.name}</span>
+                        <span style={{ fontWeight: 700 }}>{sop.name.trim()}</span>
                     </button>
                 </td>
-                <td className="sop-workflow-muted-text">
-                    {sop.description || '—'}
+                <td className="sop-workflow-muted-text sop-workflow-text-truncate" title={sop.description || ''}>
+                    {sop.description?.trim() || '—'}
                 </td>
-                <td>
-                    {sop.triggerCondition || '—'}
+                <td className="sop-workflow-text-truncate" title={sop.triggerCondition || ''}>
+                    {sop.triggerCondition?.trim() || '—'}
                 </td>
                 <td style={{ textAlign: 'center' }}>
                     <span className={`sop-workflow-node-type ${isNL ? 'sop-workflow-node-type-nl' : ''}`}>
@@ -1036,7 +1041,7 @@ export function SopsTab() {
                     throw new Error(msg)
                 }
                 showToast('success', t('remoteDiagnosis.sops.toggleSuccess', {
-                    name: sop.name,
+                    name: sop.name.trim(),
                     status: enabled ? t('remoteDiagnosis.sops.sopEnabled') : t('remoteDiagnosis.sops.sopDisabled'),
                 }))
                 await fetchSops()
@@ -1128,7 +1133,7 @@ export function SopsTab() {
                                         <th style={{ textAlign: 'center' }}>
                                             {t('remoteDiagnosis.sops.status')}
                                         </th>
-                                        <th style={{ textAlign: 'right' }}>操作</th>
+                                        <th style={{ textAlign: 'right' }}>{t('remoteDiagnosis.sops.actions')}</th>
                                     </tr>
                                 </thead>
                                 <tbody>

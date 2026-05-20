@@ -120,9 +120,13 @@ public class FileController {
             String disposition = (!forceDownload && fileService.isInline(mimeType)) ? "inline" : "attachment";
 
             byte[] content = resource.getInputStream().readAllBytes();
+            // Encode filename using RFC 5987 for proper handling of non-ASCII characters
+            // Format: attachment; filename="fallback.ext"; filename*=UTF-8''encoded%name
+            String encodedFilename = java.net.URLEncoder.encode(filename, StandardCharsets.UTF_8).replaceAll("\\+", "%20");
+            String contentDisposition = disposition + "; filename=\"" + filename + "\"; filename*=UTF-8''" + encodedFilename;
             return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType(mimeType))
-                .header(HttpHeaders.CONTENT_DISPOSITION, disposition + "; filename=\"" + filename + "\"")
+                .header(HttpHeaders.CONTENT_DISPOSITION, contentDisposition)
                 .body(content);
         })
             .subscribeOn(Schedulers.boundedElastic())

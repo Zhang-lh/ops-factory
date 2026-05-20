@@ -69,15 +69,21 @@ function formatFileSize(bytes: number): string {
     return `${(bytes / 1048576).toFixed(1)} MB`
 }
 
-function formatDate(iso: string): string {
+function formatDate(iso: string, locale: string): string {
     const date = new Date(iso)
-    return date.toLocaleDateString(undefined, {
+    const options: Intl.DateTimeFormatOptions = {
         year: 'numeric',
         month: 'short',
         day: 'numeric',
         hour: '2-digit',
         minute: '2-digit',
-    })
+    }
+    // Use English locale for zh (Chinese) to avoid mixed Chinese/English format
+    // zh format like "2026年5月19日 下午2:30" is not desired
+    if (locale === 'zh' || locale === 'zh-CN') {
+        locale = 'en-US'
+    }
+    return date.toLocaleDateString(locale, options)
 }
 
 type FileIconProps = SVGProps<SVGSVGElement> & {
@@ -229,7 +235,7 @@ function getFileKey(file: AgentFile): string {
 }
 
 export default function FilesPage() {
-    const { t } = useTranslation()
+    const { t, i18n } = useTranslation()
     const { agents, isConnected, error: connectionError } = useGoosed()
     const { openPreview, isPreviewable, previewFile, closePreview } = usePreview()
     const { userId } = useUser()
@@ -478,7 +484,7 @@ export default function FilesPage() {
                                             </div>
                                             <div className="file-meta-details">
                                                 <span>{formatFileSize(file.size)}</span>
-                                                <span>{formatDate(file.modifiedAt)}</span>
+                                                <span>{formatDate(file.modifiedAt, i18n.language)}</span>
                                             </div>
                                         </div>
                                     </div>
@@ -523,7 +529,7 @@ export default function FilesPage() {
                 <div className="modal-overlay" role="dialog" aria-modal="true" onClick={() => setDeleteTarget(null)}>
                     <div className="modal" onClick={(event) => event.stopPropagation()}>
                         <div className="modal-header">
-                            <h2 className="modal-title">删除文件</h2>
+                            <h2 className="modal-title">{t('files.deleteTitle')}</h2>
                             <button className="modal-close" onClick={() => setDeleteTarget(null)} aria-label={t('common.close')}>
                                 &times;
                             </button>
@@ -531,7 +537,7 @@ export default function FilesPage() {
 
                         <div className="modal-body">
                             <p style={{ fontSize: 'var(--font-size-base)', color: 'var(--color-text-primary)', marginBottom: 'var(--spacing-4)' }}>
-                                将永久删除 “{deleteTarget.name}”，此操作不可恢复。
+                                {t('files.deleteConfirm', { name: deleteTarget.name })}
                             </p>
                         </div>
 
@@ -542,7 +548,7 @@ export default function FilesPage() {
                                 onClick={() => setDeleteTarget(null)}
                                 disabled={deletingKey === getFileKey(deleteTarget)}
                             >
-                                取消
+                                {t('common.cancel')}
                             </button>
                             <button
                                 type="button"
@@ -550,7 +556,7 @@ export default function FilesPage() {
                                 onClick={() => handleDelete(deleteTarget)}
                                 disabled={deletingKey === getFileKey(deleteTarget)}
                             >
-                                {deletingKey === getFileKey(deleteTarget) ? '删除中...' : '确认删除'}
+                                {deletingKey === getFileKey(deleteTarget) ? t('common.deleting') : t('common.delete')}
                             </button>
                         </div>
                     </div>

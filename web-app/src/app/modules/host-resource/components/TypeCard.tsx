@@ -37,7 +37,7 @@ export default function TypeCard({ item, onEdit, onDelete }: Props) {
                 )}
             </div>
             {item.description && (
-                <div className="hr-type-def-card-desc">{item.description}</div>
+                <div className="hr-type-def-card-desc hr-type-def-card-desc-truncate" title={item.description}>{item.description}</div>
             )}
             {item.knowledge && (
                 <>

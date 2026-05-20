@@ -198,6 +198,10 @@
     font-size: var(--hr-font-size-xs);
     color: var(--text-secondary, #475569);
     background: var(--color-fill-tertiary, #f1f5f9);
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .hr-cluster-host-panel-tag-count {
@@ -217,6 +221,7 @@
     display: flex;
     flex-direction: column;
     gap: 4px;
+    min-width: 0;
 }
 
 .hr-cluster-host-panel-field span {
@@ -1403,7 +1408,7 @@
 
 .hr-type-def-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: var(--spacing-4, 16px);
     padding: var(--spacing-4, 16px);
 }
@@ -1428,6 +1433,7 @@
     align-items: center;
     gap: var(--spacing-2, 8px);
     margin-bottom: var(--spacing-2, 8px);
+    min-width: 0;
 }
 
 .hr-type-def-card-color {
@@ -1444,6 +1450,8 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    min-width: 0;
+    flex: 1;
 }
 
 .hr-type-def-card-desc {
@@ -1451,6 +1459,13 @@
     color: var(--text-secondary, #64748b);
     line-height: 1.4;
     margin-bottom: var(--spacing-2, 8px);
+}
+
+.hr-type-def-card-desc-truncate {
+    max-width: 300px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .hr-type-def-card-knowledge-label {
@@ -1594,6 +1609,7 @@
     background: #fef3c7;
     color: #92400e;
     border: 1px solid #fde68a;
+    flex-shrink: 0;
 }
 
 /* ── SOP Workflow Styles (migrated from sop-workflow module) ── */
@@ -1699,6 +1715,13 @@
 
 .sop-workflow-muted-text {
     color: var(--color-text-secondary);
+}
+
+.sop-workflow-text-truncate {
+    max-width: 300px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .sop-workflow-code-pill,
@@ -2326,6 +2349,48 @@
     color: var(--color-primary, #3b82f6);
 }
 
+.hr-import-encoding-hint {
+    font-size: 0.75rem;
+    color: var(--text-secondary, #64748b);
+    padding: var(--spacing-2, 8px);
+    background: var(--color-fill-tertiary, #fef3c7);
+    border: 1px solid var(--color-warning-border, #fde68a);
+    border-radius: 6px;
+    line-height: 1.4;
+}
+
+.hr-import-sample-area {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-1, 4px);
+}
+
+.hr-import-sample-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-2, 8px);
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-secondary, #64748b);
+}
+
+.hr-import-sample-content {
+    font-size: 0.75rem;
+    font-family: 'SF Mono', Monaco, Consolas, monospace;
+    color: var(--text-primary, #1e293b);
+    background: var(--color-fill-tertiary, #f8fafc);
+    border: 1px solid var(--border-color, #e2e8f0);
+    border-radius: 6px;
+    padding: var(--spacing-2, 8px);
+    margin: 0;
+    overflow-x: auto;
+    max-height: 200px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
 .hr-import-progress {
     display: flex;
     flex-direction: column;
@@ -2407,4 +2472,9 @@
     display: flex;
     justify-content: flex-end;
     gap: var(--spacing-2, 8px);
+}
+
+.form-required {
+    color: var(--color-error, #ef4444);
+    margin-left: 2px;
 }

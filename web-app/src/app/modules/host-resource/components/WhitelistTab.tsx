@@ -68,10 +68,21 @@ function WhitelistFormModal({
     const [saving, setSaving] = useState(false)
     const [error, setError] = useState<string | null>(null)
 
+    const validatePattern = useCallback((value: string): boolean => {
+        const trimmed = value.trim()
+        if (!trimmed) return false
+        return /^[\x00-\x7F]*$/.test(trimmed)
+    }, [])
+
     const handleSave = useCallback(async () => {
         setError(null)
         if (!pattern.trim()) {
             setError(t('remoteDiagnosis.whitelist.patternRequired'))
+            return
+        }
+
+        if (!validatePattern(pattern)) {
+            setError(t('remoteDiagnosis.whitelist.patternInvalidChars'))
             return
         }
 
@@ -83,11 +94,16 @@ function WhitelistFormModal({
                 enabled,
             })
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'Unknown error')
+            const message = err instanceof Error ? err.message : String(err)
+            if (message === 'Command whitelist entry conflict') {
+                setError(t('remoteDiagnosis.whitelist.duplicatePattern'))
+            } else {
+                setError(message)
+            }
         } finally {
             setSaving(false)
         }
-    }, [pattern, description, enabled, onSave, t])
+    }, [pattern, description, enabled, onSave, t, validatePattern])
 
     return (
         <div className="modal-overlay">
@@ -242,15 +258,21 @@ export function WhitelistTab() {
         [editingCommand, updateCommand, createCommand, fetchCommands, showToast, t],
     )
 
+    const handleCloseModal = useCallback(() => {
+        setShowAddModal(false)
+        setEditingCommand(null)
+        fetchCommands()
+    }, [fetchCommands])
+
     const handleToggleEnabled = useCallback(
         async (cmd: WhitelistCommand) => {
             try {
                 await updateCommand(cmd.pattern, { ...cmd, enabled: !cmd.enabled })
                 showToast(
                     'success',
-                    cmd.enabled
-                        ? t('remoteDiagnosis.whitelist.disabled')
-                        : t('remoteDiagnosis.whitelist.enabled'),
+                    !cmd.enabled
+                        ? t('remoteDiagnosis.whitelist.enabledSuccess', { pattern: cmd.pattern })
+                        : t('remoteDiagnosis.whitelist.disabledSuccess', { pattern: cmd.pattern }),
                 )
                 await fetchCommands()
             } catch (err) {
@@ -368,9 +390,9 @@ export function WhitelistTab() {
                                         <th>{t('remoteDiagnosis.whitelist.pattern')}</th>
                                         <th>{t('remoteDiagnosis.whitelist.description')}</th>
                                         <th style={{ textAlign: 'center' }}>
-                                            {t('remoteDiagnosis.whitelist.enabled')}
+                                            {t('remoteDiagnosis.whitelist.status')}
                                         </th>
-                                        <th style={{ textAlign: 'right' }}>操作</th>
+                                        <th style={{ textAlign: 'right' }}>{t('common.actions')}</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -451,10 +473,7 @@ export function WhitelistTab() {
             {(showAddModal || editingCommand) && (
                 <WhitelistFormModal
                     command={editingCommand}
-                    onClose={() => {
-                        setShowAddModal(false)
-                        setEditingCommand(null)
-                    }}
+                    onClose={handleCloseModal}
                     onSave={handleSaveCommand}
                 />
             )}
