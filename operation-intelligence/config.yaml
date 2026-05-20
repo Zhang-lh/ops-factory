@@ -1,6 +1,10 @@
 # Operation Intelligence runtime configuration
 # Spring Boot loads this file directly via OI_CONFIG_PATH.
 
+spring:
+  profiles:
+    active: prod                        # env override: OI_SPRING_PROFILE (set to 'prod' in production)
+
 server:
   port: 8096                            # env override: OI_PORT
 
@@ -28,12 +32,24 @@ operation-intelligence:
         env-name: "DigitalCRM SIT"
         agent-solution-type: "DigitalCRM"
         product-type-name: "DigitalCRM"
-        server-url: "https://127.0.0.1:26335"
-        utm-user: "admin"
-        utm-password: "changeit"
+        server-url: "https://192.168.200.100:26335"
+        utm-user: "MS_USER"
+        utm-password: "AAaa11!!"
         crt-content: ""                       # Base64 encoded certificate
         crt-file-name: "client.jks"
         strict-ssl: false                     # reject insecure SSL fallback (default: true)
+  
+  call-chain:
+    enabled: true
+    query-size: 100
+    query-limit: 10000
+    request-timeout-ms: 60000
+    max-time-range-ms: 1800000            # 30 minutes (max query time range)
+    rotation-interval-ms: 3600000         # 1 hour (data file rotation)
+    normalize-data-retention-days: 90     # data retention days
+    time-split:
+      initial-minutes: 15
+      degrade-minutes: [10, 5]
 
   logging:
     access-log-enabled: true

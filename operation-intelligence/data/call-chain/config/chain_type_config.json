@@ -1,0 +1,46 @@
+[
+  {
+    "chainType": "BES",
+    "description": "业务执行系统调用链",
+    "conditionKey": "menuId",
+    "conditionKeyOnAppendInfo": "",
+    "extractFields": "url,operatorId,menuId",
+    "classifyField": "menuId",
+    "subClassifyField": "",
+    "enabled": true,
+    "saveRawLog": false
+  },
+  {
+    "chainType": "API",
+    "description": "外部接口调用链",
+    "conditionKey": "serviceName",
+    "conditionKeyOnAppendInfo": "",
+    "extractFields": "url,serviceName,operationName",
+    "classifyField": "serviceName",
+    "subClassifyField": "",
+    "enabled": true,
+    "saveRawLog": false
+  },
+  {
+    "chainType": "BPM",
+    "description": "业务流程管理调用链",
+    "conditionKey": "busiCode",
+    "conditionKeyOnAppendInfo": "busiCode",
+    "extractFields": "seqNo,busiCode,processName,elementName",
+    "classifyField": "busiCode",
+    "subClassifyField": "processName",
+    "enabled": true,
+    "saveRawLog": false
+  },
+  {
+    "chainType": "JOB",
+    "description": "定时任务调用链",
+    "conditionKey": "jobDefinedId",
+    "conditionKeyOnAppendInfo": "",
+    "extractFields": "seqNo,jobDefinedId",
+    "classifyField": "jobDefinedId",
+    "subClassifyField": "",
+    "enabled": true,
+    "saveRawLog": false
+  }
+]
