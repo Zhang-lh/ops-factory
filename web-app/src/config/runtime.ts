@@ -179,19 +179,40 @@ async function loadRuntimeConfig(): Promise<RuntimeConfig> {
             name: 'app.context_init',
         })
         if (!response.ok) {
-            console.warn(`Failed to load config.json (${response.status}), using defaults`)
-            return {}
+            throw new Error(`Failed to load ${configUrl} (HTTP ${response.status}). Check that config.json is deployed alongside index.html.`)
         }
         return (await response.json()) as RuntimeConfig
     } catch (error) {
-        console.warn('Failed to load config.json, using defaults:', error)
-        return {}
+        if (error instanceof Error && error.message.startsWith('Failed to load')) {
+            throw error
+        }
+        throw new Error(`Failed to load ${configUrl}: ${error instanceof Error ? error.message : String(error)}. Check that config.json is deployed alongside index.html.`)
     }
 }
 
 export async function initializeRuntimeConfig(): Promise<void> {
     const config = await loadRuntimeConfig()
     setRuntimeConfig(config)
+
+    // Verify gateway connectivity — wrong URL or secret key will surface here
+    // instead of failing silently on every API call later.
+    try {
+        const healthUrl = `${runtime.GATEWAY_URL}/status`
+        const res = await trackedFetch(healthUrl, {
+            headers: { 'x-secret-key': runtime.GATEWAY_SECRET_KEY },
+            cache: 'no-store',
+            category: 'app',
+            name: 'app.gateway_health_check',
+        })
+        if (!res.ok) {
+            throw new Error(`Gateway health check failed (HTTP ${res.status}) at ${healthUrl}. Check gatewayUrl and gatewaySecretKey in config.json.`)
+        }
+    } catch (error) {
+        if (error instanceof Error && error.message.startsWith('Gateway health check')) {
+            throw error
+        }
+        throw new Error(`Cannot reach gateway at ${runtime.GATEWAY_URL}: ${error instanceof Error ? error.message : String(error)}. Check gatewayUrl in config.json.`)
+    }
 }
 
 /** Build gateway request headers with secret key and optional user ID. */
