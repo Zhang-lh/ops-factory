@@ -224,20 +224,24 @@ export default function ResourceFormModal({
     const handleAddClusterRelation = useCallback(async (sourceType: 'cluster' | 'business-service', sourceId: string) => {
         if (newRelTargetIds.length === 0) return
         setError(null)
-        try {
-            for (const targetId of newRelTargetIds) {
-                await onSaveClusterRelation({
+        const results = await Promise.allSettled(
+            newRelTargetIds.map(targetId =>
+                onSaveClusterRelation({
                     sourceType,
                     sourceId,
                     targetId,
                     description: newRelDesc.trim(),
                 })
-            }
+            )
+        )
+        const failures = results.filter((r): r is PromiseRejectedResult => r.status === 'rejected')
+        if (failures.length > 0) {
+            setError(failures[0].reason instanceof Error ? failures[0].reason.message : 'Failed')
+        }
+        if (failures.length < newRelTargetIds.length) {
             setNewRelTargetIds([])
             setNewRelDesc('')
             await fetchClusterRelations()
-        } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed')
         }
     }, [newRelTargetIds, newRelDesc, onSaveClusterRelation, fetchClusterRelations])
 
