@@ -315,8 +315,8 @@ describe('web-app gateway URL', () => {
     expect(content.gatewayUrl).toMatch(/^https:\/\//)
   })
 
-  it('config.json.example uses https:// for gatewayUrl', async () => {
-    const content = JSON.parse(await readFile(join(WEBAPP_DIR, 'config.json.example'), 'utf-8'))
+  it('config.standalone.json.example uses https:// for gatewayUrl', async () => {
+    const content = JSON.parse(await readFile(join(WEBAPP_DIR, 'config.standalone.json.example'), 'utf-8'))
     expect(content.gatewayUrl).toMatch(/^https:\/\//)
   })
 })
