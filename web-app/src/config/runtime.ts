@@ -107,7 +107,26 @@ async function loadRuntimeConfig(): Promise<RuntimeConfig> {
 }
 
 export async function initializeRuntimeConfig(): Promise<void> {
-    const config = await loadRuntimeConfig()
+    let config = await loadRuntimeConfig()
+
+    // When deployed behind a reverse proxy (e.g. GDE), add ?proxy=true to the
+    // page URL so all service URLs resolve to relative paths (/gateway, etc.)
+    // instead of absolute origins. This allows a single build to work both
+    // standalone (config.json URLs) and behind a proxy (relative paths).
+    const useProxy = /[?&]proxy=true(&|$)/i.test(window.location.search)
+            || /[?&]proxy=true(&|$)/i.test(window.location.hash)
+    if (useProxy) {
+        config = {
+            ...config,
+            gatewayUrl: '',
+            controlCenterUrl: '',
+            knowledgeServiceUrl: '',
+            businessIntelligenceServiceUrl: '',
+            skillMarketServiceUrl: '',
+            operationIntelligenceServiceUrl: '',
+        }
+    }
+
     setRuntimeConfig(config)
 
     // Verify gateway connectivity — wrong URL or secret key will surface here
