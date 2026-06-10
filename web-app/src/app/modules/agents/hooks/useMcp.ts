@@ -124,16 +124,27 @@ export function useMcp(agentId: string | null): UseMcpResult {
       })
 
       if (!res.ok) {
+        if (res.status === 409) {
+          const message = t('mcp.alreadyExists', { name: request.name })
+          setError(message)
+          throw new Error(message)
+        }
         throw new Error(`HTTP ${res.status}: ${await res.text()}`)
       }
 
       // Refresh to get updated list
       await fetchMcp()
     } catch (err) {
-      setError(getErrorMessage(err))
+      const message = err instanceof Error ? err.message : String(err)
+      // If the error already contains a user-friendly message (not a generic HTTP error), keep it
+      if (!message.startsWith('HTTP')) {
+        setError(message)
+      } else {
+        setError(getErrorMessage(err))
+      }
       throw err
     }
-  }, [agentId, userId, fetchMcp])
+  }, [agentId, userId, fetchMcp, t])
 
   const deleteMcp = useCallback(async (name: string) => {
     if (!agentId) return

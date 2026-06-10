@@ -8,10 +8,10 @@ import {
     validateTemperature,
     validateMaxTokens,
     validateContextLimit,
-    validateContextStrategy,
     validateAutoCompactThreshold,
     validateMaxTurns,
     removeLeadingZeros,
+    VALID_CONTEXT_STRATEGIES,
 } from '../../../../../utils/model-validation'
 
 interface ModelConfigSectionProps {
@@ -100,9 +100,6 @@ export default function ModelConfigSection({ config, onSave, onCreateProvider, o
         if (contextError === 'format') errors.contextLimit = t('agentConfigure.contextLimitFormat')
         else if (contextError === 'range') errors.contextLimit = t('agentConfigure.contextLimitRange')
 
-        const strategyError = validateContextStrategy(form.GOOSE_CONTEXT_STRATEGY || '')
-        if (strategyError === 'invalid') errors.contextStrategy = t('agentConfigure.contextStrategyInvalid')
-
         const thresholdError = validateAutoCompactThreshold(form.GOOSE_AUTO_COMPACT_THRESHOLD || '')
         if (thresholdError === 'format') errors.autoCompactThreshold = t('agentConfigure.autoCompactThresholdFormat')
         else if (thresholdError === 'range') errors.autoCompactThreshold = t('agentConfigure.autoCompactThresholdRange')
@@ -181,8 +178,27 @@ export default function ModelConfigSection({ config, onSave, onCreateProvider, o
 
                     <div className="agent-model-param-grid">
                         {PARAM_FIELDS.map(field => {
+                            if (field.key === 'GOOSE_CONTEXT_STRATEGY') {
+                                return (
+                                    <label key={field.key} className="form-group">
+                                        <span className="form-label">{t(`agentConfigure.${field.labelKey}`)}</span>
+                                        <select
+                                            className="form-input"
+                                            value={form.GOOSE_CONTEXT_STRATEGY || ''}
+                                            onChange={event => setForm(current => ({ ...current, GOOSE_CONTEXT_STRATEGY: event.target.value }))}
+                                        >
+                                            <option value="">{t('agentConfigure.selectContextStrategy')}</option>
+                                            {VALID_CONTEXT_STRATEGIES.map(strategy => (
+                                                <option key={strategy} value={strategy}>
+                                                    {t(`agentConfigure.contextStrategy_${strategy}`)}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </label>
+                                )
+                            }
+
                             const hasError = validationErrors[field.labelKey]
-                            const isNumericField = field.key !== 'GOOSE_CONTEXT_STRATEGY'
 
                             return (
                                 <label key={field.key} className="form-group">
@@ -193,17 +209,15 @@ export default function ModelConfigSection({ config, onSave, onCreateProvider, o
                                         onChange={event => {
                                             let value = event.target.value
 
-                                            if (isNumericField) {
-                                                if (field.key === 'GOOSE_TEMPERATURE' || field.key === 'GOOSE_AUTO_COMPACT_THRESHOLD') {
-                                                    value = value.replace(/[^\d.]/g, '')
-                                                    const parts = value.split('.')
-                                                    if (parts.length > 2) {
-                                                        value = parts[0] + '.' + parts.slice(1).join('')
-                                                    }
-                                                } else {
-                                                    value = value.replace(/\D/g, '')
-                                                    value = removeLeadingZeros(value)
+                                            if (field.key === 'GOOSE_TEMPERATURE' || field.key === 'GOOSE_AUTO_COMPACT_THRESHOLD') {
+                                                value = value.replace(/[^\d.]/g, '')
+                                                const parts = value.split('.')
+                                                if (parts.length > 2) {
+                                                    value = parts[0] + '.' + parts.slice(1).join('')
                                                 }
+                                            } else {
+                                                value = value.replace(/\D/g, '')
+                                                value = removeLeadingZeros(value)
                                             }
 
                                             setForm(current => ({ ...current, [field.key]: value }))

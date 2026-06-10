@@ -134,7 +134,7 @@ export default function CreateProviderModal({ mode, provider, onClose, onCreate,
                         ) : (
                             <label className="form-group">
                                 <span className="form-label">{t('agentConfigure.providerName')} <span className="form-required">*</span></span>
-                                <input className="form-input" maxLength={200} value={name} onChange={event => setName(event.target.value)} />
+                                <input className="form-input" value={name} onChange={event => setName(event.target.value)} />
                                 {validationErrors.name && <span className="form-error">{validationErrors.name}</span>}
                             </label>
                         )}
@@ -143,7 +143,7 @@ export default function CreateProviderModal({ mode, provider, onClose, onCreate,
                         ) : (
                             <label className="form-group">
                                 <span className="form-label">{t('agentConfigure.providerDisplayName')}</span>
-                                <input className="form-input" maxLength={255} value={displayName} onChange={event => setDisplayName(event.target.value)} />
+                                <input className="form-input" value={displayName} onChange={event => setDisplayName(event.target.value)} />
                             </label>
                         )}
                         <ReadonlyProviderField label={t('agentConfigure.providerEngine')} value={formatProviderEngine(provider?.engine)} />
@@ -152,7 +152,6 @@ export default function CreateProviderModal({ mode, provider, onClose, onCreate,
                             <input
                                 className="form-input"
                                 type="password"
-                                maxLength={5000}
                                 value={apiKey}
                                 onChange={event => setApiKey(event.target.value)}
                                 placeholder={t('agentConfigure.apiKeyPlaceholder')}
@@ -160,12 +159,12 @@ export default function CreateProviderModal({ mode, provider, onClose, onCreate,
                         </label>
                         <label className="form-group agent-provider-form-wide">
                             <span className="form-label">{t('agentConfigure.baseUrl')} <span className="form-required">*</span></span>
-                            <input className="form-input" maxLength={500} value={baseUrl} onChange={event => setBaseUrl(event.target.value)} placeholder={t('agentConfigure.baseUrlPlaceholder')} />
+                            <input className="form-input" value={baseUrl} onChange={event => setBaseUrl(event.target.value)} placeholder={t('agentConfigure.baseUrlPlaceholder')} />
                             {validationErrors.baseUrl && <span className="form-error">{validationErrors.baseUrl}</span>}
                         </label>
                         <label className="form-group">
                             <span className="form-label">{t('agentConfigure.modelName')}</span>
-                            <input className="form-input" maxLength={255} value={modelName} onChange={event => setModelName(event.target.value)} />
+                            <input className="form-input" value={modelName} onChange={event => setModelName(event.target.value)} />
                         </label>
                         <label className="form-group">
                             <span className="form-label">{t('agentConfigure.contextLimit')}</span>
@@ -181,7 +180,7 @@ export default function CreateProviderModal({ mode, provider, onClose, onCreate,
                         </label>
                         <label className="form-group agent-provider-form-wide">
                             <span className="form-label">{t('agentConfigure.providerDescription')}</span>
-                            <textarea className="form-input" maxLength={1000} value={description} onChange={event => setDescription(event.target.value)} />
+                            <textarea className="form-input" value={description} onChange={event => setDescription(event.target.value)} />
                         </label>
                     </div>
                 </div>

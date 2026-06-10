@@ -51,6 +51,8 @@ export interface McpAddRequest {
   envs?: Record<string, string>;
   uri?: string;
   timeout?: number;
+  // Sent only during edit/toggle to signal an update operation to the backend
+  bundled?: boolean;
 }
 
 // Categorized MCP entries for UI display

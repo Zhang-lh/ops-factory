@@ -77,6 +77,7 @@ export interface UpdateAgentConfigResponse {
     // config until restarted via the instances/restart endpoint.
     requiresRestart?: boolean
     runningInstances?: number
+    errors?: string[]
 }
 
 export interface CreateProviderResponse extends UpdateAgentConfigResponse {

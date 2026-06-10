@@ -390,6 +390,115 @@ public class AgentConfigServiceTest {
     }
 
     /**
+     * Tests create provider rejects name exceeding max length.
+     *
+     * @throws IOException if the operation fails
+     */
+    @Test
+    public void testCreateCustomProvider_rejectsNameTooLong() throws IOException {
+        String longName = "a".repeat(201);
+        IllegalArgumentException ex = org.junit.Assert.assertThrows(
+            IllegalArgumentException.class,
+            () -> service.createCustomProvider("test-agent",
+                Map.of("name", longName, "base_url", "http://localhost/v1", "models",
+                    List.of(Map.of("name", "model-1")))));
+        assertTrue(ex.getMessage().contains("must not exceed 200 characters"));
+    }
+
+    /**
+     * Tests create provider rejects display name exceeding max length.
+     *
+     * @throws IOException if the operation fails
+     */
+    @Test
+    public void testCreateCustomProvider_rejectsDisplayNameTooLong() throws IOException {
+        String longDisplayName = "b".repeat(256);
+        IllegalArgumentException ex = org.junit.Assert.assertThrows(
+            IllegalArgumentException.class,
+            () -> service.createCustomProvider("test-agent",
+                Map.of("name", "custom-toolong-display", "display_name", longDisplayName,
+                    "base_url", "http://localhost/v1", "models",
+                    List.of(Map.of("name", "model-1")))));
+        assertTrue(ex.getMessage().contains("must not exceed 255 characters"));
+    }
+
+    /**
+     * Tests create provider rejects base URL exceeding max length.
+     *
+     * @throws IOException if the operation fails
+     */
+    @Test
+    public void testCreateCustomProvider_rejectsBaseUrlTooLong() throws IOException {
+        String longUrl = "http://localhost/" + "c".repeat(490);
+        IllegalArgumentException ex = org.junit.Assert.assertThrows(
+            IllegalArgumentException.class,
+            () -> service.createCustomProvider("test-agent",
+                Map.of("name", "custom-toolong-url", "base_url", longUrl, "models",
+                    List.of(Map.of("name", "model-1")))));
+        assertTrue(ex.getMessage().contains("must not exceed 500 characters"));
+    }
+
+    /**
+     * Tests create provider rejects description exceeding max length.
+     *
+     * @throws IOException if the operation fails
+     */
+    @Test
+    public void testCreateCustomProvider_rejectsDescriptionTooLong() throws IOException {
+        String longDescription = "d".repeat(1001);
+        IllegalArgumentException ex = org.junit.Assert.assertThrows(
+            IllegalArgumentException.class,
+            () -> service.createCustomProvider("test-agent",
+                Map.of("name", "custom-toolong-desc", "description", longDescription,
+                    "base_url", "http://localhost/v1", "models",
+                    List.of(Map.of("name", "model-1")))));
+        assertTrue(ex.getMessage().contains("must not exceed 1000 characters"));
+    }
+
+    /**
+     * Tests create provider accepts fields at exactly max length.
+     *
+     * @throws IOException if the operation fails
+     */
+    @Test
+    public void testCreateCustomProvider_acceptsFieldAtMaxLength() throws IOException {
+        String maxName = "n".repeat(200);
+        String maxDisplayName = "d".repeat(255);
+        String maxUrl = "http://localhost/" + "u".repeat(483); // "http://localhost/" = 17 chars + 483 = 500
+        String maxDescription = "x".repeat(1000);
+        Map<String, Object> provider = service.createCustomProvider("test-agent",
+            Map.of("name", maxName, "display_name", maxDisplayName, "description", maxDescription,
+                "base_url", maxUrl, "models", List.of(Map.of("name", "model-1"))));
+
+        assertEquals(maxName, provider.get("name"));
+        assertEquals(maxDisplayName, provider.get("display_name"));
+        assertEquals(maxDescription, provider.get("description"));
+        assertTrue(provider.get("base_url").toString().startsWith("http://localhost/"));
+    }
+
+    /**
+     * Tests update provider rejects fields exceeding max length.
+     *
+     * @throws IOException if the operation fails
+     */
+    @Test
+    public void testUpdateCustomProvider_rejectsFieldTooLong() throws IOException {
+        Path providersDir =
+            gatewayRoot.resolve("agents").resolve("test-agent").resolve("config").resolve("custom_providers");
+        Files.createDirectories(providersDir);
+        Files.writeString(providersDir.resolve("custom_len_test.json"),
+            "{\n  \"name\": \"custom_len_test\",\n  \"engine\": \"openai\",\n  \"api_key_env\": \"CUSTOM_LEN_TEST_API_KEY\",\n  \"base_url\": \"http://localhost/v1\",\n  \"models\": []\n}\n");
+
+        String longDescription = "z".repeat(1001);
+        IllegalArgumentException ex = org.junit.Assert.assertThrows(
+            IllegalArgumentException.class,
+            () -> service.updateCustomProvider("test-agent", "custom_len_test",
+                Map.of("description", longDescription, "base_url", "http://localhost/v1", "models",
+                    List.of(Map.of("name", "model-1")))));
+        assertTrue(ex.getMessage().contains("must not exceed 1000 characters"));
+    }
+
+    /**
      * Tests read write agents md.
      *
      * @throws IOException if the operation fails

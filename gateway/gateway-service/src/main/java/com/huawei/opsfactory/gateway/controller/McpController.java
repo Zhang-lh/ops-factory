@@ -10,6 +10,9 @@ import com.huawei.opsfactory.gateway.process.InstanceManager;
 import com.huawei.opsfactory.gateway.proxy.GoosedProxy;
 import com.huawei.opsfactory.gateway.service.AgentConfigService;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import jakarta.servlet.http.HttpServletRequest;
 
 import org.apache.servicecomb.provider.rest.common.RestSchema;
@@ -26,7 +29,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.io.IOException;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 /**
  * REST controller for managing MCP (Model Context Protocol) extensions on agent instances.
@@ -41,6 +46,12 @@ public class McpController {
     private static final String KNOWLEDGE_SERVICE_MCP = "knowledge-service";
 
     private static final String KNOWLEDGE_CLI_MCP = "knowledge-cli";
+
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+
+    private static final Pattern MCP_NAME_PATTERN = Pattern.compile("^[-A-Za-z0-9._ ]+$");
+
+    private static final int MCP_NAME_MAX_LENGTH = 100;
 
     private final InstanceManager instanceManager;
 
@@ -78,20 +89,90 @@ public class McpController {
 
     /**
      * Creates a new MCP extension on the agent's system instance and recycles running instances.
+     * Rejects the request if an MCP with the same name already exists.
      *
      * @param agentId agent identifier
      * @param body request body
      * @param request current HTTP request
-     * @return the created MCP extension
+     * @return the created MCP extension, or a conflict response if the name already exists
      */
     @PostMapping
-    public String createMcpExtension(@PathVariable("agentId") String agentId, @RequestBody String body,
+    public ResponseEntity<String> createMcpExtension(@PathVariable("agentId") String agentId, @RequestBody String body,
         HttpServletRequest request) {
         String userId = (String) request.getAttribute(UserContextFilter.USER_ID_ATTR);
         ManagedInstance instance = instanceManager.getOrSpawn(agentId, userId).block();
-        return goosedProxy
+
+        String mcpName;
+        boolean isUpdate;
+        try {
+            JsonNode bodyNode = OBJECT_MAPPER.readTree(body);
+            String nameError = validateMcpName(bodyNode);
+            if (nameError != null) {
+                return ResponseEntity.badRequest().body(nameError);
+            }
+            mcpName = bodyNode.get("name").asText().trim();
+            isUpdate = isUpdateOperation(bodyNode);
+        } catch (IOException e) {
+            return ResponseEntity.badRequest().body("Invalid request body");
+        }
+
+        if (!isUpdate && isDuplicateMcpName(mcpName, instance)) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body("MCP '" + mcpName + "' already exists");
+        }
+
+        String result = goosedProxy
             .fetchJson(instance.getPort(), HttpMethod.POST, "/config/extensions", body, 30, instance.getSecretKey())
             .block();
+        return ResponseEntity.status(HttpStatus.CREATED)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(result);
+    }
+
+    private String validateMcpName(JsonNode bodyNode) {
+        JsonNode nameNode = bodyNode.get("name");
+        if (nameNode == null || !nameNode.isTextual()) {
+            return "MCP name is required";
+        }
+        String mcpName = nameNode.asText().trim();
+        if (mcpName.isEmpty()) {
+            return "MCP name is required";
+        }
+        if (mcpName.length() > MCP_NAME_MAX_LENGTH) {
+            return "MCP name must not exceed " + MCP_NAME_MAX_LENGTH + " characters";
+        }
+        if (!MCP_NAME_PATTERN.matcher(mcpName).matches()) {
+            return "MCP name can only contain letters, numbers, spaces, dots, underscores, and hyphens";
+        }
+        return null;
+    }
+
+    private boolean isUpdateOperation(JsonNode bodyNode) {
+        JsonNode configNode = bodyNode.get("config");
+        return configNode != null && configNode.isObject()
+            && configNode.hasNonNull("bundled");
+    }
+
+    private boolean isDuplicateMcpName(String mcpName, ManagedInstance instance) {
+        String existingJson = goosedProxy
+            .fetchJson(instance.getPort(), HttpMethod.GET, "/config/extensions", null, 30,
+                instance.getSecretKey())
+            .block();
+        try {
+            JsonNode root = OBJECT_MAPPER.readTree(existingJson);
+            JsonNode extensions = root.get("extensions");
+            if (extensions != null && extensions.isArray()) {
+                for (JsonNode ext : extensions) {
+                    JsonNode nameNode = ext.get("name");
+                    if (nameNode != null && nameNode.isTextual() && mcpName.equals(nameNode.asText())) {
+                        return true;
+                    }
+                }
+            }
+        } catch (IOException e) {
+            // If we can't parse the existing config, proceed with creation and let goose handle it
+        }
+        return false;
     }
 
     /**

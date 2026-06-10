@@ -6,6 +6,21 @@ import { runtime, gatewayHeaders, slugify } from '../../../../config/runtime'
 
 const DEFAULT_LLM = { provider: 'openai', model: 'qwen/qwen3.5-35b-a3b' }
 
+/**
+ * Map backend English error messages to localized i18n keys.
+ * Backend returns English-only messages (e.g. "Agent with ID 'xxx' already exists"),
+ * so we pattern-match them here and return a translation key instead.
+ */
+function localizeBackendError(backendError: string, t: (key: string, params?: Record<string, unknown>) => string): string {
+    if (/Agent with ID '.+?' already exists/i.test(backendError)) {
+        return t('agents.createDuplicateId')
+    }
+    if (/Agent with name '.+?' already exists/i.test(backendError)) {
+        return t('agents.createDuplicateName')
+    }
+    return t('agents.createFailed', { error: backendError })
+}
+
 function buildSuggestedAgentId(value: string, fallbackSuffix: string): string {
     if (!value.trim()) return ''
 
@@ -60,7 +75,9 @@ export function CreateAgentModal({
             })
             const data = await response.json()
             if (!response.ok || !data.success) {
-                setError(data.error || t('agents.createFailed', { error: 'Unknown error' }))
+                setError(data.error
+                    ? localizeBackendError(data.error, t)
+                    : t('agents.createFailed', { error: 'Unknown error' }))
                 return
             }
             onCreated()

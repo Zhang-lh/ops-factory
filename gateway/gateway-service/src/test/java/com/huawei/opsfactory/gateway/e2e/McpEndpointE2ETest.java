@@ -4,7 +4,6 @@
 
 package com.huawei.opsfactory.gateway.e2e;
 
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -19,8 +18,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
-
-import java.util.Collections;
 
 /**
  * E2E tests for McpController endpoints:
@@ -99,6 +96,8 @@ public class McpEndpointE2ETest extends BaseE2ETest {
     @Test
     public void createMcpExtension_admin_forwardsToSysInstance() {
         when(instanceManager.getOrSpawn("test-agent", "admin")).thenReturn(Mono.just(sysInstance));
+        when(goosedProxy.fetchJson(eq(9999), eq(HttpMethod.GET), eq("/config/extensions"),
+            eq(null), anyInt(), eq("test-secret"))).thenReturn(Mono.just("{\"extensions\":[]}"));
         when(goosedProxy.fetchJson(eq(9999), eq(HttpMethod.POST), eq("/config/extensions"),
             anyString(), anyInt(), eq("test-secret"))).thenReturn(Mono.just("{\"name\":\"test-mcp\"}"));
 
@@ -110,7 +109,7 @@ public class McpEndpointE2ETest extends BaseE2ETest {
             .bodyValue("{\"name\":\"test-mcp\",\"type\":\"stdio\"}")
             .exchange()
             .expectStatus()
-            .isOk();
+            .isCreated();
 
         verify(instanceManager).getOrSpawn("test-agent", "admin");
     }
@@ -121,6 +120,8 @@ public class McpEndpointE2ETest extends BaseE2ETest {
     @Test
     public void createMcpExtension_nonAdmin_attemptsProxy() {
         when(instanceManager.getOrSpawn("test-agent", "alice")).thenReturn(Mono.just(sysInstance));
+        when(goosedProxy.fetchJson(eq(9999), eq(HttpMethod.GET), eq("/config/extensions"),
+            eq(null), anyInt(), eq("test-secret"))).thenReturn(Mono.just("{\"extensions\":[]}"));
         when(goosedProxy.fetchJson(eq(9999), eq(HttpMethod.POST), eq("/config/extensions"),
             anyString(), anyInt(), eq("test-secret"))).thenReturn(Mono.just("{\"name\":\"test-mcp\"}"));
 
@@ -132,9 +133,135 @@ public class McpEndpointE2ETest extends BaseE2ETest {
             .bodyValue("{\"name\":\"test-mcp\",\"type\":\"stdio\"}")
             .exchange()
             .expectStatus()
-            .isOk();
+            .isCreated();
 
         verify(instanceManager).getOrSpawn("test-agent", "alice");
+    }
+
+    /**
+     * Executes the create mcp extension duplicate name returns conflict operation.
+     */
+    @Test
+    public void createMcpExtension_duplicateName_returnsConflict() {
+        when(instanceManager.getOrSpawn("test-agent", "admin")).thenReturn(Mono.just(sysInstance));
+        when(goosedProxy.fetchJson(eq(9999), eq(HttpMethod.GET), eq("/config/extensions"),
+            eq(null), anyInt(), eq("test-secret"))).thenReturn(Mono.just(
+                "{\"extensions\":[{\"name\":\"test-mcp\",\"type\":\"stdio\"}]}"));
+
+        webClient.post()
+            .uri("/api/gateway/agents/test-agent/mcp")
+            .header(HEADER_SECRET_KEY, SECRET_KEY)
+            .header(HEADER_USER_ID, "admin")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue("{\"name\":\"test-mcp\",\"type\":\"stdio\"}")
+            .exchange()
+            .expectStatus()
+            .isEqualTo(409);
+
+        verify(instanceManager).getOrSpawn("test-agent", "admin");
+    }
+
+    /**
+     * Executes the create mcp extension with bundled flag skips duplicate check operation.
+     */
+    @Test
+    public void createMcpExtension_withBundledFlag_skipsDuplicateCheck() {
+        when(instanceManager.getOrSpawn("test-agent", "admin")).thenReturn(Mono.just(sysInstance));
+        when(goosedProxy.fetchJson(eq(9999), eq(HttpMethod.POST), eq("/config/extensions"),
+            anyString(), anyInt(), eq("test-secret"))).thenReturn(Mono.just("{\"name\":\"test-mcp\"}"));
+
+        webClient.post()
+            .uri("/api/gateway/agents/test-agent/mcp")
+            .header(HEADER_SECRET_KEY, SECRET_KEY)
+            .header(HEADER_USER_ID, "admin")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue("{\"name\":\"test-mcp\",\"enabled\":false,\"config\":{\"bundled\":false,\"type\":\"stdio\"}}")
+            .exchange()
+            .expectStatus()
+            .isCreated();
+
+        verify(instanceManager).getOrSpawn("test-agent", "admin");
+    }
+
+    /**
+     * Executes the create mcp extension with invalid name returns bad request operation.
+     */
+    @Test
+    public void createMcpExtension_invalidName_returnsBadRequest() {
+        when(instanceManager.getOrSpawn("test-agent", "admin")).thenReturn(Mono.just(sysInstance));
+
+        webClient.post()
+            .uri("/api/gateway/agents/test-agent/mcp")
+            .header(HEADER_SECRET_KEY, SECRET_KEY)
+            .header(HEADER_USER_ID, "admin")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue("{\"name\":\"test@mcp\",\"type\":\"stdio\"}")
+            .exchange()
+            .expectStatus()
+            .isBadRequest();
+
+        verify(instanceManager).getOrSpawn("test-agent", "admin");
+    }
+
+    /**
+     * Executes the create mcp extension with too long name returns bad request operation.
+     */
+    @Test
+    public void createMcpExtension_tooLongName_returnsBadRequest() {
+        when(instanceManager.getOrSpawn("test-agent", "admin")).thenReturn(Mono.just(sysInstance));
+
+        String longName = "a".repeat(101);
+        webClient.post()
+            .uri("/api/gateway/agents/test-agent/mcp")
+            .header(HEADER_SECRET_KEY, SECRET_KEY)
+            .header(HEADER_USER_ID, "admin")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue("{\"name\":\"" + longName + "\",\"type\":\"stdio\"}")
+            .exchange()
+            .expectStatus()
+            .isBadRequest();
+
+        verify(instanceManager).getOrSpawn("test-agent", "admin");
+    }
+
+    /**
+     * Executes the create mcp extension with blank name returns bad request operation.
+     */
+    @Test
+    public void createMcpExtension_blankName_returnsBadRequest() {
+        when(instanceManager.getOrSpawn("test-agent", "admin")).thenReturn(Mono.just(sysInstance));
+
+        webClient.post()
+            .uri("/api/gateway/agents/test-agent/mcp")
+            .header(HEADER_SECRET_KEY, SECRET_KEY)
+            .header(HEADER_USER_ID, "admin")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue("{\"name\":\"  \",\"type\":\"stdio\"}")
+            .exchange()
+            .expectStatus()
+            .isBadRequest();
+
+        verify(instanceManager).getOrSpawn("test-agent", "admin");
+    }
+
+    /**
+     * Executes the create mcp extension with missing name returns bad request operation.
+     */
+    @Test
+    public void createMcpExtension_missingName_returnsBadRequest() {
+        when(instanceManager.getOrSpawn("test-agent", "admin")).thenReturn(Mono.just(sysInstance));
+
+        webClient.post()
+            .uri("/api/gateway/agents/test-agent/mcp")
+            .header(HEADER_SECRET_KEY, SECRET_KEY)
+            .header(HEADER_USER_ID, "admin")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue("{\"type\":\"stdio\"}")
+            .exchange()
+            .expectStatus()
+            .isBadRequest();
+
+        verify(instanceManager).getOrSpawn("test-agent", "admin");
     }
 
     /**

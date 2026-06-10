@@ -67,7 +67,14 @@ public class AgentConfigService {
     private static final String DEFAULT_KNOWLEDGE_CLI_ROOT_DIR = "../data";
 
     private static final Pattern PROVIDER_NAME_PATTERN = Pattern.compile("^[A-Za-z0-9._-]+$");
-
+    // Provider field length limits — must stay in sync with CreateProviderModal.tsx maxLength
+    private static final int PROVIDER_NAME_MAX_LENGTH = 200;
+    private static final int PROVIDER_DISPLAY_NAME_MAX_LENGTH = 255;
+    private static final int PROVIDER_BASE_URL_MAX_LENGTH = 500;
+    private static final int PROVIDER_API_KEY_MAX_LENGTH = 5000;
+    private static final int PROVIDER_MODEL_NAME_MAX_LENGTH = 255;
+    private static final int PROVIDER_DESCRIPTION_MAX_LENGTH = 1000;
+    
     private static final List<String> MODEL_CONFIG_KEYS = List.of("GOOSE_PROVIDER", "GOOSE_MODEL", "GOOSE_FAST_MODEL",
         "GOOSE_MODE", "GOOSE_CONTEXT_LIMIT", "GOOSE_MAX_TOKENS", "GOOSE_TEMPERATURE", "GOOSE_CONTEXT_STRATEGY",
         "GOOSE_AUTO_COMPACT_THRESHOLD", "GOOSE_MAX_TURNS");
@@ -468,12 +475,22 @@ public class AgentConfigService {
     private Map<String, Object> doCreateCustomProvider(String agentId, Map<String, Object> provider)
         throws IOException {
         String name = trimToNull(asString(provider.get("name")));
+        List<String> errors = new ArrayList<>();
         if (name == null) {
-            throw new IllegalArgumentException("Provider name is required");
+            errors.add("Provider name is required");
+        } else {
+            if (!PROVIDER_NAME_PATTERN.matcher(name).matches()) {
+                errors.add("Provider name contains unsupported characters");
+            }
+            if (name.length() > PROVIDER_NAME_MAX_LENGTH) {
+                errors.add("Provider name must not exceed " + PROVIDER_NAME_MAX_LENGTH + " characters");
+            }
         }
-        if (!PROVIDER_NAME_PATTERN.matcher(name).matches()) {
-            throw new IllegalArgumentException("Provider name contains unsupported characters");
+        errors.addAll(collectProviderFieldLengthErrors(provider));
+        if (!errors.isEmpty()) {
+            throw new IllegalArgumentException(String.join("; ", errors));
         }
+
         Path providersDir = getCustomProvidersDir(agentId);
         Files.createDirectories(providersDir);
         Path providerPath = providersDir.resolve(name + ".json");
@@ -510,12 +527,22 @@ public class AgentConfigService {
     private Map<String, Object> doUpdateCustomProvider(String agentId, String providerName,
         Map<String, Object> provider) throws IOException {
         String name = trimToNull(providerName);
+        List<String> errors = new ArrayList<>();
         if (name == null) {
-            throw new IllegalArgumentException("Provider name is required");
+            errors.add("Provider name is required");
+        } else {
+            if (!PROVIDER_NAME_PATTERN.matcher(name).matches()) {
+                errors.add("Provider name contains unsupported characters");
+            }
+            if (name.length() > PROVIDER_NAME_MAX_LENGTH) {
+                errors.add("Provider name must not exceed " + PROVIDER_NAME_MAX_LENGTH + " characters");
+            }
         }
-        if (!PROVIDER_NAME_PATTERN.matcher(name).matches()) {
-            throw new IllegalArgumentException("Provider name contains unsupported characters");
+        errors.addAll(collectProviderFieldLengthErrors(provider));
+        if (!errors.isEmpty()) {
+            throw new IllegalArgumentException(String.join("; ", errors));
         }
+
         Path providerPath = getCustomProvidersDir(agentId).resolve(name + ".json");
         if (!Files.exists(providerPath)) {
             throw new IllegalArgumentException("Provider '" + name + "' not found");
@@ -540,6 +567,40 @@ public class AgentConfigService {
             trimToNull(asString(provider.get("api_key"))));
         updated.put("fileName", providerPath.getFileName().toString());
         return updated;
+    }
+
+    /**
+     * Validates string field lengths in a provider request body.
+     * These limits mirror the frontend maxLength values in CreateProviderModal.tsx.
+     * Collects all errors and throws them together so the caller can report every issue.
+     */
+    private List<String> collectProviderFieldLengthErrors(Map<String, Object> provider) {
+        List<String> errors = new ArrayList<>();
+        collectMaxLengthError(provider, "display_name", PROVIDER_DISPLAY_NAME_MAX_LENGTH, "Display name", errors);
+        collectMaxLengthError(provider, "base_url", PROVIDER_BASE_URL_MAX_LENGTH, "Base URL", errors);
+        collectMaxLengthError(provider, "api_key", PROVIDER_API_KEY_MAX_LENGTH, "API key", errors);
+        collectMaxLengthError(provider, "description", PROVIDER_DESCRIPTION_MAX_LENGTH, "Description", errors);
+
+        // Validate model names inside the "models" array
+        Object modelsObj = provider.get("models");
+        if (modelsObj instanceof List<?> models) {
+            for (Object item : models) {
+                if (item instanceof Map<?, ?> model) {
+                    String modelName = trimToNull(asString(model.get("name")));
+                    if (modelName != null && modelName.length() > PROVIDER_MODEL_NAME_MAX_LENGTH) {
+                        errors.add("Model name must not exceed " + PROVIDER_MODEL_NAME_MAX_LENGTH + " characters");
+                    }
+                }
+            }
+        }
+        return errors;
+    }
+
+    private void collectMaxLengthError(Map<String, Object> map, String field, int maxLength, String label, List<String> errors) {
+        String value = trimToNull(asString(map.get(field)));
+        if (value != null && value.length() > maxLength) {
+            errors.add(label + " must not exceed " + maxLength + " characters");
+        }
     }
 
     private Map<String, Object> normalizeProvider(Map<String, Object> provider, String name) {

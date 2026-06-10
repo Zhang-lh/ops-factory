@@ -299,6 +299,7 @@ public class AgentController {
             Map<String, Object> errorBody = new LinkedHashMap<>();
             errorBody.put("success", false);
             errorBody.put("error", e.getMessage());
+            errorBody.put("errors", List.of(e.getMessage().split(";\\s*")));
             return ResponseEntity.badRequest().body(errorBody);
         } catch (IllegalStateException e) {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to create provider", e);
@@ -330,6 +331,7 @@ public class AgentController {
             Map<String, Object> errorBody = new LinkedHashMap<>();
             errorBody.put("success", false);
             errorBody.put("error", e.getMessage());
+            errorBody.put("errors", List.of(e.getMessage().split(";\\s*")));
             return ResponseEntity.badRequest().body(errorBody);
         } catch (IllegalStateException e) {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to update provider", e);
